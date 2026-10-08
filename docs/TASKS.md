@@ -15,8 +15,8 @@ Owners: **Abhijeet** (thegoodengineer) = AWS · **Chirag** (Chirag6722) = backen
 - [x] **First deploy** (#2, Abhijeet). Uses `template.yaml`. Done: `make deploy && make url` prints an HTTPS URL that serves `index.html`. *CloudFront is blocked on the account; a Lambda function URL serves HTTPS (#64).*
 - [ ] **Live data** (#3, Abhijeet). Done: `make seed && make run` prints `"scored": true` and an `overlap_ratio` near 1.0 for pm10/pm25; two scheduled runs later `data_through` has advanced.
 - [x] **Site v1: map + station panel + `?demo=1`** (#12-#14). Files: `site/index.html`, `site/app.js`, `site/theme.css`, `site/scene3d.js`. Done: `make local`, open `http://localhost:8000`: all stations on the map; clicking one opens three check cards and the hour-of-day chart; `?demo=1` plays the tour by itself; no console errors.
-- [ ] **Video pipeline** (#10, Sunday). Files: `video/script.md`, `video/narrate.py`, `video/scenes/scenes.html`, `video/record.py`, `video/capture_demo.py`, `video/assemble.py`. Done: `make video` produces `video/final.mp4` under 3:00, never sped up.
-- [ ] **Console clip** (#4, Abhijeet, Saturday). Done: `video/supply/console.mp4`, 10-15 s, 1920x1080.
+- [x] **Video pipeline** (#10). Files: `video/script.md`, `video/narrate.py`, `video/scenes/scenes.html`, `video/record.py`, `video/capture_demo.py`, `video/console_clip.py`, `video/music.py`, `video/assemble.py`. Done: `make video` produces `video/final.mp4` under 3:00, never sped up. *Re-render on Saturday against the live data, then upload and link in the submission.*
+- [x] **Console clip** (#4). Done: `video/supply/console.mp4`, 12 s, 1920x1080, from the real console by `video/console_clip.py` (a read-only federated session). *Re-run on Saturday so the invocation graph shows a day of hourly bars.*
 - [ ] **Writeup + submission** (#11, Chirag, Sunday, after the video). Files: `docs/submission.md`, `README.md`. Done: form submitted, screenshot in #11.
 
 ## Should

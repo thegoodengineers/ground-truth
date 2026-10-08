@@ -60,3 +60,13 @@ run:
 url:
 	@$(call OUT,SiteUrl)
 	@$(call OUT,SiteWebsiteUrl)
+
+# The demo video (video/script.md): narration, HTML scenes, the site captured on a fake clock, cut with captions.
+# Needs the site served with data on SITE_URL (default: make local in another terminal), ffmpeg, Playwright's Chromium.
+SITE_URL ?= http://localhost:8000
+video:
+	python video/narrate.py
+	python -m pytest -q tests --ignore=tests/site -p no:cacheprovider > video/assets/pytest.txt || true
+	python video/record.py
+	python video/capture_demo.py --url $(SITE_URL)
+	python video/assemble.py

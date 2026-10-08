@@ -778,6 +778,11 @@
     el.innerHTML = `<span class="label">${esc(k)}</span>${text}`;
   }
 
+  // ?capture=1 (video/capture_demo.py): the tour's moves, one at a time, timed to the narration from outside
+  if (new URLSearchParams(location.search).has("capture")) {
+    window.__gt = { select, enterImmersive, exitImmersive, caption, mark, scrollTo: (sel) => $(sel)?.scrollIntoView({ behavior: "smooth", block: "start" }) };
+  }
+
   async function tour() {
     const pick = (pred, fallback) => (latest.stations.find(pred) || byId.get(fallback) || latest.stations[0]).id;
     const physics = pick((s) => s.checks.physics.status === "flag", 301);
