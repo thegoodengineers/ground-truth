@@ -276,3 +276,15 @@ def test_should_not_resync_before_hour(monkeypatch):
     import ingest
     now = dt.datetime(2025, 11, 30, 2, 0, tzinfo=ingest.IST)  # 02:00 IST
     assert ingest._should_resync(now, DictStore()) is False
+
+
+def test_hysteresis_shows_silence_at_once_and_ignores_reruns():
+    hist = {}
+    for hour, raw, shown in ((10, "flag", "flag"), (11, "nodata", "nodata"), (12, "ok", "ok"), (13, "watch", "watch")):
+        latest = _make_latest([raw])
+        ingest.apply_hysteresis(latest, hist, f"2026-10-08T{hour:02d}")
+        assert latest["stations"][0]["status"] == shown
+    for _ in range(3):  # the same hour three times is still one hour of 'ok'
+        latest = _make_latest(["ok"])
+        ingest.apply_hysteresis(latest, hist, "2026-10-08T14")
+    assert latest["stations"][0]["status"] == "watch"

@@ -42,7 +42,14 @@ def apply_hysteresis(latest_json, status_hist, now_key):
         h = status_hist.setdefault(sid, {"current": raw, "pending": raw, "count": 1, "since": now_key,
                                          "history": []})
         current = h["current"]
-        if RANK[raw] > RANK[current]:
+        if h.get("hour") == now_key:  # a second run in the same hour doesn't count as another hour
+            s["status"], s["status_since"] = current, h["since"]
+            continue
+        h["hour"] = now_key
+        if "nodata" in (raw, current) and raw != current:
+            # going quiet, or reporting again, shows at once: smoothing is for answers, not for silence
+            h.update(current=raw, since=now_key, pending=raw, count=1)
+        elif RANK[raw] > RANK[current]:
             # worsening: move up immediately
             h["current"] = raw
             h["since"] = now_key
