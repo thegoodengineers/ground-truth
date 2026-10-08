@@ -217,11 +217,21 @@ function buildMonitors(scene, stations, reading) {
 
 function buildDust(scene, median, cap) {
   let n = Math.round(Math.min(cap, 2500 + median * 45));
-  const pos = new Float32Array(n * 3), vel = new Float32Array(n * 3);
+  const pos = new Float32Array(n * 3), vel = new Float32Array(n * 3), jitter = new Float32Array(n * 2);
+  // the drift: a gentle easterly by default; setWind turns it to the real wind (x east, z south)
+  let wind = { x: 0.02, z: 0 };
   for (let i = 0; i < n; i++) {
     pos[i * 3] = (Math.random() - 0.5) * 700; pos[i * 3 + 1] = 1 + Math.random() * 70; pos[i * 3 + 2] = (Math.random() - 0.5) * 760;
-    vel[i * 3] = 0.01 + Math.random() * 0.03; vel[i * 3 + 1] = (Math.random() - 0.4) * 0.008; vel[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
+    jitter[i * 2] = 0.5 + Math.random(); jitter[i * 2 + 1] = (Math.random() - 0.5) * 0.01;
+    vel[i * 3] = wind.x * jitter[i * 2]; vel[i * 3 + 1] = (Math.random() - 0.4) * 0.008; vel[i * 3 + 2] = wind.z * jitter[i * 2] + jitter[i * 2 + 1];
   }
+  const setWind = (fromDeg, kmh) => {
+    if (fromDeg == null || kmh == null) return;
+    // blows towards fromDeg + 180; speed on screen from 0.3 (calm) to 3 (a strong wind) times the default drift
+    const to = ((fromDeg + 180) % 360) * Math.PI / 180, k = Math.min(3, Math.max(0.3, kmh / 10)) * 0.02;
+    wind = { x: Math.sin(to) * k, z: -Math.cos(to) * k };
+    for (let i = 0; i < n; i++) { vel[i * 3] = wind.x * jitter[i * 2]; vel[i * 3 + 2] = wind.z * jitter[i * 2] + jitter[i * 2 + 1]; }
+  };
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const dot = radial("rgba(100,92,80,1)", "rgba(100,92,80,0)");
   const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 1.1, map: dot, color: 0x6e6457, transparent: true, opacity: 0.55, depthWrite: false, sizeAttenuation: true }));
@@ -229,13 +239,14 @@ function buildDust(scene, median, cap) {
   const step = () => {
     for (let i = 0; i < n; i++) {
       pos[i * 3] += vel[i * 3]; pos[i * 3 + 1] += vel[i * 3 + 1]; pos[i * 3 + 2] += vel[i * 3 + 2];
-      if (pos[i * 3] > 350) pos[i * 3] = -350;
+      if (pos[i * 3] > 350) pos[i * 3] = -350; else if (pos[i * 3] < -350) pos[i * 3] = 350;
+      if (pos[i * 3 + 2] > 380) pos[i * 3 + 2] = -380; else if (pos[i * 3 + 2] < -380) pos[i * 3 + 2] = 380;
       if (pos[i * 3 + 1] > 72 || pos[i * 3 + 1] < 0.5) vel[i * 3 + 1] *= -1;
     }
     g.attributes.position.needsUpdate = true;
   };
   const resize = (k) => { n = Math.floor(n * k); g.setDrawRange(0, n); pts.visible = n > 0; };
-  return { step, resize, get on() { return n > 0; } };
+  return { step, resize, setWind, get on() { return n > 0; } };
 }
 
 async function init(container, { stations, reading, makeMarker, onPick, onBackgroundClick }) {
@@ -363,6 +374,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
       }
     },
     select(id) { for (const [k, el] of marks) el.classList.toggle("sel", k === id); },
+    setWind(fromDeg, kmh) { dust.setWind(fromDeg, kmh); dirty = true; },
   };
 }
 

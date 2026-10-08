@@ -48,6 +48,10 @@ button, input, select { font: inherit; }
 .wrap { max-width: 1280px; margin: 0 auto; padding: 0 var(--gutter); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* the weather line under the hero lede: context for city-wide changes, from data/weather.json */
+.hero .weather { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin: 4px 0 0; }
+.hero .weather::before { content: "\2191"; display: inline-block; margin-right: 6px; transform: rotate(var(--wind, 0deg)); transition: transform .6s var(--ease); }
+
 /* ---------- nav ---------- */
 .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1500; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: color-mix(in srgb, var(--bg) 75%, transparent); border-bottom: 1px solid transparent; }
 .nav .wrap { display: flex; align-items: center; gap: 18px; height: 68px; }

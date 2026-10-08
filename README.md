@@ -103,6 +103,7 @@ Open `http://localhost:8000/?demo=1` for the self-playing tour.
 ## Data and credits
 
 - Air-quality readings: CPCB and DPCC monitors via [OpenAQ](https://openaq.org).
+- Wind and mixing height: [Open-Meteo](https://open-meteo.com) (CC BY 4.0), fetched hourly by the Lambda into `data/weather.json`; the hero says in a line what the weather is doing to the whole city, and the 3D dust drifts with the real wind.
 - Delhi ward and boundary data: [DataMeet](https://github.com/datameet/Municipal_Spatial_Data) (CC BY-SA 2.5 India); our simplified copy in `site/geo/` is shared under the same licence.
 - [three.js](https://threejs.org) and [Chart.js](https://www.chartjs.org) (MIT); Geist and Geist Mono fonts (SIL Open Font License).
 
