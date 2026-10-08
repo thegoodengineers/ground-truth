@@ -286,3 +286,30 @@ def test_csv_statuses_match_json(baseline):
         assert rows[s["id"]]["physics_status"] == s["checks"]["physics"]["status"]
         assert rows[s["id"]]["neighbours_status"] == s["checks"]["neighbours"]["status"]
         assert rows[s["id"]]["history_status"] == s["checks"]["history"]["status"]
+
+
+def test_region_file_matches_the_delhi_defaults():
+    """src/regions/delhi.json is the source of Delhi's settings; the module constants must agree with it."""
+    cfg = backfill.region("delhi")
+    assert cfg["id"] == "delhi" and os.path.exists(cfg["stations_path"])
+    nb = cfg["neighbours"]
+    assert (nb["k"], nb["radius_km"], nb["colocated_km"]) == (scorer.K, scorer.RADIUS_KM, scorer.COLOC_KM)
+    assert tuple(cfg["areas"]["outer_words"]) == scorer.NCR
+    assert len(backfill.stations(region_name="delhi")) == 52
+
+
+def test_scoring_with_the_delhi_region_changes_nothing(data):
+    hourly, stations = data
+    plain, _ = scorer.score(hourly, stations, NOW)
+    with_region, _ = scorer.score(hourly, stations, NOW, region=backfill.region("delhi"))
+    assert with_region["region"]["id"] == "delhi"
+    assert with_region["stations"] == plain["stations"]
+
+
+def test_a_region_can_widen_the_neighbour_search(data):
+    hourly, stations = data
+    wide = {"id": "test", "neighbours": {"k": 6, "radius_km": 40.0, "colocated_km": 0.5},
+            "areas": {"core": "City", "outer": "Edge", "outer_words": ["Zzz"]}}
+    latest, per = scorer.score(hourly, stations, NOW, region=wide)
+    assert max(len(doc["neighbours"]) for doc in per.values()) == 6
+    assert {s["region"] for s in latest["stations"]} == {"City"}

@@ -1,0 +1,12 @@
+{
+  "id": "mumbai",
+  "name": "Mumbai",
+  "label": "Mumbai + Navi Mumbai",
+  "stations": "regions/mumbai.tsv",
+  "bbox": {"lat": [18.85, 19.35], "lon": [72.75, 73.10]},
+  "timezone": "+05:30",
+  "neighbours": {"k": 4, "radius_km": 14.0, "colocated_km": 0.5},
+  "areas": {"core": "Mumbai", "outer": "Navi Mumbai", "outer_words": ["Navi Mumbai", "Mahape", "Nerul"]},
+  "map": {"centre": [19.08, 72.88], "zoom": 11, "boundary": null, "wards": null},
+  "operators": "operators.json"
+}
