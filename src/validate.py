@@ -87,6 +87,7 @@ def report(days, flag_days, planted, commit, n_stations):
         return f"{min(d[st] for d in days)}-{max(d[st] for d in days)} monitors"
 
     changes = [d["changed"] for d in days if d["changed"] is not None]
+    per_check = {c: sum(d[f"flag_{c}"] for d in days) / len(days) for c in CHECKS}
     top = sorted(flag_days.items(), key=lambda kv: -kv[1])
     top3, total = top[:3], sum(flag_days.values())
     full = next((p["drop"] for p in planted if p["flag"] == p["quiet"]), None)
@@ -117,7 +118,7 @@ def report(days, flag_days, planted, commit, n_stations):
         "",
         "| Check | Flags it raised, per day on average |",
         "|---|---|",
-        *[f"| {c.capitalize()} | {sum(d[f'flag_{c}'] for d in days) / len(days):.1f} |" for c in CHECKS],
+        *[f"| {c.capitalize()} | {per_check[c]:.1f} |" for c in CHECKS],
         "",
         "## Who gets flagged",
         "",
@@ -140,6 +141,10 @@ def report(days, flag_days, planted, commit, n_stations):
         "",
         f"On an ordinary day, about {share('flag'):.0f} in 100 judged monitors get \"doesn't add up\" and "
         f"{share('watch'):.0f} in 100 get \"worth a look\". "
+        f"Most flags come from the physics check ({per_check['physics']:.1f} a day): readings that can't be real, "
+        "such as PM2.5 above PM10 or a sensor stuck on one value, which is a fault whatever the air is doing. "
+        f"The neighbours and history checks, which compare a monitor with others and with its own past, raise "
+        f"{per_check['neighbours'] + per_check['history']:.1f} flags a day between them. "
         + (f"A monitor whose daytime PM10 is cut by {full:.0%} or more for a week is flagged every time. " if full else "")
         + "Smaller cuts are caught less often; the table above says how often.",
         "",
