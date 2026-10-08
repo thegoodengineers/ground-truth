@@ -51,6 +51,9 @@ button, input, select { font: inherit; }
 /* the weather line under the hero lede: context for city-wide changes, from data/weather.json */
 .hero .weather { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin: 4px 0 0; }
 .hero .weather::before { content: "\2191"; display: inline-block; margin-right: 6px; transform: rotate(var(--wind, 0deg)); transition: transform .6s var(--ease); }
+.hero .fires { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin: 2px 0 0; }
+.hero .fires::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #d8721f; margin-right: 8px; vertical-align: 1px; }
+.advice .smoke { display: block; margin-top: 8px; color: var(--ink-2); }
 
 /* ---------- nav ---------- */
 .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1500; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: color-mix(in srgb, var(--bg) 75%, transparent); border-bottom: 1px solid transparent; }

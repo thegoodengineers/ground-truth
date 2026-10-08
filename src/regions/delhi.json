@@ -8,5 +8,6 @@
   "neighbours": {"k": 4, "radius_km": 12.0, "colocated_km": 0.5},
   "areas": {"core": "Delhi", "outer": "NCR", "outer_words": ["Noida", "Ghaziabad", "Gurugram", "Faridabad", "Bahadurgarh", "Manesar"]},
   "map": {"centre": [28.62, 77.20], "zoom": 11, "boundary": "geo/delhi_boundary.json", "wards": "geo/delhi_wards.json"},
+  "fires": {"box": [73.5, 27.5, 79.5, 32.5], "note": "west, south, east, north: Punjab, Haryana and west UP, the stubble-burning belt"},
   "operators": "operators.json"
 }

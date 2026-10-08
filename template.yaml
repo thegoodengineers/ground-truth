@@ -7,6 +7,10 @@ Parameters:
     Type: String
     Default: /ground-truth/openaq-key
     Description: SSM SecureString holding the OpenAQ API key (created by hand, see issue 1).
+  FirmsKeyParam:
+    Type: String
+    Default: /ground-truth/firms-key
+    Description: SSM SecureString holding a NASA FIRMS map key (optional; the farm-fire layer is skipped without it).
   AlertEmail:
     Type: String
     Default: ""
@@ -227,6 +231,7 @@ Resources:
           METRIC_NAMESPACE: GroundTruth
           STACK_NAME: !Ref AWS::StackName
           REGION: delhi  # src/regions/<name>.json: the monitors, the neighbour radius, the map
+          FIRMS_KEY_PARAM: !Ref FirmsKeyParam
       Events:
         Hourly:
           Type: Schedule
@@ -236,7 +241,9 @@ Resources:
         - Statement:
             - Effect: Allow
               Action: ssm:GetParameter
-              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${OpenAQKeyParam}"
+              Resource:
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${OpenAQKeyParam}"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${FirmsKeyParam}"
             - Effect: Allow
               Action: [s3:GetObject, s3:PutObject]
               Resource: !Sub "${SiteBucket.Arn}/data/*"

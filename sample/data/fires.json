@@ -1,0 +1,7 @@
+{
+ "count": null,
+ "line": null,
+ "points": [],
+ "source": "NASA FIRMS, VIIRS SNPP NRT",
+ "note": "no FIRMS key in SSM: put one at /ground-truth/firms-key to turn the fire layer on"
+}

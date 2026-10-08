@@ -12,14 +12,15 @@ Each run:
 
 Environment: SITE_BUCKET (required), OPENAQ_KEY_PARAM (default /ground-truth/openaq-key), MAX_CALLS (default 300),
 METRIC_NAMESPACE (default GroundTruth; empty disables the CloudWatch metrics), REGION (default delhi: a file in
-src/regions/ naming the monitors, the neighbour radius and the map).
+src/regions/ naming the monitors, the neighbour radius and the map), FIRMS_KEY_PARAM (default /ground-truth/firms-key;
+when that SSM parameter exists, the run also writes data/fires.json from NASA FIRMS).
 
 After every run two CloudWatch metrics are published (the alarms in template.yaml watch them): DataAgeHours, the
 hours between `data_through` and now, and IngestErrors, 1 when the run stopped early (bad key, API unreachable).
 """
 import datetime as dt, json, os, statistics, time, urllib.error, urllib.parse, urllib.request
 
-import backfill, scorer, weather
+import backfill, fires, scorer, weather
 
 API = "https://api.openaq.org/v3"
 RAW_KEY, SENSORS_KEY = "data/raw/hourly.json", "data/raw/sensors.json"
@@ -347,6 +348,15 @@ class S3Store:
                            ContentType=content_type, **extra)
 
 
+def firms_key(boto3, param):
+    """The NASA FIRMS map key from SSM, or None when the parameter was never created (the fire layer is optional)."""
+    ssm = boto3.client("ssm")
+    try:
+        return ssm.get_parameter(Name=param, WithDecryption=True)["Parameter"]["Value"] or None
+    except ssm.exceptions.ParameterNotFound:
+        return None
+
+
 def handler(event, context):
     import boto3  # in the Lambda runtime; not needed for tests
     param = os.environ.get("OPENAQ_KEY_PARAM", "/ground-truth/openaq-key")
@@ -359,6 +369,8 @@ def handler(event, context):
     w = weather.publish(store, cfg, now=now)
     log["weather"] = w if isinstance(w, str) else {"wind_kmh": w["wind_kmh"], "wind_from": w["wind_from"],
                                                    "boundary_layer_m": w["boundary_layer_m"]}
+    f = fires.publish(store, cfg, firms_key(boto3, os.environ.get("FIRMS_KEY_PARAM", "/ground-truth/firms-key")), now=now)
+    log["fires"] = f if isinstance(f, str) else {"count": f["count"], "direction": f["direction"]}
     namespace = os.environ.get("METRIC_NAMESPACE", "GroundTruth")
     if namespace:
         stack = os.environ.get("STACK_NAME", "ground-truth")
