@@ -124,6 +124,7 @@
     latest.stations.forEach((s) => byId.set(s.id, s));
     renderFresh();
     loadWeather();
+    loadFires();
     setInterval(renderPulse, 30000);
     renderStats();
     renderMap();
@@ -177,6 +178,19 @@
     if (weather.wind_from_deg != null) el.style.setProperty("--wind", `${(weather.wind_from_deg + 180) % 360}deg`);
     el.hidden = false;
     view?.setWind?.(weather.wind_from_deg, weather.wind_kmh);
+  }
+
+  // farm fires (data/fires.json, NASA FIRMS via the Lambda, only when a FIRMS key is configured): a line in the
+  // hero, and embers on the 3D horizon in the fires' direction
+  let firesDoc = null;
+  async function loadFires() {
+    try { firesDoc = await getJSON("data/fires.json"); } catch (e) { return; }
+    const el = $("#fires");
+    if (!el || !firesDoc || !firesDoc.line) return;
+    el.textContent = firesDoc.line;
+    el.title = `${firesDoc.high_confidence ?? 0} at high confidence, about ${fmt(firesDoc.distance_km)} km away (${firesDoc.source})`;
+    el.hidden = false;
+    view?.setFires?.(firesDoc);
   }
 
   // is the hourly check itself running? from the time of its last run, ticking every 30 s
@@ -465,7 +479,7 @@
       el.style.left = `${((x - x0) / w) * 100}%`; el.style.top = `${((y - y0) / h) * 100}%`;
       box.appendChild(el); marks.set(s.id, el);
     }
-    view = { select: (id) => marks.forEach((el, k2) => el.classList.toggle("sel", k2 === id)), focus() {}, setImmersive() {}, setWind() {} };
+    view = { select: (id) => marks.forEach((el, k2) => el.classList.toggle("sel", k2 === id)), focus() {}, setImmersive() {}, setWind() {}, setFires() {} };
     if (selected != null) view.select(selected);
     mark("map:ready");
   }
@@ -507,6 +521,7 @@
     let doc = null;
     try { doc = await getJSON(`data/stations/${id}.json`); } catch (e) { /* the chart says so */ }
     if (selected !== id) return;
+    smokeDoc = doc;
     panel.innerHTML = panelHTML(s, doc);
     if (spot) spotCheck(spot);
     drawChart(doc);
@@ -545,7 +560,31 @@
       const r = (mine + 1) / (around + 1);
       if (r > 1.5 || r < 1 / 1.5) gapTxt = ` Right now, though, it reads <b>${r > 1 ? "well above" : "well below"}</b> the stations around it (${fmt(mine)} against ${fmt(around)} µg/m³).${r > 1 ? ` <span class="micro">${MICRO}</span>` : ""}`;
     }
-    return `${bandHTML(s)}<div class="advice ${s.status}">${text}${gapTxt}</div>`;
+    return `${bandHTML(s)}<div class="advice ${s.status}">${text}${gapTxt}${smokeHTML(s)}</div>`;
+  }
+
+  // the last 6 hours against the 24 before, for this station and the median of its neighbours (data/stations/<id>.json)
+  function roseTogether(doc) {
+    const r = doc?.recent_48h;
+    if (!r || !r.pm25 || r.pm25.length < 30) return null;
+    const mean = (xs) => { const v = xs.filter((x) => x != null); return v.length >= Math.ceil(xs.length / 2) ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const median = (xs) => { const v = xs.filter((x) => x != null).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; };
+    const nb = Object.values(r.neighbours_pm25 || {});
+    if (nb.length < 2) return null;
+    const nbSeries = r.hours.map((_, i) => median(nb.map((a) => a[i])));
+    const split = r.hours.length - 6;
+    const mine = [mean(r.pm25.slice(split - 24, split)), mean(r.pm25.slice(split))];
+    const theirs = [mean(nbSeries.slice(split - 24, split)), mean(nbSeries.slice(split))];
+    if (mine.includes(null) || theirs.includes(null) || mine[0] < 10 || theirs[0] < 10) return null;
+    const up = (a) => (a[1] + 1) / (a[0] + 1);
+    return up(mine) >= 1.5 && up(theirs) >= 1.5 ? { mine: up(mine), theirs: up(theirs) } : null;
+  }
+  let smokeDoc = null;
+  function smokeHTML(s) {
+    const rose = roseTogether(smokeDoc);
+    if (!rose) return "";
+    const fireTxt = firesDoc && firesDoc.count ? ` ${esc(firesDoc.line)}` : "";
+    return `<span class="smoke">The whole area rose together in the last few hours (this station ${Math.round((rose.mine - 1) * 100)}%, its neighbours ${Math.round((rose.theirs - 1) * 100)}%), which is what smoke does, not what a broken monitor does.${fireTxt}</span>`;
   }
 
   // how bad the air is, in CPCB's words, from the reading you can trust: its own if it agrees, else its neighbours'
@@ -787,7 +826,10 @@
   }
 
   // the scene may be built after the weather arrived: hand it the wind then
-  window.addEventListener("gt3d:ready", () => { if (weather && weather.wind_from_deg != null) view?.setWind?.(weather.wind_from_deg, weather.wind_kmh); });
+  window.addEventListener("gt3d:ready", () => {
+    if (weather && weather.wind_from_deg != null) view?.setWind?.(weather.wind_from_deg, weather.wind_kmh);
+    if (firesDoc && firesDoc.count) view?.setFires?.(firesDoc);
+  });
 
   // ---------- ?demo=1: the story, playing by itself ----------
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));

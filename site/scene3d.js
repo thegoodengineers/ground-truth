@@ -225,6 +225,26 @@ function buildDust(scene, median, cap) {
     jitter[i * 2] = 0.5 + Math.random(); jitter[i * 2 + 1] = (Math.random() - 0.5) * 0.01;
     vel[i * 3] = wind.x * jitter[i * 2]; vel[i * 3 + 1] = (Math.random() - 0.4) * 0.008; vel[i * 3 + 2] = wind.z * jitter[i * 2] + jitter[i * 2 + 1];
   }
+  // embers on the horizon in the fires' direction (data/fires.json): a few hundred warm points far out,
+  // low to the ground, flickering; cheap enough for a phone (one Points object)
+  let embers = null;
+  const setFires = (doc) => {
+    if (embers) { scene.remove(embers); embers.geometry.dispose(); embers = null; }
+    if (!doc || !doc.count || doc.bearing_deg == null) return;
+    const m = Math.min(300, 20 + Math.round(doc.count / 2));
+    const p = new Float32Array(m * 3);
+    const to = doc.bearing_deg * Math.PI / 180;  // bearing clockwise from north; x east, z south
+    for (let i = 0; i < m; i++) {
+      const spread = (Math.random() - 0.5) * 0.9, r = 520 + Math.random() * 160;
+      p[i * 3] = Math.sin(to + spread) * r; p[i * 3 + 1] = 0.6 + Math.random() * 6; p[i * 3 + 2] = -Math.cos(to + spread) * r;
+    }
+    const eg = new THREE.BufferGeometry(); eg.setAttribute("position", new THREE.BufferAttribute(p, 3));
+    embers = new THREE.Points(eg, new THREE.PointsMaterial({ size: 3.2, map: radial("rgba(255,140,40,1)", "rgba(255,90,20,0)"), color: 0xff8a3c,
+      transparent: true, opacity: 0.85, depthWrite: false, sizeAttenuation: true, fog: false }));
+    scene.add(embers);
+  };
+  const flicker = (t) => { if (embers) embers.material.opacity = 0.65 + 0.2 * Math.sin(t / 380); };
+
   const setWind = (fromDeg, kmh) => {
     if (fromDeg == null || kmh == null) return;
     // blows towards fromDeg + 180; speed on screen from 0.3 (calm) to 3 (a strong wind) times the default drift
@@ -246,7 +266,7 @@ function buildDust(scene, median, cap) {
     g.attributes.position.needsUpdate = true;
   };
   const resize = (k) => { n = Math.floor(n * k); g.setDrawRange(0, n); pts.visible = n > 0; };
-  return { step, resize, setWind, get on() { return n > 0; } };
+  return { step, resize, setWind, setFires, flicker, get on() { return n > 0 || !!embers; } };
 }
 
 async function init(container, { stations, reading, makeMarker, onPick, onBackgroundClick }) {
@@ -337,7 +357,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
     }
     const changed = controls.update();
     const drifting = !reduced && dust.on;
-    if (drifting) dust.step();
+    if (drifting) { dust.step(); dust.flicker(performance.now()); }
     if (!(moving || changed || drifting || dirty)) { last = 0; return; }
     dirty = false;
     face(camera);
@@ -375,6 +395,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
     },
     select(id) { for (const [k, el] of marks) el.classList.toggle("sel", k === id); },
     setWind(fromDeg, kmh) { dust.setWind(fromDeg, kmh); dirty = true; },
+    setFires(doc) { dust.setFires(doc); dirty = true; },
   };
 }
 
