@@ -22,6 +22,9 @@ class MemStore:
     def put_json(self, key, obj, max_age=None):
         self.data[key], self.cache[key] = json.loads(json.dumps(obj)), max_age
 
+    def put_text(self, key, text, content_type=None, max_age=None):
+        self.data[key] = text
+
 
 class FakeAPI:
     """Serves /locations/{id} and /sensors/{id}/hours. Sensor id = location*10 + param index."""
@@ -189,3 +192,99 @@ def test_a_worse_result_is_not_published():
     assert "only 1 of 4" in ingest.why_not_publish(new, None, 4)
     new["stations"][1] = st("2026-10-08T13:00:00+05:30")
     assert "older than" in ingest.why_not_publish(new, {"data_through": "2026-10-08T15:00:00+05:30"}, 4)
+# ---------- hysteresis ----------
+
+def _make_latest(statuses):
+    return {"stations": [{"id": str(i), "status": s} for i, s in enumerate(statuses)]}
+
+
+def test_hysteresis_worsening_is_immediate():
+    hist = {}
+    latest = _make_latest(["ok"])
+    ingest.apply_hysteresis(latest, hist, "2026-10-08T10")
+    assert latest["stations"][0]["status"] == "ok"
+    latest2 = _make_latest(["flag"])
+    ingest.apply_hysteresis(latest2, hist, "2026-10-08T11")
+    assert latest2["stations"][0]["status"] == "flag"
+
+
+def test_hysteresis_improving_needs_three_hours():
+    hist = {}
+    for hour in range(3):
+        latest = _make_latest(["flag"])
+        ingest.apply_hysteresis(latest, hist, f"2026-10-08T{hour:02d}")
+    # now drop to ok
+    for hour in range(3, 5):
+        latest = _make_latest(["ok"])
+        ingest.apply_hysteresis(latest, hist, f"2026-10-08T{hour:02d}")
+        assert latest["stations"][0]["status"] == "flag", f"should still be flag at hour {hour}"
+    # third ok in a row — should drop
+    latest = _make_latest(["ok"])
+    ingest.apply_hysteresis(latest, hist, "2026-10-08T05")
+    assert latest["stations"][0]["status"] == "ok"
+
+
+def test_hysteresis_status_since_tracks_change():
+    hist = {}
+    latest = _make_latest(["ok"])
+    ingest.apply_hysteresis(latest, hist, "2026-10-08T10")
+    assert latest["stations"][0]["status_since"] == "2026-10-08T10"
+    # worsen immediately
+    latest2 = _make_latest(["flag"])
+    ingest.apply_hysteresis(latest2, hist, "2026-10-08T11")
+    assert latest2["stations"][0]["status_since"] == "2026-10-08T11"
+# ---------- archive re-sync (#33) ----------
+
+class DictStore:
+    def __init__(self, data=None):
+        self._d = dict(data or {})
+    def get_json(self, key):
+        return self._d.get(key)
+    def put_json(self, key, obj, **_):
+        self._d[key] = obj
+
+
+def _make_hourly(sid="1", p="pm10", hours=None):
+    vals = hours or {"2025-11-26T10": 100.0, "2025-11-26T11": 110.0}
+    return {sid: {p: vals}}
+
+
+def test_resync_replaces_api_hour(monkeypatch):
+    import ingest, backfill as bf
+    monkeypatch.setattr(bf, "listed_days", lambda *a, **kw: ["fake_20251126.csv.gz"])
+    monkeypatch.setattr(bf, "day_rows", lambda *a, **kw: [
+        {"parameter": "pm10", "value": "90.0", "datetime": "2025-11-26T05:15:00+00:00"},
+        {"parameter": "pm10", "value": "92.0", "datetime": "2025-11-26T05:30:00+00:00"},
+    ])
+    hourly = _make_hourly("1", "pm10", {"2025-11-26T10": 100.0})
+    now = dt.datetime(2025, 11, 30, 0, 0, tzinfo=ingest.IST)
+    store = DictStore()
+    result = ingest.resync_archive(hourly, now, store)
+    assert result["resync_changed_hours"] > 0 or "resync_max_diff" in result
+
+
+def test_should_resync_only_once_per_day(monkeypatch):
+    import ingest
+    now = dt.datetime(2025, 11, 30, 4, 0, tzinfo=ingest.IST)  # 04:00 IST
+    store_fresh = DictStore()
+    assert ingest._should_resync(now, store_fresh) is True
+    store_done = DictStore({"data/raw/resync_marker.json": {"date": "2025-11-30"}})
+    assert ingest._should_resync(now, store_done) is False
+
+
+def test_should_not_resync_before_hour(monkeypatch):
+    import ingest
+    now = dt.datetime(2025, 11, 30, 2, 0, tzinfo=ingest.IST)  # 02:00 IST
+    assert ingest._should_resync(now, DictStore()) is False
+
+
+def test_hysteresis_shows_silence_at_once_and_ignores_reruns():
+    hist = {}
+    for hour, raw, shown in ((10, "flag", "flag"), (11, "nodata", "nodata"), (12, "ok", "ok"), (13, "watch", "watch")):
+        latest = _make_latest([raw])
+        ingest.apply_hysteresis(latest, hist, f"2026-10-08T{hour:02d}")
+        assert latest["stations"][0]["status"] == shown
+    for _ in range(3):  # the same hour three times is still one hour of 'ok'
+        latest = _make_latest(["ok"])
+        ingest.apply_hysteresis(latest, hist, "2026-10-08T14")
+    assert latest["stations"][0]["status"] == "watch"

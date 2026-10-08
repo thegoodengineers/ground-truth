@@ -78,7 +78,7 @@ Resources:
       Runtime: python3.11
       Architectures: [arm64]
       MemorySize: 512
-      Timeout: 600  # ~260 paced API calls at under 60/min
+      Timeout: 900  # ~260 paced API calls at under 60/min, plus the nightly archive pass (at most 90 s)
       ReservedConcurrentExecutions: 1  # never two runs writing the cache at once
       Environment:
         Variables:

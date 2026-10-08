@@ -18,10 +18,65 @@ import backfill, scorer
 
 API = "https://api.openaq.org/v3"
 RAW_KEY, SENSORS_KEY = "data/raw/hourly.json", "data/raw/sensors.json"
+STATUS_HIST_KEY = "data/raw/status_history.json"
 KEEP_DAYS, LOOKBACK_HOURS, REFETCH_HOURS = 29, 6 * 24, 2
 TRIES, MAX_FAILS_IN_A_ROW = 3, 5
+HYSTERESIS_DOWN = 3   # hours in a row at a lower level before status drops
+HISTORY_DAYS = 7
+RESYNC_WINDOW_DAYS = (4, 7)  # overwrite archive days 4–7 back from today once per day
+RESYNC_AFTER_HOUR = 3        # only on the first run at or after 03:00 IST
+RESYNC_BUDGET_S = 90         # the archive pass stops after this, so the run stays inside the Lambda timeout
 IST = backfill.IST
 UTC = dt.timezone.utc
+RANK = scorer.RANK
+
+
+def apply_hysteresis(latest_json, status_hist, now_key):
+    """Mutate station statuses in latest_json to apply hysteresis (slow to improve, fast to worsen).
+    Update status_hist in-place: {sid: {"pending": status, "count": n, "current": status, "since": key}}.
+    Returns the updated status_hist.
+    """
+    cutoff = (dt.datetime.strptime(now_key, "%Y-%m-%dT%H") - dt.timedelta(days=HISTORY_DAYS)).strftime("%Y-%m-%dT%H")
+    for s in latest_json["stations"]:
+        sid = str(s["id"])
+        raw = s["status"]
+        h = status_hist.setdefault(sid, {"current": raw, "pending": raw, "count": 1, "since": now_key,
+                                         "history": []})
+        current = h["current"]
+        if h.get("hour") == now_key:  # a second run in the same hour doesn't count as another hour
+            s["status"], s["status_since"] = current, h["since"]
+            continue
+        h["hour"] = now_key
+        if "nodata" in (raw, current) and raw != current:
+            # going quiet, or reporting again, shows at once: smoothing is for answers, not for silence
+            h.update(current=raw, since=now_key, pending=raw, count=1)
+        elif RANK[raw] > RANK[current]:
+            # worsening: move up immediately
+            h["current"] = raw
+            h["since"] = now_key
+            h["pending"] = raw
+            h["count"] = 1
+        elif RANK[raw] < RANK[current]:
+            # improving: need HYSTERESIS_DOWN hours in a row
+            if h.get("pending") == raw:
+                h["count"] += 1
+            else:
+                h["pending"] = raw
+                h["count"] = 1
+            if h["count"] >= HYSTERESIS_DOWN:
+                h["current"] = raw
+                h["since"] = now_key
+        else:
+            h["pending"] = raw
+            h["count"] = 1
+        # record hourly history strip (last HISTORY_DAYS days)
+        hist = h.setdefault("history", [])
+        hist.append({"hour": now_key, "status": h["current"]})
+        h["history"] = [e for e in hist if e["hour"] >= cutoff]
+        # write back smoothed status and since
+        s["status"] = h["current"]
+        s["status_since"] = h["since"]
+    return status_hist
 
 
 def ist_key(t):
@@ -124,7 +179,55 @@ def why_not_publish(new, old, n_stations):
     return None
 
 
-def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key"):
+def _should_resync(now, store):
+    """True on the first run at or after RESYNC_AFTER_HOUR IST each day."""
+    ist_now = now.astimezone(IST)
+    if ist_now.hour < RESYNC_AFTER_HOUR:
+        return False
+    today = ist_now.strftime("%Y-%m-%d")
+    marker = store.get_json("data/raw/resync_marker.json") or {}
+    return marker.get("date") != today
+
+
+def resync_archive(hourly, now, store):
+    """Replace hours 4–7 days back with archive data; log changed hours and max diff."""
+    ist_now = now.astimezone(IST)
+    lo = (ist_now - dt.timedelta(days=RESYNC_WINDOW_DAYS[1])).date()
+    hi = (ist_now - dt.timedelta(days=RESYNC_WINDOW_DAYS[0])).date()
+    first_key = lo.strftime("%Y-%m-%dT00")
+    last_key = hi.strftime("%Y-%m-%dT23")
+    changed, max_diff, t0, done = 0, {}, time.monotonic(), 0
+    for sid, params in hourly.items():
+        if time.monotonic() - t0 > RESYNC_BUDGET_S:
+            break
+        done += 1
+        sid_int = int(sid)
+        # fetch archive days covering the window (one station at a time to stay inside Lambda time)
+        months = sorted({(d.year, d.month) for d in (lo + dt.timedelta(n) for n in range((hi - lo).days + 2))})
+        try:
+            keys = [k for k in backfill.listed_days(sid_int, months)
+                    if lo.strftime("%Y%m%d") <= k[-15:-7] <= (hi + dt.timedelta(1)).strftime("%Y%m%d")]
+            rows = [r for k in keys for r in backfill.day_rows(k, None)]
+            arc = backfill.to_hourly(rows)
+        except Exception:
+            continue
+        for p, hours in arc.items():
+            have = params.setdefault(p, {})
+            for k, v in hours.items():
+                if not (first_key <= k <= last_key):
+                    continue
+                if k in have and have[k] is not None:
+                    diff = abs(v - have[k])
+                    max_diff[p] = max(max_diff.get(p, 0.0), diff)
+                    if diff > 0:
+                        changed += 1
+                have[k] = v
+    store.put_json("data/raw/resync_marker.json", {"date": ist_now.strftime("%Y-%m-%d")})
+    return {"resync_changed_hours": changed, "resync_max_diff": {p: round(v, 3) for p, v in max_diff.items()},
+            "resync_stations": f"{done} of {len(hourly)}"}
+
+
+def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key", resync=False):
     hourly = store.get_json(RAW_KEY) or {}
     sensors = store.get_json(SENSORS_KEY) or {}
     log = {"new_hours": 0, "skipped": 0, "overlap_ratio": {}}
@@ -165,6 +268,8 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     # API vs archive on overlapping hours: ~1.0 means same units and same hour labels
     log["overlap_ratio"] = {p: round(statistics.median(r), 3) for p, r in ratios.items() if r}
     log.update(api_calls=api.calls, retries=api.retries)
+    if resync and _should_resync(now, store):  # off in tests: it reads the real archive
+        log.update(resync_archive(hourly, now, store))
     trim(hourly, now)
     # the cache first: a crash after this leaves the results behind the cache, never ahead of it
     store.put_json(SENSORS_KEY, sensors)
@@ -175,17 +280,22 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
         log.update(scored=False, published=False, reason="no hour has PM data from half the stations")
         return log
     latest, per_station = scorer.score(hourly, stations, dt.datetime.strptime(last, "%Y-%m-%dT%H"))
-    counts = {}
-    for s in latest["stations"]:
-        counts[s["status"]] = counts.get(s["status"], 0) + 1
-    log.update(scored=True, data_through=last, statuses=counts)
+    log.update(scored=True, data_through=last)
     reason = why_not_publish(latest, store.get_json("data/latest.json"), len(stations))
     if reason:
         log.update(published=False, reason=reason)
         return log
+    status_hist = store.get_json(STATUS_HIST_KEY) or {}
+    apply_hysteresis(latest, status_hist, last)
+    store.put_json(STATUS_HIST_KEY, status_hist)
+    counts = {}
+    for s in latest["stations"]:
+        counts[s["status"]] = counts.get(s["status"], 0) + 1
+    log["statuses"] = counts
     for sid, doc in per_station.items():
         store.put_json(f"data/stations/{sid}.json", doc, max_age=300)
     store.put_json("data/latest.json", latest, max_age=300)
+    store.put_text("data/latest.csv", scorer.to_csv(latest), content_type="text/csv; charset=utf-8", max_age=300)
     log["published"] = True
     return log
 
@@ -205,12 +315,18 @@ class S3Store:
         self.s3.put_object(Bucket=self.bucket, Key=key, Body=json.dumps(obj, separators=(",", ":")).encode(),
                            ContentType="application/json", **extra)
 
+    def put_text(self, key, text, content_type="text/plain", max_age=None):
+        extra = {"CacheControl": f"public, max-age={max_age}"} if max_age else {}
+        self.s3.put_object(Bucket=self.bucket, Key=key, Body=text.encode("utf-8"),
+                           ContentType=content_type, **extra)
+
 
 def handler(event, context):
     import boto3  # in the Lambda runtime; not needed for tests
     param = os.environ.get("OPENAQ_KEY_PARAM", "/ground-truth/openaq-key")
     key = boto3.client("ssm").get_parameter(Name=param, WithDecryption=True)["Parameter"]["Value"]
     store = S3Store(os.environ["SITE_BUCKET"], boto3.client("s3"))
-    log = run(store, OpenAQ(key), backfill.stations(), dt.datetime.now(UTC), int(os.environ.get("MAX_CALLS", "300")), param)
+    log = run(store, OpenAQ(key), backfill.stations(), dt.datetime.now(UTC), int(os.environ.get("MAX_CALLS", "300")), param,
+              resync=True)
     print(json.dumps(log))
     return log

@@ -200,7 +200,7 @@ function init(stage) {
   }
 
   let t = 0, lastStep = -1, playing = !reduced && !soft, visible = false, last = performance.now();
-  function frame(dt) {
+  function frame(dt, draw = true) {
     // where the tanker is: drives in, parks next to the monitor, drives off
     const x = t < 3.5 ? -60 : t < 6.5 ? -60 + 63.2 * span(t, 3.5, 6.5) : t < 15.5 ? 3.2 : 3.2 + 60 * span(t, 15.5, 18);
     truck.g.position.x = x;
@@ -232,7 +232,7 @@ function init(stage) {
       steps.forEach((b, i) => { b.setAttribute("aria-current", String(i === step)); b.classList.toggle("done", i < step); });
     }
     stage.classList.toggle("blink", t > 17.6);
-    renderer.render(scene, camera);
+    if (draw) renderer.render(scene, camera);
   }
 
   function loop(now) {
@@ -243,7 +243,7 @@ function init(stage) {
   }
   // jump to a step: run the simulation forward to it, so the dust and the water are where they'd be
   function seek(to) {
-    t = 0; for (let s = 0; s < to; s += 1 / 30) { t = s; frame(1 / 30); }
+    t = 0; for (let s = 0; s < to; s += 1 / 30) { t = s; frame(1 / 30, false); } // simulate only: drawing 450 frames without a GPU took a minute
     t = to; frame(1 / 30);
   }
   steps.forEach((b, i) => b.addEventListener("click", () => { seek(STEPS[i][0] + (i === 2 ? 4.6 : 0.4)); }));

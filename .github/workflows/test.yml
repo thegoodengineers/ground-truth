@@ -19,4 +19,19 @@ jobs:
       - run: pip install pytest==8.3.3 ruff==0.6.9 cfn-lint==1.15.2
       - run: ruff check src tests video
       - run: cfn-lint template.yaml
-      - run: pytest -q tests
+      - run: pytest -q tests --ignore=tests/site
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Playwright + Chromium
+        run: |
+          pip install pytest==8.3.3 pytest-playwright==0.5.0
+          python -m playwright install --with-deps chromium
+      - name: Smoke tests
+        run: pytest -q tests/site/smoke.py

@@ -13,7 +13,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%2308090a'/%3E%3Cpath d='M9 21h14M16 21V9' stroke='%23f5f5f2' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='9' r='3' fill='%2369d39a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="theme.css">
 </head>
 <body id="top">
@@ -91,6 +91,7 @@
       <a href="#faq">FAQ</a>
       <span class="fresh" id="fresh">Loading data…</span>
       <span class="pulse" id="pulse" hidden></span>
+      <button class="lang-toggle" id="lang-toggle" type="button" aria-label="Switch to Hindi">हिं</button>
     </nav>
   </div>
 </header>
@@ -251,11 +252,30 @@
           <div class="chrome"><div class="dots" aria-hidden="true"><i></i><i></i><i></i></div><span class="url">groundtruth / delhi / live</span><span class="live" id="chrome-live">Live</span><button class="exit3d" id="exit3d" type="button" hidden>Exit 3D <span aria-hidden="true">✕</span></button></div>
           <div class="app">
             <div class="mapcol">
-              <div id="map" role="region" aria-label="3D map of monitoring stations"></div>
-              <button class="enter3d" id="enter3d" type="button">Explore Delhi in 3D <span aria-hidden="true">⤢</span></button>
+              <div class="map-toolbar">
+                <div id="map" role="region" aria-label="3D map of monitoring stations"></div>
+                <div id="list-view" hidden aria-label="List of all monitors" role="region">
+                  <table class="monitor-table" id="monitor-table" aria-label="All monitors, sortable">
+                    <thead>
+                      <tr>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="name" aria-sort="none">Monitor <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="area" aria-sort="none">Area <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="status" aria-sort="none">Answer <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="pm25" aria-sort="none">PM2.5 <small>(µg/m³)</small> <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="nb_pm25" aria-sort="none">Neighbours PM2.5 <span aria-hidden="true">↕</span></button></th>
+                      </tr>
+                    </thead>
+                    <tbody id="monitor-table-body"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="map-view-btns">
+                <button class="enter3d" id="enter3d" type="button">Explore Delhi in 3D <span aria-hidden="true">⤢</span></button>
+                <button class="list-toggle" id="list-toggle" type="button" aria-pressed="false">List view</button>
+              </div>
               <div class="legend" id="legend"></div>
             </div>
-            <div class="panel" id="panel" aria-live="polite">
+            <div class="panel" id="panel" aria-live="polite" aria-atomic="false">
               <div class="empty"><h2>Loading the monitors…</h2></div>
             </div>
           </div>
@@ -419,6 +439,46 @@
         </div>
       </div>
     </section>
+
+  <section class="sec alt" id="opendata" aria-labelledby="opendata-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <span class="label">Open data</span>
+          <h2 class="h2" id="opendata-title"><span class="dim">The numbers are public.</span>Download today's answers.</h2>
+        </div>
+        <p class="sub">Every monitor's status and latest readings, updated every hour. Use them freely; cite the source.</p>
+      </div>
+      <div class="data-downloads">
+        <a class="btn dark" href="data/latest.csv" download="ground-truth-latest.csv">Download CSV</a>
+        <a class="btn outline" href="data/latest.json" target="_blank" rel="noopener">View JSON</a>
+      </div>
+      <div class="data-fields">
+        <h3 class="h3">CSV columns</h3>
+        <table class="data field-table">
+          <thead><tr><th>Column</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>id</code></td><td>OpenAQ location ID</td></tr>
+            <tr><td><code>name</code></td><td>Station name</td></tr>
+            <tr><td><code>operator</code></td><td>Agency (CPCB, DPCC, HSPCB, UPPCB, IMD, IITM)</td></tr>
+            <tr><td><code>lat</code> / <code>lon</code></td><td>Coordinates (WGS84)</td></tr>
+            <tr><td><code>status</code></td><td>Overall verdict: <code>ok</code>, <code>watch</code>, <code>flag</code> or <code>nodata</code></td></tr>
+            <tr><td><code>physics_status</code></td><td>Physics check result</td></tr>
+            <tr><td><code>neighbours_status</code></td><td>Neighbour-comparison check result</td></tr>
+            <tr><td><code>history_status</code></td><td>History check result</td></tr>
+            <tr><td><code>pm25</code> / <code>pm10</code></td><td>Latest hourly reading in µg/m³ (may be blank)</td></tr>
+            <tr><td><code>no2</code> / <code>co</code></td><td>Latest NO₂ (µg/m³) and CO (mg/m³)</td></tr>
+            <tr><td><code>relativehumidity</code></td><td>Latest relative humidity (%)</td></tr>
+            <tr><td><code>neighbours_pm25</code> / <code>neighbours_pm10</code></td><td>Median of the four nearest monitors' latest readings</td></tr>
+            <tr><td><code>last_reading</code></td><td>IST hour of the monitor's newest PM reading; with none in the last 3 hours, <code>status</code> is <code>nodata</code></td></tr>
+            <tr><td><code>band</code> / <code>neighbours_band</code></td><td>CPCB AQI band of the 24-hour average, for this monitor and for its four neighbours</td></tr>
+            <tr><td><code>data_through</code></td><td>IST timestamp of the latest scored hour</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="data-licence">Our results (status, checks, this CSV) are released under <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>. Underlying PM readings are from OpenAQ and subject to their terms. Suggested citation: <em>Ground Truth, thegoodengineers, <span id="cite-date"></span>, https://github.com/thegoodengineers/ground-truth</em>.</p>
+    </div>
+  </section>
 
   <section class="closing" aria-labelledby="close-title">
     <div class="wrap">

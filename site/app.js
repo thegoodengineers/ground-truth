@@ -2,13 +2,42 @@
 (() => {
   "use strict";
 
-  const STATUS = {
-    ok: { label: "Agrees with neighbours", short: "Agrees", todo: "Sensor looks reliable: use this reading." },
-    watch: { label: "Worth a look", short: "Worth a look", todo: "Uncertain: compare it with the 4 monitors around it before acting." },
-    flag: { label: "Doesn't add up", short: "Doesn't add up", todo: "Flagged: use the median of its 4 neighbours instead." },
-    nodata: { label: "Not enough data", short: "No data", todo: "Can't be checked right now: use the median of its 4 neighbours." },
+  const I18N = {
+    en: {
+      status: {
+        ok:     { label: "Agrees with neighbours", short: "Agrees",        todo: "Sensor looks reliable: use this reading." },
+        watch:  { label: "Worth a look",            short: "Worth a look", todo: "Uncertain: compare it with the 4 monitors around it before acting." },
+        flag:   { label: "Doesn't add up",          short: "Doesn't add up", todo: "Flagged: use the median of its 4 neighbours instead." },
+        nodata: { label: "Not enough data",          short: "No data",     todo: "Can't be checked right now: use the median of its 4 neighbours." },
+      },
+      checkLabel: { ok: "Passes", watch: "Worth a look", flag: "Doesn't add up", nodata: "No data" },
+      findStation: "Find your station",
+      findPlaceholder: "Find your station, e.g. Anand Vihar",
+      filterPlaceholder: "Filter by name or area, e.g. Noida",
+      langToggleLabel: "Switch to Hindi",
+      langToggleText: "हिं",
+    },
+    hi: {
+      status: {
+        ok:     { label: "पड़ोसी सेंसर से मेल",     short: "मेल",          todo: "सेंसर विश्वसनीय लग रहा है: यही रीडिंग उपयोग करें।" },
+        watch:  { label: "जाँच करें",               short: "जाँच करें",   todo: "अनिश्चित: कोई कदम उठाने से पहले आस-पास के 4 मॉनिटर से तुलना करें।" },
+        flag:   { label: "मेल नहीं",                short: "मेल नहीं",    todo: "आँकड़े मेल नहीं खाते: इसके 4 पड़ोसी सेंसरों का बीच वाला मान (माध्यिका) उपयोग करें।" },
+        nodata: { label: "पर्याप्त डेटा नहीं",       short: "डेटा नहीं",   todo: "अभी जाँच संभव नहीं: 4 पड़ोसी सेंसरों का बीच वाला मान (माध्यिका) उपयोग करें।" },
+      },
+      checkLabel: { ok: "सही", watch: "जाँच करें", flag: "मेल नहीं", nodata: "डेटा नहीं" },
+      findStation: "अपना स्टेशन खोजें",
+      findPlaceholder: "स्टेशन खोजें, जैसे आनंद विहार",
+      filterPlaceholder: "नाम या क्षेत्र से फ़िल्टर करें, जैसे नोएडा",
+      langToggleLabel: "Switch to English",
+      langToggleText: "EN",
+    },
   };
-  const CHECK_LABEL = { ok: "Passes", watch: "Worth a look", flag: "Doesn't add up", nodata: "No data" };
+
+  let lang = (localStorage.getItem("gt-lang") === "hi") ? "hi" : "en";
+  const t = () => I18N[lang];
+
+  const STATUS = new Proxy({}, { get: (_, k) => t().status[k] });
+  const CHECK_LABEL = new Proxy({}, { get: (_, k) => t().checkLabel[k] });
   const ORDER = ["flag", "watch", "ok", "nodata"];
   const CHECKS = [
     ["physics", "Physics", "Can this reading be real?"],
@@ -313,6 +342,66 @@
     return el;
   }
 
+  // ---------- list view ----------
+  let listSortCol = "status", listSortAsc = true;
+
+  function renderListView() {
+    const tbody = $("#monitor-table-body");
+    if (!tbody || !latest) return;
+    const rows = [...latest.stations].sort((a, b) => {
+      let av, bv;
+      if (listSortCol === "name") { av = short(a.name); bv = short(b.name); }
+      else if (listSortCol === "area") { av = a._area || ""; bv = b._area || ""; }
+      else if (listSortCol === "status") { av = ORDER.indexOf(a.status); bv = ORDER.indexOf(b.status); }
+      else if (listSortCol === "pm25") { av = a.latest?.pm25 ?? -1; bv = b.latest?.pm25 ?? -1; }
+      else if (listSortCol === "nb_pm25") { av = a.neighbours_latest?.pm25 ?? -1; bv = b.neighbours_latest?.pm25 ?? -1; }
+      else { av = 0; bv = 0; }
+      return listSortAsc ? (av < bv ? -1 : av > bv ? 1 : 0) : (av < bv ? 1 : av > bv ? -1 : 0);
+    });
+    tbody.innerHTML = rows.map((s) => `
+      <tr>
+        <td><button type="button" class="list-open" data-open="${s.id}">${esc(short(s.name))}</button></td>
+        <td>${esc(s._area || "")}</td>
+        <td>${pill(s.status, STATUS[s.status].short)}</td>
+        <td class="mono">${fmt(s.latest?.pm25, 0)}</td>
+        <td class="mono">${fmt(s.neighbours_latest?.pm25, 0)}</td>
+      </tr>`).join("");
+    tbody.querySelectorAll(".list-open").forEach((b) => {
+      b.addEventListener("click", () => {
+        const id = Number(b.dataset.open);
+        toggleListView(false);
+        select(id, { fly: true });
+        $("#live").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
+  function setupSortButtons() {
+    document.querySelectorAll(".sort-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const col = btn.dataset.col;
+        if (listSortCol === col) { listSortAsc = !listSortAsc; }
+        else { listSortCol = col; listSortAsc = true; }
+        document.querySelectorAll(".sort-btn").forEach((b) => {
+          b.setAttribute("aria-sort", b.dataset.col === listSortCol ? (listSortAsc ? "ascending" : "descending") : "none");
+        });
+        renderListView();
+      });
+    });
+  }
+
+  function toggleListView(show) {
+    const listEl = $("#list-view"), mapEl = $("#map"), btn = $("#list-toggle");
+    if (show === undefined) show = listEl?.hidden;
+    if (listEl) listEl.hidden = !show;
+    if (mapEl) mapEl.hidden = show;
+    if (btn) {
+      btn.setAttribute("aria-pressed", String(show));
+      btn.textContent = show ? "Map view" : "List view";
+    }
+    if (show) renderListView();
+  }
+
   function renderMap() {
     const start = async () => {
       try {
@@ -333,6 +422,8 @@
     if (!webgl) renderFlat();
     else if (window.GT3D) start(); else window.addEventListener("gt3d:loaded", start, { once: true });
     $("#enter3d").addEventListener("click", (e) => { e.stopPropagation(); enterImmersive(); });
+    $("#list-toggle")?.addEventListener("click", () => toggleListView());
+    setupSortButtons();
     $("#exit3d").addEventListener("click", exitImmersive);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && immersive) exitImmersive(); });
   }
@@ -368,7 +459,7 @@
     mapWindow().classList.add("immersive");
     document.documentElement.classList.add("lock");
     $("#exit3d").hidden = false; $("#enter3d").hidden = true;
-    view?.setImmersive(true);
+    view?.setImmersive(true, { autoRotate: !reduced });
     mark("map:3d");
   }
 
@@ -402,9 +493,20 @@
     panel.innerHTML = panelHTML(s, doc);
     if (spot) spotCheck(spot);
     drawChart(doc);
+    drawEvidence(doc, s);
     panel.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => select(Number(b.dataset.goto), { fly: true })));
     panel.querySelector("#param")?.addEventListener("change", (e) => { param = e.target.value; drawChart(doc); });
     panel.querySelector("#as-table")?.addEventListener("click", () => toggleTable(doc));
+    const h2 = panel.querySelector("h2");
+    if (h2 && !quiet) { h2.setAttribute("tabindex", "-1"); h2.focus({ preventScroll: true }); }
+    panel.querySelector("#share-btn")?.addEventListener("click", function () {
+      const url = `${location.origin}${location.pathname}${location.search}#${id}`;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => { this.textContent = "✓ Copied!"; setTimeout(() => { this.textContent = "🔗 Copy link"; }, 2000); });
+      } else {
+        prompt("Copy this link:", url);
+      }
+    });
     mark(`station:${id}`);
   }
 
@@ -455,7 +557,7 @@
     return `
       <span class="label">${s.region === "NCR" ? "NCR" : "Delhi"} · OpenAQ location ${s.id}</span>
       <h2>${esc(short(s.name))}</h2>
-      <div class="meta">${pill(s.status)}</div>
+      <div class="meta">${pill(s.status)}<button class="share-btn" id="share-btn" type="button" aria-label="Copy link to this monitor" title="Copy link">🔗 Copy link</button></div>
       ${todo(s.status)}
       ${raisedBy(s)}
       <div class="now">
@@ -476,6 +578,7 @@
         <div class="chartlegend"><span><i style="background:var(--series-7d)"></i>Last 7 days</span><span><i style="background:var(--series-28d)"></i>Last 28 days</span><span><i class="band"></i>11:00-17:00</span><button class="linkish" id="as-table" type="button">Show as table</button></div>
         <div id="tablebox"></div>
       </div>
+      ${doc ? `<div class="chartbox" id="evidence-box"><h3>Last 48 hours: this station vs neighbours</h3><p class="csub">PM2.5 µg/m³. Neighbour band is the range of the ${(doc.neighbours || []).length} nearest stations.</p><div class="chartwrap"><canvas id="evidence-chart" role="img" aria-label="PM2.5 last 48 hours"></canvas></div></div>` : ""}
       ${nb.length ? `<div class="nbs"><span class="label">Compared with</span>${nb.map((n) => `<button data-goto="${n.id}" type="button">${icon(n.status, 11)}${esc(short(n.name))}</button>`).join("")}</div>` : ""}
     `;
   }
@@ -538,6 +641,49 @@
     });
   }
 
+  let evidenceChart = null;
+  function drawEvidence(doc, station) {
+    const canvas = $("#evidence-chart");
+    if (evidenceChart) { evidenceChart.destroy(); evidenceChart = null; }
+    if (!canvas || !doc?.recent_48h) return;
+    const r = doc.recent_48h;
+    const labels = r.hours.map((k) => k.slice(11, 13) + ":00");
+    // neighbour band: per-hour min and max across neighbours
+    const nbVals = Object.values(r.neighbours_pm25);
+    const bandMin = r.hours.map((_, i) => {
+      const vs = nbVals.map((a) => a[i]).filter((v) => v != null);
+      return vs.length ? Math.min(...vs) : null;
+    });
+    const bandMax = r.hours.map((_, i) => {
+      const vs = nbVals.map((a) => a[i]).filter((v) => v != null);
+      return vs.length ? Math.max(...vs) : null;
+    });
+    const css = getComputedStyle(document.documentElement);
+    const stationColor = css.getPropertyValue("--series-7d").trim() || "#1f9d5c";
+    const bandColor = "rgba(160,160,165,0.25)";
+    evidenceChart = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "Neighbour band (max)", data: bandMax, borderWidth: 0, pointRadius: 0, fill: "+1", backgroundColor: bandColor, spanGaps: true },
+          { label: "Neighbour band (min)", data: bandMin, borderWidth: 0, pointRadius: 0, fill: false, spanGaps: true },
+          { label: `${station.name.split(",")[0]} PM2.5`, data: r.pm25, borderColor: stationColor, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, cubicInterpolationMode: "monotone", spanGaps: true, fill: false },
+        ],
+      },
+      options: {
+        animation: false,
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false,
+          callbacks: { label: (ctx) => ctx.dataset.fill !== false ? null : `${ctx.dataset.label}: ${ctx.parsed.y == null ? "–" : ctx.parsed.y.toFixed(1)} µg/m³` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 11 } } },
+          y: { grid: { color: "rgba(0,0,0,.06)" }, title: { display: true, text: "PM2.5 µg/m³", font: { size: 11 } }, ticks: { font: { size: 11 } } },
+        },
+      },
+    });
+  }
+
   function toggleTable(doc) {
     const box = $("#tablebox");
     if (box.innerHTML) { box.innerHTML = ""; $("#as-table").textContent = "Show as table"; return; }
@@ -562,11 +708,16 @@
   const AREAS = ["Central Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi", "Noida", "Ghaziabad", "Gurugram and Manesar", "Faridabad", "Bahadurgarh"];
   let rosterFilter = "all";
 
-  function renderRoster() {
-    latest.stations.forEach((s) => { s._area = area(s); });
+  // the labels only: safe to call again (the language toggle does), unlike renderRoster's listeners
+  function drawFilters() {
     const count = (st) => latest.stations.filter((s) => s.status === st).length;
     $("#filters").innerHTML = [["all", "All", latest.stations.length], ...["flag", "watch", "ok", "nodata"].map((st) => [st, STATUS[st].short, count(st)])]
       .map(([f, label, n]) => `<button type="button" data-f="${f}" aria-pressed="${f === rosterFilter}">${f === "all" ? "" : icon(f, 12)}${label} <span class="count">${n}</span></button>`).join("");
+  }
+
+  function renderRoster() {
+    latest.stations.forEach((s) => { s._area = area(s); });
+    drawFilters();
     $("#filters").addEventListener("click", (e) => {
       const b = e.target.closest("[data-f]");
       if (!b) return;
@@ -663,5 +814,35 @@
     mark("tour:end");
   }
 
-  document.addEventListener("DOMContentLoaded", boot);
+  function applyLang() {
+    document.documentElement.lang = lang;
+    const btn = $("#lang-toggle");
+    if (btn) { btn.textContent = t().langToggleText; btn.setAttribute("aria-label", t().langToggleLabel); }
+    const search = $("#search");
+    if (search) { search.setAttribute("placeholder", t().findPlaceholder); search.labels?.[0]?.setAttribute && search.labels[0].textContent === "Find your station" && (search.labels[0].textContent = t().findStation); }
+    const rosterQ = $("#roster-q");
+    if (rosterQ) rosterQ.setAttribute("placeholder", t().filterPlaceholder);
+    // Noto Sans Devanagari for Hindi text
+    document.body.classList.toggle("lang-hi", lang === "hi");
+  }
+
+  function setupLangToggle() {
+    applyLang();
+    $("#lang-toggle")?.addEventListener("click", () => {
+      lang = lang === "en" ? "hi" : "en";
+      try { localStorage.setItem("gt-lang", lang); } catch (_) {}
+      applyLang();
+      // Re-render dynamic content that reads STATUS / CHECK_LABEL
+      if (latest) { renderStats(); renderLegend(); drawFilters(); drawRoster(); }
+      if (selected != null) select(selected, { redraw: true });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => { setupLangToggle(); boot(); });
+
+  // Fill the suggested citation date
+  document.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById("cite-date");
+    if (el) el.textContent = new Date().toISOString().slice(0, 10);
+  });
 })();
