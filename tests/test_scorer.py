@@ -260,3 +260,25 @@ def test_matches_spike_numbers():
         d = per[sid]["daily"]
         assert statistics.median([r["d_pm10"] for r in d if r["d_pm10"] is not None]) == pytest.approx(pm10, abs=0.01)
         assert statistics.median([r["d_relativehumidity"] for r in d if r["d_relativehumidity"] is not None]) == pytest.approx(rh, abs=0.1)
+
+
+# ---------- CSV output ----------
+
+def test_csv_has_one_row_per_station(baseline):
+    import csv, io
+    latest, _ = baseline
+    text = scorer.to_csv(latest)
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert len(rows) == len(latest["stations"])
+
+
+def test_csv_statuses_match_json(baseline):
+    import csv, io
+    latest, _ = baseline
+    text = scorer.to_csv(latest)
+    rows = {int(r["id"]): r for r in csv.DictReader(io.StringIO(text))}
+    for s in latest["stations"]:
+        assert rows[s["id"]]["status"] == s["status"]
+        assert rows[s["id"]]["physics_status"] == s["checks"]["physics"]["status"]
+        assert rows[s["id"]]["neighbours_status"] == s["checks"]["neighbours"]["status"]
+        assert rows[s["id"]]["history_status"] == s["checks"]["history"]["status"]

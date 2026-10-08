@@ -186,6 +186,7 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     for sid, doc in per_station.items():
         store.put_json(f"data/stations/{sid}.json", doc, max_age=300)
     store.put_json("data/latest.json", latest, max_age=300)
+    store.put_text("data/latest.csv", scorer.to_csv(latest), content_type="text/csv; charset=utf-8", max_age=300)
     log["published"] = True
     return log
 
@@ -204,6 +205,11 @@ class S3Store:
         extra = {"CacheControl": f"public, max-age={max_age}"} if max_age else {}
         self.s3.put_object(Bucket=self.bucket, Key=key, Body=json.dumps(obj, separators=(",", ":")).encode(),
                            ContentType="application/json", **extra)
+
+    def put_text(self, key, text, content_type="text/plain", max_age=None):
+        extra = {"CacheControl": f"public, max-age={max_age}"} if max_age else {}
+        self.s3.put_object(Bucket=self.bucket, Key=key, Body=text.encode("utf-8"),
+                           ContentType=content_type, **extra)
 
 
 def handler(event, context):

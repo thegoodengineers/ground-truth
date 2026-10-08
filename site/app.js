@@ -736,4 +736,10 @@
   }
 
   document.addEventListener("DOMContentLoaded", boot);
+
+  // Fill the suggested citation date
+  document.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById("cite-date");
+    if (el) el.textContent = new Date().toISOString().slice(0, 10);
+  });
 })();

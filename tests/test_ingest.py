@@ -22,6 +22,9 @@ class MemStore:
     def put_json(self, key, obj, max_age=None):
         self.data[key], self.cache[key] = json.loads(json.dumps(obj)), max_age
 
+    def put_text(self, key, text, content_type=None, max_age=None):
+        self.data[key] = text
+
 
 class FakeAPI:
     """Serves /locations/{id} and /sensors/{id}/hours. Sensor id = location*10 + param index."""

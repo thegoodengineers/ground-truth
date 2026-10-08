@@ -13,7 +13,7 @@ Checks, each ok / watch / flag / nodata:
 - history:    the same daytime-minus-night contrast for PM10 and humidity, last 7 days against the 21 before,
               in robust SDs of the station's own day-to-day spread.
 """
-import argparse, datetime as dt, json, math, os, statistics
+import argparse, csv, datetime as dt, io, json, math, os, statistics
 
 PARAMS = ("pm10", "pm25", "no2", "co", "relativehumidity")
 LOG_PARAMS = ("pm10", "pm25", "no2", "co")
@@ -327,10 +327,52 @@ def _assemble(keys, now, stations, prepared, result, last):
     return latest_json, per_station
 
 
+CSV_COLUMNS = [
+    "id", "name", "operator", "lat", "lon",
+    "status",
+    "physics_status", "physics_detail",
+    "neighbours_status", "neighbours_detail",
+    "history_status", "history_detail",
+    "pm25", "pm10", "no2", "co", "relativehumidity",
+    "neighbours_pm25", "neighbours_pm10",
+    "data_through",
+]
+
+
+def to_csv(latest_json):
+    """Return latest.json as a UTF-8 CSV string, one row per station."""
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=CSV_COLUMNS, extrasaction="ignore", lineterminator="\n")
+    w.writeheader()
+    data_through = latest_json.get("data_through", "")
+    for s in latest_json["stations"]:
+        row = {
+            "id": s["id"], "name": s["name"], "operator": s.get("operator", ""),
+            "lat": s["lat"], "lon": s["lon"],
+            "status": s["status"],
+            "physics_status": s["checks"]["physics"]["status"],
+            "physics_detail": s["checks"]["physics"].get("detail", ""),
+            "neighbours_status": s["checks"]["neighbours"]["status"],
+            "neighbours_detail": s["checks"]["neighbours"].get("detail", ""),
+            "history_status": s["checks"]["history"]["status"],
+            "history_detail": s["checks"]["history"].get("detail", ""),
+            "pm25": s["latest"].get("pm25"), "pm10": s["latest"].get("pm10"),
+            "no2": s["latest"].get("no2"), "co": s["latest"].get("co"),
+            "relativehumidity": s["latest"].get("relativehumidity"),
+            "neighbours_pm25": s.get("neighbours_latest", {}).get("pm25"),
+            "neighbours_pm10": s.get("neighbours_latest", {}).get("pm10"),
+            "data_through": data_through,
+        }
+        w.writerow(row)
+    return buf.getvalue()
+
+
 def write(out_dir, latest_json, per_station):
     os.makedirs(os.path.join(out_dir, "stations"), exist_ok=True)
     with open(os.path.join(out_dir, "latest.json"), "w") as f:
         json.dump(latest_json, f, separators=(",", ":"))
+    with open(os.path.join(out_dir, "latest.csv"), "w", encoding="utf-8", newline="") as f:
+        f.write(to_csv(latest_json))
     for sid, doc in per_station.items():
         with open(os.path.join(out_dir, "stations", f"{sid}.json"), "w") as f:
             json.dump(doc, f, separators=(",", ":"))
