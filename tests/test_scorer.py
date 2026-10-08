@@ -176,6 +176,10 @@ def test_station_json_contract(baseline):
             assert all(len(v) == 24 for v in doc[key].values())
         assert len(doc["daily"]) == 28
         assert doc["id"] not in doc["neighbours"]
+        r48 = doc["recent_48h"]
+        assert len(r48["hours"]) == 48
+        assert len(r48["pm25"]) == 48
+        assert set(r48["neighbours_pm25"]) == {str(n) for n in doc["neighbours"]}
 
 
 def test_neighbours_latest_is_the_median_of_the_neighbours_now(baseline, data):

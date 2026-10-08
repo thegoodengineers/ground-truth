@@ -464,6 +464,7 @@
     panel.innerHTML = panelHTML(s, doc);
     if (spot) spotCheck(spot);
     drawChart(doc);
+    drawEvidence(doc, s);
     panel.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => select(Number(b.dataset.goto), { fly: true })));
     panel.querySelector("#param")?.addEventListener("change", (e) => { param = e.target.value; drawChart(doc); });
     panel.querySelector("#as-table")?.addEventListener("click", () => toggleTable(doc));
@@ -548,6 +549,7 @@
         <div class="chartlegend"><span><i style="background:var(--series-7d)"></i>Last 7 days</span><span><i style="background:var(--series-28d)"></i>Last 28 days</span><span><i class="band"></i>11:00-17:00</span><button class="linkish" id="as-table" type="button">Show as table</button></div>
         <div id="tablebox"></div>
       </div>
+      ${doc ? `<div class="chartbox" id="evidence-box"><h3>Last 48 hours: this station vs neighbours</h3><p class="csub">PM2.5 µg/m³. Neighbour band is the range of the ${(doc.neighbours || []).length} nearest stations.</p><div class="chartwrap"><canvas id="evidence-chart" role="img" aria-label="PM2.5 last 48 hours"></canvas></div></div>` : ""}
       ${nb.length ? `<div class="nbs"><span class="label">Compared with</span>${nb.map((n) => `<button data-goto="${n.id}" type="button">${icon(n.status, 11)}${esc(short(n.name))}</button>`).join("")}</div>` : ""}
     `;
   }
@@ -607,6 +609,49 @@
         },
       },
       plugins: [bandPlugin],
+    });
+  }
+
+  let evidenceChart = null;
+  function drawEvidence(doc, station) {
+    const canvas = $("#evidence-chart");
+    if (evidenceChart) { evidenceChart.destroy(); evidenceChart = null; }
+    if (!canvas || !doc?.recent_48h) return;
+    const r = doc.recent_48h;
+    const labels = r.hours.map((k) => k.slice(11, 13) + ":00");
+    // neighbour band: per-hour min and max across neighbours
+    const nbVals = Object.values(r.neighbours_pm25);
+    const bandMin = r.hours.map((_, i) => {
+      const vs = nbVals.map((a) => a[i]).filter((v) => v != null);
+      return vs.length ? Math.min(...vs) : null;
+    });
+    const bandMax = r.hours.map((_, i) => {
+      const vs = nbVals.map((a) => a[i]).filter((v) => v != null);
+      return vs.length ? Math.max(...vs) : null;
+    });
+    const css = getComputedStyle(document.documentElement);
+    const stationColor = css.getPropertyValue("--series-7d").trim() || "#1f9d5c";
+    const bandColor = "rgba(160,160,165,0.25)";
+    evidenceChart = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "Neighbour band (max)", data: bandMax, borderWidth: 0, pointRadius: 0, fill: "+1", backgroundColor: bandColor, spanGaps: true },
+          { label: "Neighbour band (min)", data: bandMin, borderWidth: 0, pointRadius: 0, fill: false, spanGaps: true },
+          { label: `${station.name.split(",")[0]} PM2.5`, data: r.pm25, borderColor: stationColor, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, cubicInterpolationMode: "monotone", spanGaps: true, fill: false },
+        ],
+      },
+      options: {
+        animation: false,
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false,
+          callbacks: { label: (ctx) => ctx.dataset.fill !== false ? null : `${ctx.dataset.label}: ${ctx.parsed.y == null ? "–" : ctx.parsed.y.toFixed(1)} µg/m³` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 11 } } },
+          y: { grid: { color: "rgba(0,0,0,.06)" }, title: { display: true, text: "PM2.5 µg/m³", font: { size: 11 } }, ticks: { font: { size: 11 } } },
+        },
+      },
     });
   }
 
