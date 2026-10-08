@@ -1,6 +1,6 @@
 """Ground Truth scorer: three checks per station, written as the JSON contract in docs/STACK.md.
 
-    python src/scorer.py HOURLY.json OUT_DIR [--now YYYY-MM-DDTHH] [--days 28]
+    python src/scorer.py HOURLY.json OUT_DIR [--now YYYY-MM-DDTHH] [--days 28] [--region delhi]
 
 Pure Python (no pandas), so the same code runs in pytest and in the ingest Lambda.
 `hourly` is {station_id: {param: {"YYYY-MM-DDTHH": value}}} with IST hour keys (see backfill.py).
@@ -20,7 +20,7 @@ LOG_PARAMS = ("pm10", "pm25", "no2", "co")
 RANGE = {"pm10": (1, 2000), "pm25": (1, 1500), "no2": (0.5, 1000), "co": (0.02, 50), "relativehumidity": (1, 100)}
 STUCK_PARAMS = ("pm10", "pm25", "no2", "co")  # humidity legitimately sits still (e.g. 100% at night)
 DAY_H, NIGHT_H = frozenset(range(11, 17)), frozenset({22, 23, 0, 1, 2, 3, 4, 5})
-K, RADIUS_KM, COLOC_KM = 4, 12.0, 0.5
+K, RADIUS_KM, COLOC_KM = 4, 12.0, 0.5  # Delhi's; a region file (src/regions/) can set its own
 RECENT_DAYS = 7
 PHYS_FLAG, PHYS_WATCH = 0.05, 0.01
 Z_FLAG, Z_WATCH = 3.0, 2.0
@@ -140,9 +140,11 @@ def prepare(raw, keys):
     return clean, physics
 
 
-def neighbours_of(st, stations, has_data):
+def neighbours_of(st, stations, has_data, cfg=None):
+    nb = (cfg or {}).get("neighbours", {})
+    k, radius, coloc = nb.get("k", K), nb.get("radius_km", RADIUS_KM), nb.get("colocated_km", COLOC_KM)
     d = sorted((km((st["lat"], st["lon"]), (o["lat"], o["lon"])), o["id"]) for o in stations if o["id"] != st["id"])
-    return [i for dist, i in d if COLOC_KM <= dist <= RADIUS_KM and has_data[i]][:K]
+    return [i for dist, i in d if coloc <= dist <= radius and has_data[i]][:k]
 
 
 def gaps(me, refs):
@@ -256,26 +258,27 @@ def neighbour_checks(recent, exclude=frozenset()):
 
 # ---------- top level ----------
 
-def score(hourly, stations, now, days=28):
+def score(hourly, stations, now, days=28, region=None):
     """Two passes: stations flagged in the first are left out of everyone else's reference in the second,
-    so one misbehaving station can't drag its neighbours' gaps with it."""
+    so one misbehaving station can't drag its neighbours' gaps with it. `region` is a src/regions/ config
+    (neighbour radius, area names); None means Delhi's defaults."""
     keys = hour_keys(now, days)
     prepared = {s["id"]: prepare(hourly.get(str(s["id"]), {}), keys) for s in stations}
     has_data = {sid: any(v is not None for v in c["pm10"]) for sid, (c, _) in prepared.items()}
-    first = _run(keys, stations, prepared, has_data, exclude=set())
+    first = _run(keys, stations, prepared, has_data, exclude=set(), cfg=region)
     suspects = {sid for sid, (checks, _) in first.items()
                 if "flag" in (checks["neighbours"]["status"], checks["history"]["status"])}
-    final = _run(keys, stations, prepared, has_data, exclude=suspects) if suspects else first
+    final = _run(keys, stations, prepared, has_data, exclude=suspects, cfg=region) if suspects else first
     last = {s["id"]: last_reading(hourly.get(str(s["id"]), {}), keys) for s in stations}
-    return _assemble(keys, now, stations, prepared, final, last)
+    return _assemble(keys, now, stations, prepared, final, last, region)
 
 
-def _run(keys, stations, prepared, has_data, exclude):
+def _run(keys, stations, prepared, has_data, exclude, cfg=None):
     recent, rows_by = {}, {}
     usable = {sid: ok and sid not in exclude for sid, ok in has_data.items()}
     for s in stations:
         clean, physics = prepared[s["id"]]
-        nb = neighbours_of(s, stations, usable)
+        nb = neighbours_of(s, stations, usable, cfg)
         gap = gaps(clean, [prepared[i][0] for i in nb]) if len(nb) >= 2 else {p: [None] * len(keys) for p in PARAMS}
         rows = daily(keys, gap, physics)
         rows_by[s["id"]] = (nb, gap, rows, physics, clean)
@@ -286,7 +289,8 @@ def _run(keys, stations, prepared, has_data, exclude):
                   (nb, gap, rows)) for sid, (nb, gap, rows, _, _) in rows_by.items()}
 
 
-def _assemble(keys, now, stations, prepared, result, last):
+def _assemble(keys, now, stations, prepared, result, last, cfg=None):
+    areas = (cfg or {}).get("areas", {"core": "Delhi", "outer": "NCR", "outer_words": list(NCR)})
     out_stations, per_station = [], {}
     for s in stations:
         checks, (nb, gap, rows) = result[s["id"]]
@@ -300,7 +304,7 @@ def _assemble(keys, now, stations, prepared, result, last):
         doc = {
             "id": s["id"], "name": s["name"], "lat": s["lat"], "lon": s["lon"],
             "operator": s.get("operator"),
-            "region": "NCR" if any(w in s["name"] for w in NCR) else "Delhi",
+            "region": areas["outer"] if any(w in s["name"] for w in areas["outer_words"]) else areas["core"],
             "status": next(k for k, v in RANK.items() if v == status), "checks": checks, "latest": latest,
             "neighbours_latest": {p: None if v is None else round(v, 2) for p, v in around.items()},
             "last_reading": last[s["id"]] and iso(last[s["id"]]),
@@ -332,6 +336,8 @@ def _assemble(keys, now, stations, prepared, result, last):
         "generated_at": dt.datetime.now(dt.timezone(dt.timedelta(hours=5, minutes=30))).isoformat(timespec="seconds"),
         "data_through": iso(now.strftime("%Y-%m-%dT%H")),
         "stations": out_stations}
+    if cfg:  # which city this is, for a site that serves more than one
+        latest_json["region"] = {k: cfg[k] for k in ("id", "name", "label", "map") if k in cfg}
     return latest_json, per_station
 
 
@@ -395,10 +401,13 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--now", help="last hour to score, IST, e.g. 2025-11-30T23 (default: latest hour in the data)")
     ap.add_argument("--days", type=int, default=28)
+    ap.add_argument("--region", default=backfill.DEFAULT_REGION, help="a file in src/regions/ (default: delhi, or $REGION)")
     a = ap.parse_args()
     hourly = json.load(open(a.hourly))
     last = a.now or max(k for st in hourly.values() for s in st.values() for k in s)
-    latest_json, per_station = score(hourly, backfill.stations(), dt.datetime.strptime(last, "%Y-%m-%dT%H"), a.days)
+    cfg = backfill.region(a.region)
+    latest_json, per_station = score(hourly, backfill.stations(region_name=a.region),
+                                     dt.datetime.strptime(last, "%Y-%m-%dT%H"), a.days, region=cfg)
     write(a.out, latest_json, per_station)
     counts = {}
     for s in latest_json["stations"]:

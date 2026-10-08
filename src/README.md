@@ -27,3 +27,7 @@ See the table in `docs/PLAN.md`. In short:
 - **history:** the same contrast for PM10 and humidity, last 7 days against the previous 21 days, in robust SDs. Watch at 2, flag at 3.
 
 Scoring runs twice: stations flagged in the first pass are left out of their neighbours' references in the second.
+
+## Regions
+
+A city is a file in `regions/`: `delhi.json` (the default) and `mumbai.json` (a trial, see `docs/LEARNINGS.md`). It names the stations file, the bounding box, the neighbour rule, the area names and the map. `backfill.py` and `scorer.py` take `--region`, the Lambda reads `REGION`, and the scorer writes a `region` block into `latest.json`. To try a city: list its monitors with `spike/find_region.py`, write the two files, then `python src/backfill.py out.json --days 29 --region <id>` and `python src/scorer.py out.json out_dir --region <id>`.

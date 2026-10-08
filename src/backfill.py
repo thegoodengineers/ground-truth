@@ -1,6 +1,6 @@
 """Seed the hourly cache from the public OpenAQ archive (us-east-1, no key).
 
-    python src/backfill.py OUT.json [--end YYYY-MM-DD] [--days 28] [--cache DIR]
+    python src/backfill.py OUT.json [--end YYYY-MM-DD] [--days 28] [--cache DIR] [--region delhi]
 
 Writes {station_id: {param: {"YYYY-MM-DDTHH": value}}} with IST hour keys, for the `days` days ending on
 `end` (default: today, IST). The archive lags about 4 days; the hourly ingest fills the rest from the API.
@@ -18,11 +18,28 @@ MISSED = []
 
 
 STATIONS_TSV = os.path.join(HERE, "stations.tsv")
+REGIONS = os.path.join(HERE, "regions")
+DEFAULT_REGION = os.environ.get("REGION", "delhi")
 
 
-def stations(path=STATIONS_TSV):
+def region(name=None):
+    """The region's settings (src/regions/<name>.json): bounding box, stations file, neighbour radius, map centre."""
+    name = (name or DEFAULT_REGION).lower()
+    path = os.path.join(REGIONS, f"{name}.json")
+    if not os.path.exists(path):
+        have = sorted(f[:-5] for f in os.listdir(REGIONS) if f.endswith(".json"))
+        raise SystemExit(f"no region {name!r}: have {', '.join(have)}")
+    with open(path, encoding="utf-8") as f:
+        cfg = json.load(f)
+    cfg["stations_path"] = os.path.join(HERE, cfg["stations"])
+    return cfg
+
+
+def stations(path=None, region_name=None):
+    """The monitors to score: a stations.tsv (id, name, lat, lon, operator), by path or from a region."""
+    path = path or region(region_name)["stations_path"]
     out = []
-    for line in open(path):
+    for line in open(path, encoding="utf-8"):
         if line.strip():
             parts = line.rstrip("\n").split("\t")
             i, name, lat, lon = parts[:4]
@@ -94,8 +111,8 @@ def to_hourly(rows):
     return {p: {h: round(sum(v) / len(v), 3) for h, v in hours.items() if len(v) >= 2} for p, hours in acc.items()}
 
 
-def backfill(end, days, cache=None, station_list=None):
-    station_list = station_list or stations()
+def backfill(end, days, cache=None, station_list=None, region_name=None):
+    station_list = station_list or stations(region_name=region_name)
     start = end - dt.timedelta(days=days - 1)
     # UTC file days straddle IST days, so read one extra day each side and trim by hour key afterwards
     lo, hi = start - dt.timedelta(days=1), end + dt.timedelta(days=1)
@@ -120,8 +137,9 @@ if __name__ == "__main__":
     ap.add_argument("--end", default=dt.datetime.now(IST).date().isoformat())
     ap.add_argument("--days", type=int, default=28)
     ap.add_argument("--cache")
+    ap.add_argument("--region", default=DEFAULT_REGION, help="a file in src/regions/ (default: delhi, or $REGION)")
     a = ap.parse_args()
-    data = backfill(dt.date.fromisoformat(a.end), a.days, a.cache)
+    data = backfill(dt.date.fromisoformat(a.end), a.days, a.cache, region_name=a.region)
     with open(a.out, "w") as f:
         json.dump(data, f, separators=(",", ":"))
     n = sum(len(s) for st in data.values() for s in st.values())

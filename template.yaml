@@ -226,6 +226,7 @@ Resources:
           MAX_CALLS: "300"
           METRIC_NAMESPACE: GroundTruth
           STACK_NAME: !Ref AWS::StackName
+          REGION: delhi  # src/regions/<name>.json: the monitors, the neighbour radius, the map
       Events:
         Hourly:
           Type: Schedule

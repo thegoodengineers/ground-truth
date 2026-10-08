@@ -1,0 +1,12 @@
+{
+  "id": "delhi",
+  "name": "Delhi",
+  "label": "Delhi + NCR",
+  "stations": "stations.tsv",
+  "bbox": {"lat": [28.35, 28.95], "lon": [76.80, 77.45]},
+  "timezone": "+05:30",
+  "neighbours": {"k": 4, "radius_km": 12.0, "colocated_km": 0.5},
+  "areas": {"core": "Delhi", "outer": "NCR", "outer_words": ["Noida", "Ghaziabad", "Gurugram", "Faridabad", "Bahadurgarh", "Manesar"]},
+  "map": {"centre": [28.62, 77.20], "zoom": 11, "boundary": "geo/delhi_boundary.json", "wards": "geo/delhi_wards.json"},
+  "operators": "operators.json"
+}

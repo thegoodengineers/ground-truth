@@ -11,7 +11,8 @@ Each run:
    unless the result is worse than what is already published (`why_not_publish`); then the old files stay.
 
 Environment: SITE_BUCKET (required), OPENAQ_KEY_PARAM (default /ground-truth/openaq-key), MAX_CALLS (default 300),
-METRIC_NAMESPACE (default GroundTruth; empty disables the CloudWatch metrics).
+METRIC_NAMESPACE (default GroundTruth; empty disables the CloudWatch metrics), REGION (default delhi: a file in
+src/regions/ naming the monitors, the neighbour radius and the map).
 
 After every run two CloudWatch metrics are published (the alarms in template.yaml watch them): DataAgeHours, the
 hours between `data_through` and now, and IngestErrors, 1 when the run stopped early (bad key, API unreachable).
@@ -231,7 +232,7 @@ def resync_archive(hourly, now, store):
             "resync_stations": f"{done} of {len(hourly)}"}
 
 
-def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key", resync=False):
+def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key", resync=False, region=None):
     hourly = store.get_json(RAW_KEY) or {}
     sensors = store.get_json(SENSORS_KEY) or {}
     log = {"new_hours": 0, "skipped": 0, "overlap_ratio": {}}
@@ -283,7 +284,7 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     if last is None:
         log.update(scored=False, published=False, reason="no hour has PM data from half the stations")
         return log
-    latest, per_station = scorer.score(hourly, stations, dt.datetime.strptime(last, "%Y-%m-%dT%H"))
+    latest, per_station = scorer.score(hourly, stations, dt.datetime.strptime(last, "%Y-%m-%dT%H"), region=region)
     log.update(scored=True, data_through=last)
     reason = why_not_publish(latest, store.get_json("data/latest.json"), len(stations))
     if reason:
@@ -352,7 +353,9 @@ def handler(event, context):
     key = boto3.client("ssm").get_parameter(Name=param, WithDecryption=True)["Parameter"]["Value"]
     store = S3Store(os.environ["SITE_BUCKET"], boto3.client("s3"))
     now = dt.datetime.now(UTC)
-    log = run(store, OpenAQ(key), backfill.stations(), now, int(os.environ.get("MAX_CALLS", "300")), param, resync=True)
+    cfg = backfill.region(os.environ.get("REGION", "delhi"))
+    log = run(store, OpenAQ(key), backfill.stations(region_name=cfg["id"]), now, int(os.environ.get("MAX_CALLS", "300")),
+              param, resync=True, region=cfg)
     namespace = os.environ.get("METRIC_NAMESPACE", "GroundTruth")
     if namespace:
         stack = os.environ.get("STACK_NAME", "ground-truth")
