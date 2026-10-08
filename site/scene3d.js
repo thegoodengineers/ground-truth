@@ -14,6 +14,8 @@ const STATE = { ok: 0x0ca30c, watch: 0xf2a60c, flag: 0xd03b3b, nodata: 0xa3a4a9 
 const TINT = { ok: 0xa9cdb0, watch: 0xefc867, flag: 0xe2867f, nodata: 0xcfd0d3 };
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const small = matchMedia("(max-width: 760px), (pointer: coarse)").matches; // phones and tablets start lighter
+// ?capture=1 (video/capture_gif.py): no shadows, pixel ratio 1, less dust and no quality steps: alike, compact frames
+const capture = new URLSearchParams(location.search).has("capture");
 
 // a GPU-less machine draws WebGL in software; it gets the lightest scene from the start
 function softwareGL(renderer) {
@@ -243,11 +245,11 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
   scene.fog = new THREE.Fog(FOG, 180, 820);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  const soft = softwareGL(renderer), light = soft || small;
+  const soft = softwareGL(renderer), light = soft || small, shadows = !light && !capture;
   let dirty = true; // something changed that needs a redraw
-  renderer.setPixelRatio(Math.min(devicePixelRatio, soft ? 1 : small ? 1.5 : 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, soft || capture ? 1 : small ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = !light; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
   renderer.domElement.setAttribute("aria-hidden", "true");
 
@@ -260,7 +262,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
 
   scene.add(new THREE.HemisphereLight(0xf7f7f8, 0xcfcfca, 1.6));
   const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-  sun.position.set(-220, 320, 160); sun.castShadow = !light;
+  sun.position.set(-220, 320, 160); sun.castShadow = shadows;
   Object.assign(sun.shadow.camera, { left: -380, right: 380, top: 380, bottom: -380, near: 10, far: 1200 });
   sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; scene.add(sun);
 
@@ -269,7 +271,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
   buildLandmarks(scene);
   const { tops, pickables, ids, face } = buildMonitors(scene, stations, reading);
   const vals = stations.map(reading).filter((v) => v != null).sort((a, b) => a - b);
-  const dust = buildDust(scene, vals.length ? vals[Math.floor(vals.length / 2)] : 40, soft ? 0 : small ? 3000 : 9000);
+  const dust = buildDust(scene, vals.length ? vals[Math.floor(vals.length / 2)] : 40, soft || capture ? 0 : small ? 3000 : 9000);
 
   // when frames average over 33 ms for 2 s, give up one thing at a time, cheapest loss first
   const stepsDown = [
@@ -277,7 +279,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
     () => dust.resize(0.5),
     () => { renderer.setPixelRatio(1); size(); },
     () => dust.resize(0),
-  ].slice(soft ? 4 : small ? 1 : 0);
+  ].slice(soft || capture ? 4 : small ? 1 : 0);
   let slow = { t: 0, n: 0 };
   const pace = (dt) => {
     if (!stepsDown.length || dt > 1000) return; // a long gap is a hidden tab, not a slow frame
