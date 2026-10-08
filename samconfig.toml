@@ -1,0 +1,23 @@
+# SAM CLI settings for the Ground Truth stack, so `sam deploy` needs no --guided run.
+# The Makefile passes the same values; this file is what the deploy workflow and a fresh laptop use.
+version = 0.1
+
+[default.global.parameters]
+stack_name = "ground-truth"
+region = "us-east-1"
+
+[default.build.parameters]
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+stack_name = "ground-truth"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+confirm_changeset = false
+fail_on_empty_changeset = false
+disable_rollback = false
+tags = "project=\"ground-truth\""

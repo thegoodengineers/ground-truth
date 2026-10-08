@@ -1,10 +1,14 @@
 PROFILE ?= groundtruth
 REGION  ?= us-east-1
 STACK   ?= ground-truth
+# Alarms and the budget email go here (issue 23, 36). Empty = no email subscription.
+ALERT_EMAIL ?=
+# "true" once AWS Support has verified the account for CloudFront (issue 2); until then a function URL serves HTTPS.
+USE_CLOUDFRONT ?= false
 AWS      = aws --profile $(PROFILE) --region $(REGION)
 OUT      = $(AWS) cloudformation describe-stacks --stack-name $(STACK) --query "Stacks[0].Outputs[?OutputKey=='$(1)'].OutputValue" --output text
 
-.PHONY: setup local test lint deploy stack site seed run url
+.PHONY: setup local test lint deploy stack site sample seed run url
 
 # One-time: dev tools (tests, lint, video). The backend itself has no dependencies.
 setup:
@@ -28,15 +32,21 @@ deploy: stack site
 stack:
 	sam build
 	sam deploy --stack-name $(STACK) --profile $(PROFILE) --region $(REGION) \
-		--capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset
+		--capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset \
+		--tags project=ground-truth \
+		--parameter-overrides AlertEmail=$(ALERT_EMAIL) UseCloudFront=$(USE_CLOUDFRONT)
 
-# Upload site/ (when it exists) without touching data/, then refresh CloudFront.
+# Upload site/ without touching data/ (the Lambda owns it), then refresh CloudFront when there is one.
 site:
-	@if [ -d site ]; then \
-		$(AWS) s3 sync site/ s3://$$($(call OUT,SiteBucketName))/ --delete --exclude "data/*" && \
-		$(AWS) cloudfront create-invalidation --distribution-id $$($(call OUT,DistributionId)) --paths "/*" >/dev/null && \
-		echo "site uploaded"; \
-	else echo "no site/ yet, skipping"; fi
+	$(AWS) s3 sync site/ s3://$$($(call OUT,SiteBucketName))/ --delete --exclude "data/*" --cache-control "public, max-age=300"
+	$(AWS) s3 sync site/vendor/ s3://$$($(call OUT,SiteBucketName))/vendor/ --cache-control "public, max-age=604800"
+	@dist=$$($(call OUT,DistributionId)); if [ -n "$$dist" ]; then \
+		$(AWS) cloudfront create-invalidation --distribution-id $$dist --paths "/*" >/dev/null && echo "CloudFront invalidated"; fi
+	@echo "site uploaded to $$($(call OUT,SiteUrl))"
+
+# Until the first live run: publish the committed sample (real scorer output) as data/ so the site has something to show.
+sample:
+	$(AWS) s3 sync sample/data/ s3://$$($(call OUT,SiteBucketName))/data/ --exclude "raw/*" --cache-control "public, max-age=300"
 
 # One-off: seed the 28-day cache from the public archive so the first run has history.
 seed:
@@ -49,3 +59,4 @@ run:
 
 url:
 	@$(call OUT,SiteUrl)
+	@$(call OUT,SiteWebsiteUrl)

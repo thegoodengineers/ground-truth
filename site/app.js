@@ -114,7 +114,8 @@
     } catch (e) {
       $("#fresh").textContent = "Data unavailable";
       $("#fresh").classList.add("stale");
-      $("#panel").innerHTML = `<div class="empty"><h2>Data is updating</h2><p>We couldn't load the latest readings. Try again in a minute.</p><button class="btn ghost" onclick="location.reload()">Try again</button></div>`;
+      $("#panel").innerHTML = `<div class="empty"><h2>Data is updating</h2><p>We couldn't load the latest readings. Try again in a minute.</p><button class="btn ghost" data-reload>Try again</button></div>`;
+      $("#panel").querySelector("[data-reload]").addEventListener("click", () => location.reload());
       $("#stats").querySelectorAll(".skel").forEach((el) => { el.classList.remove("skel"); el.textContent = "–"; });
       $("#chrome-live").textContent = "Offline";
       mark("error");

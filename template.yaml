@@ -7,16 +7,38 @@ Parameters:
     Type: String
     Default: /ground-truth/openaq-key
     Description: SSM SecureString holding the OpenAQ API key (created by hand, see issue 1).
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: Where the alarms and the budget warning go. Empty disables the email subscription.
+
+  UseCloudFront:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Put CloudFront in front of the bucket. Off by default: new accounts can't create distributions until AWS
+      Support verifies them (issue 2). Off, the site is served over HTTPS by a Lambda function URL and over HTTP
+      by the S3 website endpoint; the bucket is then public-read.
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+  UseCloudFront: !Equals [!Ref UseCloudFront, "true"]
+  NoCloudFront: !Not [!Equals [!Ref UseCloudFront, "true"]]
 
 Resources:
   SiteBucket:
     Type: AWS::S3::Bucket
     Properties:
+      # Private behind CloudFront; public-read (objects only, never ACLs) when served as a website.
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
+        BlockPublicPolicy: !If [UseCloudFront, true, false]
         IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+        RestrictPublicBuckets: !If [UseCloudFront, true, false]
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -24,6 +46,7 @@ Resources:
 
   SiteOAC:
     Type: AWS::CloudFront::OriginAccessControl
+    Condition: UseCloudFront
     Properties:
       OriginAccessControlConfig:
         Name: !Sub "${AWS::StackName}-oac"
@@ -33,6 +56,7 @@ Resources:
 
   SiteDistribution:
     Type: AWS::CloudFront::Distribution
+    Condition: UseCloudFront
     Properties:
       DistributionConfig:
         Enabled: true
@@ -52,6 +76,56 @@ Resources:
           Compress: true
           # Managed policy "CachingOptimized"; it honours the objects' Cache-Control (data/*.json: 5 min)
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: !Ref SiteHeaders
+
+  # Security headers on every response (issue 35). Everything the site needs is on its own origin
+  # (three.js and Chart.js are vendored); only the fonts come from Google Fonts. src/serve.py sends the same
+  # headers when the site is served by the function URL; tests/test_serve.py keeps the two in step.
+  SiteHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Condition: UseCloudFront
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${AWS::StackName}-security-headers"
+        Comment: CSP, HSTS, nosniff, referrer policy and no framing for the Ground Truth site
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: >-
+              default-src 'self';
+              script-src 'self';
+              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+              font-src 'self' https://fonts.gstatic.com;
+              img-src 'self' data: blob:;
+              connect-src 'self';
+              worker-src 'self' blob:;
+              object-src 'none';
+              base-uri 'self';
+              form-action 'self';
+              frame-ancestors 'none';
+              upgrade-insecure-requests
+          StrictTransportSecurity:
+            Override: true
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Preload: true
+          ContentTypeOptions:
+            Override: true
+          ReferrerPolicy:
+            Override: true
+            ReferrerPolicy: strict-origin-when-cross-origin
+          FrameOptions:
+            Override: true
+            FrameOption: DENY
+          XSSProtection:
+            Override: true
+            Protection: true
+            ModeBlock: true
+        CustomHeadersConfig:
+          Items:
+            - Header: Permissions-Policy
+              Override: true
+              Value: camera=(), microphone=(), geolocation=(), payment=(), usb=()
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -59,15 +133,79 @@ Resources:
       Bucket: !Ref SiteBucket
       PolicyDocument:
         Statement:
-          - Sid: CloudFrontReadOnly
-            Effect: Allow
-            Principal:
-              Service: cloudfront.amazonaws.com
-            Action: s3:GetObject
-            Resource: !Sub "${SiteBucket.Arn}/*"
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}"
+          - !If
+            - UseCloudFront
+            - Sid: CloudFrontReadOnly
+              Effect: Allow
+              Principal:
+                Service: cloudfront.amazonaws.com
+              Action: s3:GetObject
+              Resource: !Sub "${SiteBucket.Arn}/*"
+              Condition:
+                StringEquals:
+                  AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}"
+            - Sid: PublicWebsiteRead
+              Effect: Allow
+              Principal: "*"
+              Action: s3:GetObject
+              Resource: !Sub "${SiteBucket.Arn}/*"
+
+  # HTTPS without CloudFront: a function URL that reads the bucket and adds the security headers.
+  ServeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Serves the site from the bucket over HTTPS with security headers (CloudFront stand-in)
+      CodeUri: src/
+      Handler: serve.handler
+      Runtime: python3.11
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          SITE_BUCKET: !Ref SiteBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub "${SiteBucket.Arn}/*"
+            - Effect: Allow
+              Action: s3:ListBucket
+              Resource: !GetAtt SiteBucket.Arn
+
+  ServeFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt ServeFunction.Arn
+      AuthType: NONE
+
+  ServeFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ServeFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+  # Since 2025 a public function URL also needs InvokeFunction with the InvokedViaFunctionUrl condition
+  # (without it every request is 403). cfn-lint's schema doesn't know the property yet, hence the ignore.
+  ServeFunctionUrlInvokePermission:
+    Type: AWS::Lambda::Permission
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [E3002]
+    Properties:
+      FunctionName: !Ref ServeFunction
+      Action: lambda:InvokeFunction
+      Principal: "*"
+      InvokedViaFunctionUrl: true
+
+  ServeLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ServeFunction}"
+      RetentionInDays: 14
 
   IngestFunction:
     Type: AWS::Serverless::Function
@@ -79,12 +217,15 @@ Resources:
       Architectures: [arm64]
       MemorySize: 512
       Timeout: 900  # ~260 paced API calls at under 60/min, plus the nightly archive pass (at most 90 s)
-      ReservedConcurrentExecutions: 1  # never two runs writing the cache at once
+      # No reserved concurrency: a new account's limit (10) can't spare it. Runs can't overlap anyway: one an hour,
+      # each at most 15 minutes, and a rerun inside the same hour is counted once by the status smoothing.
       Environment:
         Variables:
           SITE_BUCKET: !Ref SiteBucket
           OPENAQ_KEY_PARAM: !Ref OpenAQKeyParam
           MAX_CALLS: "300"
+          METRIC_NAMESPACE: GroundTruth
+          STACK_NAME: !Ref AWS::StackName
       Events:
         Hourly:
           Type: Schedule
@@ -101,6 +242,12 @@ Resources:
             - Effect: Allow
               Action: s3:ListBucket  # so a missing key reads as NoSuchKey, not AccessDenied
               Resource: !GetAtt SiteBucket.Arn
+            - Effect: Allow
+              Action: cloudwatch:PutMetricData  # one DataAgeHours + one IngestErrors point per run
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  cloudwatch:namespace: GroundTruth
 
   IngestLogs:
     Type: AWS::Logs::LogGroup
@@ -108,12 +255,117 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${IngestFunction}"
       RetentionInDays: 14
 
+  # Know when the hourly run breaks (issue 23): an SNS topic with the team email, and three alarms.
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-alerts"
+      DisplayName: Ground Truth alerts
+
+  AlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  IngestErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-lambda-errors"
+      AlarmDescription: The ingest Lambda failed in 2 consecutive hours. Read the last log line, then `make run`.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref IngestFunction
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+
+  IngestRunErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-ingest-run-error"
+      AlarmDescription: Two runs in a row stopped early (wrong OpenAQ key, or the API unreachable). Check the SSM key, then `make run`.
+      Namespace: GroundTruth
+      MetricName: IngestErrors
+      Dimensions:
+        - Name: Stack
+          Value: !Ref AWS::StackName
+      Statistic: Maximum
+      Period: 3600
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+
+  StaleDataAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-stale-data"
+      AlarmDescription: data_through is more than 3 hours old (or the Lambda stopped running). See docs/RUNBOOK.md.
+      Namespace: GroundTruth
+      MetricName: DataAgeHours
+      Dimensions:
+        - Name: Stack
+          Value: !Ref AWS::StackName
+      Statistic: Maximum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: breaching  # no run at all for an hour is as bad as stale data
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+
+  # What it costs to run (issue 36): $5 a month, an email at 80%, scoped to the project tag.
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Condition: HasAlertEmail
+    Properties:
+      Budget:
+        BudgetName: !Sub "${AWS::StackName}-monthly"
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 5
+          Unit: USD
+        CostFilters:
+          TagKeyValue:
+            - user:project$ground-truth
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
 Outputs:
+  AlertTopicArn:
+    Value: !Ref AlertTopic
   SiteUrl:
-    Value: !Sub "https://${SiteDistribution.DomainName}"
+    Description: The HTTPS site (CloudFront when enabled, else the function URL)
+    Value: !If [UseCloudFront, !Sub "https://${SiteDistribution.DomainName}", !GetAtt ServeFunctionUrl.FunctionUrl]
+  SiteWebsiteUrl:
+    Description: The S3 website endpoint (HTTP), the fallback while CloudFront is unavailable
+    Value: !If [NoCloudFront, !GetAtt SiteBucket.WebsiteURL, ""]
   SiteBucketName:
     Value: !Ref SiteBucket
   DistributionId:
-    Value: !Ref SiteDistribution
+    Value: !If [UseCloudFront, !Ref SiteDistribution, ""]
   IngestFunctionName:
     Value: !Ref IngestFunction
