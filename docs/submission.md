@@ -1,6 +1,6 @@
 # Submission
 
-The text for the Environmental Hacks form. Every number traces to `spike/RESULTS.md`, `docs/LEARNINGS.md`, a test, or the live data. Fill the three [brackets] on Sunday.
+The text for the Environmental Hacks form. Every number traces to `spike/RESULTS.md`, `docs/LEARNINGS.md`, `docs/VALIDATION.md`, a test, or the live data. The two [brackets] left (video, blog) get filled when those are published.
 
 **Project name:** Ground Truth
 
@@ -8,7 +8,7 @@ The text for the Environmental Hacks form. Every number traces to `spike/RESULTS
 
 **One line:** Which of Delhi's air-quality numbers can you trust? Every monitor, checked every hour against its neighbours, its own past and physics.
 
-**Links:** live site [CloudFront URL] · repo https://github.com/thegoodengineers/ground-truth · demo video [YouTube URL] · blog [Builder Center URL]
+**Links:** live site https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/ · repo https://github.com/thegoodengineers/ground-truth · demo video [YouTube URL] · blog [Builder Center URL]
 
 ---
 
@@ -37,10 +37,13 @@ Each monitor gets one answer: agrees with neighbours, worth a look, or doesn't a
 - **AWS Lambda** (Python 3.11) reads new readings from the OpenAQ API, runs the three checks and writes the results as JSON.
 - **AWS Systems Manager Parameter Store** holds the OpenAQ API key, encrypted.
 - **Amazon S3** keeps a 29-day history cache and the results.
-- **Amazon CloudFront** serves the site and the data from a private bucket.
-- **AWS SAM** deploys all of it from one template. History is seeded from the public OpenAQ archive on the **Registry of Open Data on AWS**, in the same region.
+- **Amazon CloudFront** is in the template to serve the site and the data from a private bucket; this account is still waiting on AWS Support's verification for CloudFront, so a second small **Lambda function URL** serves the site over HTTPS with the same security headers (CSP, HSTS, nosniff) until then.
+- **Amazon CloudWatch** alarms (a failed run, a run that stopped early, data older than 3 hours) and an **AWS Budgets** alarm go to an **Amazon SNS** email, with a runbook in the repo.
+- **AWS SAM** deploys all of it from one template, and a merge to `main` deploys through **GitHub Actions with OIDC**, with no AWS keys stored anywhere. History is seeded from the public OpenAQ archive on the **Registry of Open Data on AWS**, in the same region.
 
 The video shows the running stack in the AWS console.
+
+**What it costs to run:** every resource is tagged, with a $5/month budget on the tag. The hourly check is about 720 Lambda runs a month (about 110,000 GB-seconds), S3 holds about 10 MB, and the alarms and metrics sit inside the free tier: about $0.30 a month inside the free tier, about $3 a month without it (the table is in the README).
 
 ## Design and usability
 
@@ -48,9 +51,10 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 
 ## Does it work? (The execution)
 
-- **The live site** updates every hour. [Data through: time on the live site at submission.]
+- **The live site** updates every hour; the header shows the hour the readings run through and when the last check ran.
 - **The planted test:** we lowered one quiet monitor's daytime PM10 by 40% in real data, one monitor at a time. It was caught 30 times out of 30, and wrongly flagged another monitor only 3 times across all 30 runs.
-- **62 automated tests** run on every change.
+- **69 automated tests** run on every change, plus browser smoke tests of the live site in CI.
+- **Every day of October and November 2025, scored as the live site would have** (`docs/VALIDATION.md`): about 1 in 5 monitors flagged on a typical day, most by the physics check; a planted 30% daytime drop was flagged 29 times out of 30, a 40% drop every time.
 
 ## Challenges
 
