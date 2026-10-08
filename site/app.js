@@ -313,6 +313,66 @@
     return el;
   }
 
+  // ---------- list view ----------
+  let listSortCol = "status", listSortAsc = true;
+
+  function renderListView() {
+    const tbody = $("#monitor-table-body");
+    if (!tbody || !latest) return;
+    const rows = [...latest.stations].sort((a, b) => {
+      let av, bv;
+      if (listSortCol === "name") { av = short(a.name); bv = short(b.name); }
+      else if (listSortCol === "area") { av = a._area || ""; bv = b._area || ""; }
+      else if (listSortCol === "status") { av = ORDER.indexOf(a.status); bv = ORDER.indexOf(b.status); }
+      else if (listSortCol === "pm25") { av = a.latest?.pm25 ?? -1; bv = b.latest?.pm25 ?? -1; }
+      else if (listSortCol === "nb_pm25") { av = a.neighbours_latest?.pm25 ?? -1; bv = b.neighbours_latest?.pm25 ?? -1; }
+      else { av = 0; bv = 0; }
+      return listSortAsc ? (av < bv ? -1 : av > bv ? 1 : 0) : (av < bv ? 1 : av > bv ? -1 : 0);
+    });
+    tbody.innerHTML = rows.map((s) => `
+      <tr>
+        <td><button type="button" class="list-open" data-open="${s.id}">${esc(short(s.name))}</button></td>
+        <td>${esc(s._area || "")}</td>
+        <td>${pill(s.status, STATUS[s.status].short)}</td>
+        <td class="mono">${fmt(s.latest?.pm25, 0)}</td>
+        <td class="mono">${fmt(s.neighbours_latest?.pm25, 0)}</td>
+      </tr>`).join("");
+    tbody.querySelectorAll(".list-open").forEach((b) => {
+      b.addEventListener("click", () => {
+        const id = Number(b.dataset.open);
+        toggleListView(false);
+        select(id, { fly: true });
+        $("#live").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
+  function setupSortButtons() {
+    document.querySelectorAll(".sort-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const col = btn.dataset.col;
+        if (listSortCol === col) { listSortAsc = !listSortAsc; }
+        else { listSortCol = col; listSortAsc = true; }
+        document.querySelectorAll(".sort-btn").forEach((b) => {
+          b.setAttribute("aria-sort", b.dataset.col === listSortCol ? (listSortAsc ? "ascending" : "descending") : "none");
+        });
+        renderListView();
+      });
+    });
+  }
+
+  function toggleListView(show) {
+    const listEl = $("#list-view"), mapEl = $("#map"), btn = $("#list-toggle");
+    if (show === undefined) show = listEl?.hidden;
+    if (listEl) listEl.hidden = !show;
+    if (mapEl) mapEl.hidden = show;
+    if (btn) {
+      btn.setAttribute("aria-pressed", String(show));
+      btn.textContent = show ? "Map view" : "List view";
+    }
+    if (show) renderListView();
+  }
+
   function renderMap() {
     const start = async () => {
       try {
@@ -333,6 +393,8 @@
     if (!webgl) renderFlat();
     else if (window.GT3D) start(); else window.addEventListener("gt3d:loaded", start, { once: true });
     $("#enter3d").addEventListener("click", (e) => { e.stopPropagation(); enterImmersive(); });
+    $("#list-toggle")?.addEventListener("click", () => toggleListView());
+    setupSortButtons();
     $("#exit3d").addEventListener("click", exitImmersive);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && immersive) exitImmersive(); });
   }
@@ -368,7 +430,7 @@
     mapWindow().classList.add("immersive");
     document.documentElement.classList.add("lock");
     $("#exit3d").hidden = false; $("#enter3d").hidden = true;
-    view?.setImmersive(true);
+    view?.setImmersive(true, { autoRotate: !reduced });
     mark("map:3d");
   }
 
@@ -405,6 +467,8 @@
     panel.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => select(Number(b.dataset.goto), { fly: true })));
     panel.querySelector("#param")?.addEventListener("change", (e) => { param = e.target.value; drawChart(doc); });
     panel.querySelector("#as-table")?.addEventListener("click", () => toggleTable(doc));
+    const h2 = panel.querySelector("h2");
+    if (h2 && !quiet) { h2.setAttribute("tabindex", "-1"); h2.focus({ preventScroll: true }); }
     mark(`station:${id}`);
   }
 

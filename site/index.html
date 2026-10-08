@@ -251,11 +251,30 @@
           <div class="chrome"><div class="dots" aria-hidden="true"><i></i><i></i><i></i></div><span class="url">groundtruth / delhi / live</span><span class="live" id="chrome-live">Live</span><button class="exit3d" id="exit3d" type="button" hidden>Exit 3D <span aria-hidden="true">✕</span></button></div>
           <div class="app">
             <div class="mapcol">
-              <div id="map" role="region" aria-label="3D map of monitoring stations"></div>
-              <button class="enter3d" id="enter3d" type="button">Explore Delhi in 3D <span aria-hidden="true">⤢</span></button>
+              <div class="map-toolbar">
+                <div id="map" role="region" aria-label="3D map of monitoring stations"></div>
+                <div id="list-view" hidden aria-label="List of all monitors" role="region">
+                  <table class="monitor-table" id="monitor-table" aria-label="All monitors, sortable">
+                    <thead>
+                      <tr>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="name" aria-sort="none">Monitor <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="area" aria-sort="none">Area <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="status" aria-sort="none">Answer <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="pm25" aria-sort="none">PM2.5 <small>(µg/m³)</small> <span aria-hidden="true">↕</span></button></th>
+                        <th scope="col"><button type="button" class="sort-btn" data-col="nb_pm25" aria-sort="none">Neighbours PM2.5 <span aria-hidden="true">↕</span></button></th>
+                      </tr>
+                    </thead>
+                    <tbody id="monitor-table-body"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="map-view-btns">
+                <button class="enter3d" id="enter3d" type="button">Explore Delhi in 3D <span aria-hidden="true">⤢</span></button>
+                <button class="list-toggle" id="list-toggle" type="button" aria-pressed="false">List view</button>
+              </div>
               <div class="legend" id="legend"></div>
             </div>
-            <div class="panel" id="panel" aria-live="polite">
+            <div class="panel" id="panel" aria-live="polite" aria-atomic="false">
               <div class="empty"><h2>Loading the monitors…</h2></div>
             </div>
           </div>
