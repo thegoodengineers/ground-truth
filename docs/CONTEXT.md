@@ -58,7 +58,7 @@ The October 2025 water-tanker story is our motivation, not our claim. We tested 
 | `src/backfill.py` | Seeds the 28-day hourly cache from the archive |
 | `src/scorer.py` | The three checks; writes `latest.json` and `stations/<id>.json` (contract in [STACK.md](STACK.md)) |
 | `src/ingest.py` | The hourly Lambda: OpenAQ API → cache → scorer → S3 |
-| `tests/` | 22 tests on real November 2025 data, including the planted-anomaly test |
+| `tests/` | 53 tests, most on real November 2025 data, including the planted-anomaly test |
 | `template.yaml` | AWS SAM: S3 (private) + CloudFront + hourly EventBridge → Lambda, SSM key |
 | `site/` | The website: `index.html`, `app.js`, `theme.css`, `scene3d.js`, `spray3d.js` |
 | `sample/data/` | Real scorer output up to 4 Oct 2026, for running the site without AWS |
@@ -84,17 +84,17 @@ The October 2025 water-tanker story is our motivation, not our claim. We tested 
 - the full site: problem and answer, the ten-second explainer, the four answers, live 3D map and panel, every monitor by area with filters, the three checks with formulas, the tanker illustration, proof, AWS, FAQ;
 - README, submission text (`docs/submission.md`) and blog draft (`docs/BLOG.md`).
 
+**Done, in review (branch `feat/must-haves`):**
+- #18 when each monitor last reported; a monitor silent for 3 hours is "no data" and its neighbours are shown;
+- #19 the hourly run survives OpenAQ failures and never replaces a good result with a worse one;
+- #30 the CPCB AQI band in plain words, from the neighbours when a monitor is in doubt (the one-line guidance per band is a draft for the team to review);
+- #24 the 3D map on phones and slow laptops, a flat map without WebGL, and a fix for "Explore Delhi in 3D" opening the wrong window.
+
 **Not done:**
 - **Nothing is deployed yet.** AWS issues #1–#3 are with Abhijeet. The live site, and the Live pill showing "Live", wait on that.
+- **#17 live data check** needs the OpenAQ key, set locally by Chirag (never in chat).
 - **The README GIF is choppy** (#27).
 - **Sunday:** video (#10), submission (#11), publish the blog (#38).
-
-**Next, in order** (none need AWS):
-1. #17 Check the live data against the archive (needs the OpenAQ key, locally).
-2. #18 Show when each monitor last reported.
-3. #19 Keep the site up when OpenAQ fails.
-4. #30 Say how bad the air is, using CPCB AQI bands.
-5. #24 Make the 3D map work on phones and slow laptops.
 
 **Old issues:**
 - #12, #13 and #14 describe the old design and are replaced by the current site. Close them if Chirag agrees.

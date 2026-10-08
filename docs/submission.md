@@ -50,7 +50,7 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 
 - **The live site** updates every hour. [Data through: time on the live site at submission.]
 - **The planted test:** we lowered one quiet monitor's daytime PM10 by 40% in real data, one monitor at a time. It was caught 30 times out of 30, and wrongly flagged another monitor only 3 times across all 30 runs.
-- **22 automated tests** run on every change.
+- **53 automated tests** run on every change.
 
 ## Challenges
 
