@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ground Truth video scenes</title>
+<!--
+  The HTML scenes of the demo video (video/script.md), one per ?scene=<id>, rendered at 1920x1080 by
+  video/record.py on a fake clock. Everything moves in JS from performance.now() (CSS animations run on the
+  real clock and would not be captured): every [data-at] element appears at that second (or that fraction of
+  the scene with a % suffix), count-ups and the typewriter follow the same clock. ?dur=<seconds> is the scene's
+  length (the narration's), ?t=<seconds> previews a moment in a normal browser.
+
+  Palette and type are the site's own (site/theme.css): paper, ink, mono labels, the state colours only for state.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3f3f4; --surface: #fff; --line: #e6e6e8; --ink: #08090a; --ink-2: #4f5156; --ink-3: #8b8d93;
+    --ok: #0ca30c; --watch: #f2a60c; --flag: #d03b3b; --live: #1f9d5c; --blue: #2457d6;
+    --dark: #08090a; --dark-2: #15171a; --paper-on-dark: #f5f5f2;
+    --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  .scene { position: absolute; inset: 0; display: none; }
+  .scene.on { display: block; }
+  .scene.dark { background: var(--dark); color: var(--paper-on-dark); }
+  [data-at] { opacity: 0; }
+  .label { font-family: var(--mono); font-size: 22px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .dark .label { color: #9a9ca3; }
+  .wrap { position: absolute; left: 160px; right: 160px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+  h1 { font-size: 104px; line-height: 1.02; letter-spacing: -.035em; font-weight: 600; }
+  h1 .dim { color: var(--ink-3); display: block; }
+  .dark h1 .dim { color: #8b8d93; }
+  h2 { font-size: 64px; line-height: 1.1; letter-spacing: -.03em; font-weight: 600; }
+  p.lede { font-size: 34px; line-height: 1.4; color: var(--ink-2); max-width: 1100px; }
+  .dark p.lede { color: #c9cace; }
+  .mark { display: inline-flex; align-items: center; justify-content: center; width: 120px; height: 120px; border-radius: 34px; background: var(--dark); }
+  .dark .mark { background: #1f2226; }
+  .mark svg { width: 72px; height: 72px; }
+  .brand { font-size: 56px; letter-spacing: -.02em; font-weight: 600; }
+  .brand .t { color: var(--ink-3); font-family: var(--mono); font-weight: 400; }
+  .dark .brand .t { color: #9a9ca3; }
+
+  /* 1 hook */
+  #hook .phone { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px; height: 860px; border-radius: 56px; background: #111316; border: 6px solid #2a2d33; box-shadow: 0 60px 120px -40px rgba(0,0,0,.8); overflow: hidden; }
+  #hook .screen { position: absolute; inset: 0; background: linear-gradient(180deg, #1b1e23, #0c0e11); opacity: 0; }
+  #hook .time { position: absolute; top: 150px; width: 100%; text-align: center; font-size: 112px; font-weight: 500; letter-spacing: -.02em; }
+  #hook .date { position: absolute; top: 290px; width: 100%; text-align: center; font-size: 26px; color: #9a9ca3; }
+  #hook .notif { position: absolute; left: 24px; right: 24px; top: 420px; background: rgba(255,255,255,.1); border-radius: 22px; padding: 22px 24px; backdrop-filter: blur(10px); }
+  #hook .notif .app { font-family: var(--mono); font-size: 18px; color: #9a9ca3; letter-spacing: .06em; text-transform: uppercase; }
+  #hook .notif .big { font-size: 30px; font-weight: 600; margin-top: 8px; }
+  #hook .notif .ok { color: #7fd99a; }
+  #hook .bell { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  #hook .side { position: absolute; left: 160px; top: 50%; transform: translateY(-50%); width: 560px; }
+  #hook .side .label { margin-bottom: 20px; }
+  #hook .side h2 { font-size: 56px; color: var(--paper-on-dark); }
+  #hook .side p { font-size: 28px; color: #c9cace; margin-top: 18px; line-height: 1.4; }
+
+  /* 2 problem */
+  #problem .q { font-size: 96px; font-weight: 600; letter-spacing: -.035em; line-height: 1.1; margin: 14px 0; }
+  #problem .q.ghost { color: #4b4e55; }
+  #problem .foot { margin-top: 60px; font-size: 30px; color: #c9cace; max-width: 1200px; line-height: 1.4; }
+  #problem .foot b { color: var(--paper-on-dark); font-weight: 500; }
+
+  /* 3 title */
+  #title .wrap { align-items: center; text-align: center; }
+  #title .mark { width: 180px; height: 180px; border-radius: 50px; margin-bottom: 40px; }
+  #title .mark svg { width: 108px; height: 108px; }
+  #title h1 { font-size: 132px; }
+  #title p.lede { margin-top: 28px; font-size: 40px; }
+
+  /* 4 checks */
+  #checks .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 60px; }
+  #checks .card { background: var(--surface); border: 1px solid var(--line); border-radius: 28px; padding: 44px; min-height: 420px; box-shadow: 0 2px 6px rgba(8,9,10,.04), 0 40px 80px -40px rgba(8,9,10,.28); }
+  #checks .card .label { margin-bottom: 24px; }
+  #checks .card h3 { font-size: 54px; letter-spacing: -.03em; line-height: 1.05; }
+  #checks .card p { font-size: 28px; color: var(--ink-2); margin-top: 22px; line-height: 1.4; }
+  #checks .card .ico { width: 64px; height: 64px; margin-bottom: 28px; }
+
+  /* 9 proof */
+  #proof .wrap { align-items: center; text-align: center; }
+  #proof .num { font-size: 360px; font-weight: 600; letter-spacing: -.06em; line-height: 1; font-variant-numeric: tabular-nums; }
+  #proof .num .sep { color: var(--ink-3); margin: 0 30px; }
+  #proof .num .ok { color: var(--ok); }
+  #proof .sub { font-size: 44px; color: var(--ink-2); margin-top: 10px; }
+  #proof .small { font-size: 28px; color: var(--ink-3); margin-top: 50px; font-family: var(--mono); }
+
+  /* 10 terminal */
+  #terminal .term { position: absolute; left: 160px; right: 160px; top: 160px; bottom: 160px; background: var(--dark); border-radius: 28px; box-shadow: 0 40px 100px -40px rgba(0,0,0,.6); overflow: hidden; }
+  #terminal .bar { height: 56px; background: #1a1d21; display: flex; align-items: center; gap: 10px; padding: 0 24px; }
+  #terminal .bar i { width: 14px; height: 14px; border-radius: 50%; background: #3a3d44; display: inline-block; }
+  #terminal .bar span { margin-left: auto; margin-right: auto; font-family: var(--mono); font-size: 20px; color: #9a9ca3; }
+  #terminal pre { font-family: var(--mono); font-size: 30px; line-height: 1.5; color: #d9dbe0; padding: 36px 44px; white-space: pre-wrap; word-break: break-all; }
+  #terminal pre .prompt { color: #7fd99a; }
+  #terminal pre .pass { color: #7fd99a; }
+  #terminal pre .cur { display: inline-block; width: 16px; height: 34px; background: #d9dbe0; vertical-align: -6px; }
+
+  /* 11 arch */
+  #arch .wrap { justify-content: flex-start; padding-top: 100px; }
+  #arch .flow { position: relative; margin-top: 70px; height: 620px; }
+  #arch .node { position: absolute; width: 300px; height: 150px; border-radius: 24px; background: var(--surface); border: 2px solid var(--line); display: flex; flex-direction: column; justify-content: center; padding: 0 28px; box-shadow: 0 2px 6px rgba(8,9,10,.04), 0 30px 60px -40px rgba(8,9,10,.3); transition: none; }
+  #arch .node .label { font-size: 18px; margin-bottom: 8px; }
+  #arch .node b { font-size: 34px; font-weight: 600; letter-spacing: -.02em; }
+  #arch .node small { font-size: 20px; color: var(--ink-2); margin-top: 6px; }
+  #arch .node.lit { border-color: var(--ink); background: var(--ink); color: var(--paper-on-dark); }
+  #arch .node.lit .label { color: #9a9ca3; }
+  #arch .node.lit small { color: #c9cace; }
+  #arch svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #arch svg.lines path { fill: none; stroke: #c9cace; stroke-width: 4; stroke-dasharray: 10 12; }
+  #arch svg.lines path.lit { stroke: var(--ink); stroke-dasharray: none; }
+  #arch .foot { position: absolute; left: 0; bottom: -70px; font-family: var(--mono); font-size: 22px; color: var(--ink-3); }
+
+  /* 12 console placeholder */
+  #console .wrap { align-items: center; text-align: center; }
+  #console .card { background: #15171a; border: 1px solid #2a2d33; border-radius: 28px; padding: 60px 80px; }
+  #console .card .label { margin-bottom: 20px; }
+  #console .card h2 { color: var(--paper-on-dark); }
+  #console .card p { color: #9a9ca3; font-size: 28px; margin-top: 18px; }
+
+  /* 13 learned */
+  #learned ol { list-style: none; margin-top: 60px; }
+  #learned li { font-size: 50px; line-height: 1.25; letter-spacing: -.02em; padding: 30px 0; border-top: 1px solid #2a2d33; display: grid; grid-template-columns: 90px 1fr; gap: 20px; }
+  #learned li .n { font-family: var(--mono); color: #9a9ca3; font-size: 28px; padding-top: 14px; }
+  #learned li b { color: var(--paper-on-dark); font-weight: 600; }
+  #learned li span { color: #c9cace; display: block; font-size: 34px; margin-top: 10px; }
+
+  /* 14 close */
+  #close .wrap { align-items: center; text-align: center; }
+  #close .brand { font-size: 84px; margin-top: 30px; }
+  #close .url { font-family: var(--mono); font-size: 30px; color: #9a9ca3; margin-top: 50px; line-height: 1.8; }
+  #close .line { font-size: 44px; color: #c9cace; margin-top: 60px; max-width: 1200px; line-height: 1.35; }
+  #close .line b { color: var(--paper-on-dark); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true">
+  <symbol id="gt" viewBox="0 0 32 32"><path d="M9 21h14M16 21V9" stroke="#f5f5f2" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="9" r="3" fill="#69d39a"/></symbol>
+</svg>
+
+<!-- 1 hook -->
+<section class="scene dark" id="hook">
+  <div class="side">
+    <div class="label" data-at="2.2">East Delhi · 7:40</div>
+    <h2 data-at="2.6">A principal checks the air before assembly.</h2>
+    <p data-at="5.2">The nearest monitor says it's fine.</p>
+  </div>
+  <div class="phone">
+    <div class="screen" data-at="0.4">
+      <div class="time">7:40</div>
+      <div class="date">Monday, 13 October</div>
+      <div class="notif" data-at="1.4">
+        <div class="app">Air quality near you</div>
+        <div class="big">PM2.5 <span class="ok">10</span> · good</div>
+      </div>
+      <div class="notif" style="top: 580px" data-at="5.6">
+        <div class="app">School</div>
+        <div class="big">Assembly outdoors?</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 problem -->
+<section class="scene dark" id="problem">
+  <div class="wrap">
+    <div class="label" data-at="0.2">The number on the phone</div>
+    <div class="q" data-at="0.6" data-type>Is it working?</div>
+    <div class="q" data-at="1.8" data-type>Is it broken?</div>
+    <div class="q" data-at="3.0" data-type>Is someone gaming it?</div>
+    <p class="foot" data-at="4.6">In October 2025, water tankers were filmed near a Delhi monitor. <b>A published number tells you nothing about the station behind it.</b></p>
+  </div>
+</section>
+
+<!-- 3 title -->
+<section class="scene" id="title">
+  <div class="wrap">
+    <div class="mark" data-at="0.2" data-pulse><svg><use href="#gt"/></svg></div>
+    <h1 data-at="0.8">Ground Truth</h1>
+    <p class="lede" data-at="2.4">Which of Delhi's air-quality numbers can you trust?</p>
+    <div class="label" data-at="5.5" style="margin-top: 50px">Every monitor in Delhi and the NCR · every hour · a plain answer</div>
+  </div>
+</section>
+
+<!-- 4 checks -->
+<section class="scene" id="checks">
+  <div class="wrap">
+    <div class="label" data-at="0.2">Three questions, every hour</div>
+    <h2 data-at="0.4">Each monitor is checked three ways.</h2>
+    <div class="cards">
+      <div class="card" data-at="1.6">
+        <svg class="ico" viewBox="0 0 64 64" fill="none"><rect x="10" y="30" width="18" height="24" rx="4" fill="#08090a"/><rect x="36" y="14" width="18" height="40" rx="4" fill="#8b8d93"/></svg>
+        <div class="label">Physics</div>
+        <h3>Can this reading even be real?</h3>
+        <p>Fine dust can't be more than all dust. Values out of range. Sensors stuck on one number.</p>
+      </div>
+      <div class="card" data-at="4.4">
+        <svg class="ico" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="8" fill="#08090a"/><circle cx="12" cy="18" r="5" fill="#8b8d93"/><circle cx="52" cy="18" r="5" fill="#8b8d93"/><circle cx="12" cy="48" r="5" fill="#8b8d93"/><circle cx="52" cy="48" r="5" fill="#8b8d93"/></svg>
+        <div class="label">Neighbours</div>
+        <h3>Does it agree with the four around it?</h3>
+        <p>Hour by hour against the four nearest monitors, corrected for daytime air mixing.</p>
+      </div>
+      <div class="card" data-at="7.0">
+        <svg class="ico" viewBox="0 0 64 64" fill="none"><path d="M8 48 L22 34 L34 42 L56 16" stroke="#08090a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 56 H56" stroke="#8b8d93" stroke-width="4" stroke-linecap="round"/></svg>
+        <div class="label">History</div>
+        <h3>Has it suddenly changed?</h3>
+        <p>The last 7 days against the 3 weeks before, for dust and humidity.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 proof -->
+<section class="scene" id="proof">
+  <div class="wrap">
+    <div class="label" data-at="0.2">How do we know it works?</div>
+    <div class="num" data-at="3.0"><span class="ok" data-count="30" data-from="3.2" data-for="2.4">0</span><span class="sep">/</span><span>30</span></div>
+    <div class="sub" data-at="6.0">planted daytime drops caught</div>
+    <div class="small" data-at="8.0">a 40% cut in PM10 from 11:00 to 17:00 · real November 2025 data · one station at a time · 3 false flags in 30 runs</div>
+  </div>
+</section>
+
+<!-- 10 terminal -->
+<section class="scene" id="terminal">
+  <div class="term">
+    <div class="bar"><i></i><i></i><i></i><span>ground-truth — make test</span></div>
+    <pre id="term-out"></pre>
+  </div>
+</section>
+
+<!-- 11 arch -->
+<section class="scene" id="arch">
+  <div class="wrap">
+    <div class="label" data-at="0.2">Built on AWS · one SAM template · us-east-1</div>
+    <h2 data-at="0.4">Every hour, on AWS.</h2>
+    <div class="flow">
+      <svg class="lines" viewBox="0 0 1600 620" preserveAspectRatio="none">
+        <path id="l-eb" d="M 300 115 L 400 115" />
+        <path id="l-ssm" d="M 300 315 L 400 315 L 400 115" />
+        <path id="l-api" d="M 550 500 L 550 190" />
+        <path id="l-s3" d="M 700 115 L 800 115" />
+        <path id="l-arc" d="M 950 500 L 950 190" />
+        <path id="l-cf" d="M 1100 115 L 1200 115" />
+      </svg>
+      <div class="node" id="n-eb" style="left:0;top:40px"><div class="label">Amazon EventBridge</div><b>Every hour</b><small>rate(1 hour)</small></div>
+      <div class="node" id="n-ssm" style="left:0;top:240px"><div class="label">Parameter Store</div><b>OpenAQ key</b><small>SecureString</small></div>
+      <div class="node" id="n-l" style="left:400px;top:40px"><div class="label">AWS Lambda</div><b>Ingest + 3 checks</b><small>Python, no dependencies</small></div>
+      <div class="node" id="n-api" style="left:400px;top:430px"><div class="label">OpenAQ API</div><b>New readings</b><small>CPCB / DPCC monitors</small></div>
+      <div class="node" id="n-s3" style="left:800px;top:40px"><div class="label">Amazon S3</div><b>29-day cache + results</b><small>data/latest.json</small></div>
+      <div class="node" id="n-arc" style="left:800px;top:430px"><div class="label">Open Data on AWS</div><b>OpenAQ archive</b><small>history, same region</small></div>
+      <div class="node" id="n-cf" style="left:1200px;top:40px"><div class="label">HTTPS front</div><b>The site</b><small>Lambda URL now, CloudFront-ready</small></div>
+      <div class="foot">CloudWatch alarms · SNS email · a $5 budget · deployed from GitHub Actions with OIDC</div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 console placeholder (used only when video/supply/console.mp4 is missing) -->
+<section class="scene dark" id="console">
+  <div class="wrap">
+    <div class="card" data-at="0.1">
+      <div class="label">AWS console</div>
+      <h2>Lambda invocations, hourly</h2>
+      <p>video/supply/console.mp4 goes here (issue #4)</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13 learned -->
+<section class="scene dark" id="learned">
+  <div class="wrap">
+    <div class="label" data-at="0.2">What we learned</div>
+    <ol>
+      <li data-at="1.6"><span class="n">01</span><div><b>The archive runs four days behind.</b><span>Live hours have to come from the API.</span></div></li>
+      <li data-at="5.4"><span class="n">02</span><div><b>The API's hours are half an hour off India's.</b><span>We group the raw readings into IST hours ourselves.</span></div></li>
+      <li data-at="9.0"><span class="n">03</span><div><b>Our strongest result is the one we didn't claim.</b><span>The stations in the news don't stand out. We say so.</span></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- 14 close -->
+<section class="scene dark" id="close">
+  <div class="wrap">
+    <div class="mark" data-at="0.2" data-pulse><svg><use href="#gt"/></svg></div>
+    <div class="brand" data-at="0.6">ground<span class="t">truth</span></div>
+    <p class="line" data-at="1.6">A flag means the numbers don't add up. <b>Not that anyone cheated.</b></p>
+    <div class="url" data-at="3.4"><span data-url>groundtruth</span><br>github.com/thegoodengineers/ground-truth</div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const id = q.get("scene") || "title";
+  const dur = parseFloat(q.get("dur") || "10");
+  const preview = q.has("t") ? parseFloat(q.get("t")) : null;
+  const scene = document.getElementById(id);
+  if (!scene) { document.body.innerHTML = `<p style="padding:40px;font-size:40px">no scene "${id}"</p>`; return; }
+  scene.classList.add("on");
+  if (q.get("url")) document.querySelectorAll("[data-url]").forEach((el) => { el.textContent = q.get("url"); });
+
+  const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+  const at = (el) => { const v = el.dataset.at; return v.endsWith("%") ? dur * parseFloat(v) / 100 : parseFloat(v); };
+  const items = [...scene.querySelectorAll("[data-at]")].map((el) => ({ el, at: at(el), type: el.hasAttribute("data-type"), text: el.textContent }));
+  items.forEach((it) => { if (it.type) it.el.textContent = ""; });
+  const counts = [...scene.querySelectorAll("[data-count]")];
+  const pulses = [...scene.querySelectorAll("[data-pulse]")];
+
+  // the terminal: typed out over the scene, the real pytest run from video/assets/pytest.txt (inlined by record.py)
+  const term = document.getElementById("term-out");
+  const termText = term ? (window.__pytest || "$ make test\n\n..............................  [100%]\n69 passed in 5.5s\n") : "";
+
+  // the architecture lights up as the narration names each part
+  const archOrder = [["n-eb", 0.9], ["l-eb", 1.6], ["n-l", 1.8], ["l-api", 3.6], ["n-api", 3.8], ["l-ssm", 3.9], ["n-ssm", 4.0],
+                     ["l-arc", 5.2], ["n-arc", 5.4], ["l-s3", 6.6], ["n-s3", 6.8], ["l-cf", 8.4], ["n-cf", 8.6]];
+
+  function render(t) {
+    for (const it of items) {
+      const k = ease((t - it.at) / 0.7);
+      it.el.style.opacity = k;
+      it.el.style.transform = `translateY(${(1 - k) * 28}px)`;
+      if (it.type) {
+        const n = Math.max(0, Math.min(it.text.length, Math.floor((t - it.at) * 28)));
+        it.el.textContent = it.text.slice(0, n);
+        it.el.style.transform = "none";
+      }
+    }
+    for (const el of counts) {
+      const from = parseFloat(el.dataset.from), span = parseFloat(el.dataset.for);
+      el.textContent = Math.round(ease((t - from) / span) * parseFloat(el.dataset.count));
+    }
+    for (const el of pulses) {
+      const s = 1 + 0.035 * Math.sin(t * 2.4);
+      el.style.transform = `scale(${s})`;
+    }
+    if (term) {
+      const n = Math.min(termText.length, Math.floor(t * 95));
+      const shown = termText.slice(0, n).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/^(\$ .*)$/m, '<span class="prompt">$1</span>').replace(/(\d+ passed[^\n]*)/, '<span class="pass">$1</span>');
+      term.innerHTML = shown + (n < termText.length || Math.floor(t * 2) % 2 === 0 ? '<span class="cur"></span>' : "");
+    }
+    if (id === "arch") {
+      for (const [k, when] of archOrder) document.getElementById(k).classList.toggle("lit", t >= when);
+    }
+  }
+
+  const t0 = performance.now();
+  const tick = () => { render(preview != null ? preview : (performance.now() - t0) / 1000); requestAnimationFrame(tick); };
+  tick();
+  window.__render = render;
+})();
+</script>
+</body>
+</html>

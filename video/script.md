@@ -4,7 +4,9 @@
 
 **Rules.** The film is under 3:00 and never sped up; if it runs long, cut words. Every number spoken or shown comes from the repo or the live data: the sources are in the last column. Never say or show "fake", "tampered" or "sprayed" about a station. Numbers are written the way they are spoken.
 
-Scene kinds: `scene: <id>` = an HTML scene in `scenes/scenes.html`; `CAPTURE <step>` = a segment of the site's `?demo=1` tour; `terminal: <file>` = real CLI output typed on screen; `SUPPLY <file>` = a shot only a human can record.
+Scene kinds: `scene: <id>` = an HTML scene in `scenes/scenes.html` (rendered by `record.py`); `CAPTURE <step>` = a shot of the site driven like the `?demo=1` tour (`capture_demo.py`); `terminal: <file>` = real CLI output typed on screen (`assets/<file>`, from a real run); `SUPPLY <file>` = a shot only a human can record (`supply/<file>`).
+
+**Render:** `make video` (narration with edge-tts, scenes and site shots frame by frame on a fake clock, cut by `assemble.py` with the music bed and burnt-in captions) writes `video/final.mp4`. The site must be served with data on `SITE_URL` (default `make local`). Each row runs as long as its narration plus half a second, so the film is never sped up; a row's shot holds its last frame if the sentence runs longer.
 
 | # | Scene | On screen | Narration | Source |
 |---|---|---|---|---|
@@ -18,8 +20,8 @@ Scene kinds: `scene: <id>` = an HTML scene in `scenes/scenes.html`; `CAPTURE <st
 | 8 | CAPTURE history | Jahangirpuri; the History card outlined; then "this station vs 4 nearest now". | Jahangirpuri's daytime humidity jumped against its own last three weeks. Worth a look, not proof. And when a station is in doubt, we show what its neighbours read right now. | `data/latest.json` |
 | 9 | scene: proof | Huge "30 / 30". Under it: "planted daytime drops caught". | How do we know it works? We planted a forty percent daytime drop in real data, one station at a time. It was caught thirty times out of thirty. | `docs/LEARNINGS.md` |
 | 10 | terminal: pytest.txt | The real `pytest` run typing out, ending green. | Every claim has a test, and the tests run on every change. | `make test` |
-| 11 | scene: arch | The architecture: EventBridge, Lambda, Parameter Store, OpenAQ, S3, CloudFront light up as named. | On AWS, EventBridge runs a Lambda every hour. It reads new data from OpenAQ, runs the checks, and writes the results to S3, served through CloudFront. One SAM template deploys it all. | `template.yaml` |
-| 12 | SUPPLY console.mp4 | 10-15 s of the real AWS console: Lambda invocations, S3 `data/` objects, CloudFront. | And here it is, running. | issue #4 |
+| 11 | scene: arch | The architecture: EventBridge, Lambda, Parameter Store, OpenAQ, S3, CloudFront light up as named. | On AWS, EventBridge runs a Lambda every hour. It reads new data from OpenAQ, runs the checks, and writes the results to S3, where the site is served from over HTTPS. One SAM template deploys it all. | `template.yaml` |
+| 12 | SUPPLY console.mp4 | 10-15 s of the real AWS console: Lambda invocations, the EventBridge rule, S3 `data/` objects. | And here it is, running. | issue #4 |
 | 13 | scene: learned | Three lessons build line by line. | What we learned. The archive runs four days behind, so live data needs the API. The API's hours are half an hour off India's. And our strongest result is the one we didn't claim. | `docs/LEARNINGS.md` |
 | 14 | scene: close | Dark. GT mark, "Ground Truth", the URL and the repo. | Ground Truth. A flag means the numbers don't add up. Not that anyone cheated. | - |
 
