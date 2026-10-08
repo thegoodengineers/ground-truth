@@ -143,6 +143,11 @@ button, input, select { font: inherit; }
 .now b { display: block; font: 500 30px/1.1 var(--mono); letter-spacing: -.04em; margin-top: 4px; }
 .now b small, .now small { color: var(--ink-3); font: 12px var(--sans); letter-spacing: 0; }
 .std { color: var(--ink-3); font-size: 12.5px; margin: 0 0 4px; }
+.last { font: 12.5px var(--mono); color: var(--ink-2); margin: 10px 0 2px; }
+.last.off { color: var(--nodata-ink); font-weight: 600; }
+.aqi { margin: 14px 0 0; padding: 13px 15px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface-2); }
+.aqi b { display: block; font-size: 22px; letter-spacing: -.02em; font-weight: 600; margin: 2px 0; }
+.aqi p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
 .advice { margin: 12px 0 20px; padding: 13px 15px; border-radius: var(--r-sm); font-size: 14.5px; line-height: 1.5; border: 1px solid; }
 .advice b { font-weight: 600; }
 .advice.ok { background: var(--ok-tint); border-color: var(--ok-line); color: #12401a; }

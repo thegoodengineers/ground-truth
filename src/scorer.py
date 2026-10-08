@@ -26,6 +26,13 @@ PHYS_FLAG, PHYS_WATCH = 0.05, 0.01
 Z_FLAG, Z_WATCH = 3.0, 2.0
 NCR = ("Noida", "Ghaziabad", "Gurugram", "Faridabad", "Bahadurgarh", "Manesar")
 RANK = {"nodata": -1, "ok": 0, "watch": 1, "flag": 2}
+SILENT_HOURS = 3  # no PM reading in the last 3 hours: the monitor isn't judged, its neighbours are shown instead
+# CPCB National Air Quality Index (CPCB, "National Air Quality Index", Control of Urban Pollution Series
+# CUPS/82/2014-15): the top of each band for the 24-hour average, in µg/m³. The AQI is the worst sub-index,
+# and a 24-hour average needs at least 16 hours of data.
+BANDS = ("Good", "Satisfactory", "Moderate", "Poor", "Very poor", "Severe")
+BAND_TOP = {"pm25": (30, 60, 90, 120, 250), "pm10": (50, 100, 250, 350, 430)}
+MIN_HOURS_24H = 16
 
 
 # ---------- small helpers ----------
@@ -64,6 +71,31 @@ def updown(p):
 def last_value(series, hours=3):
     v = next((x for x in reversed(series[-hours:]) if x is not None), None)
     return None if v is None else round(v, 2)
+
+
+def mean_24h(series):
+    xs = [x for x in series[-24:] if x is not None]
+    return statistics.fmean(xs) if len(xs) >= MIN_HOURS_24H else None
+
+
+def band(pm25, pm10):
+    """CPCB AQI band of 24-hour PM2.5 and PM10 averages: the worse of the two, None if neither is known."""
+    worst = None
+    for p, v in (("pm25", pm25), ("pm10", pm10)):
+        if v is not None:
+            i = next((i for i, top in enumerate(BAND_TOP[p]) if v <= top), len(BANDS) - 1)
+            worst = i if worst is None else max(worst, i)
+    return None if worst is None else BANDS[worst]
+
+
+def iso(key):
+    return f"{key}:00:00+05:30"
+
+
+def last_reading(raw, keys):
+    """IST hour key of the newest PM2.5 or PM10 value the monitor sent (stuck or not), None if none in the window."""
+    pm = [raw.get(p, {}) for p in ("pm10", "pm25")]
+    return next((k for k in reversed(keys) if any(s.get(k) is not None for s in pm)), None)
 
 
 def hour_keys(now, days):
@@ -234,7 +266,8 @@ def score(hourly, stations, now, days=28):
     suspects = {sid for sid, (checks, _) in first.items()
                 if "flag" in (checks["neighbours"]["status"], checks["history"]["status"])}
     final = _run(keys, stations, prepared, has_data, exclude=suspects) if suspects else first
-    return _assemble(keys, now, stations, prepared, final)
+    last = {s["id"]: last_reading(hourly.get(str(s["id"]), {}), keys) for s in stations}
+    return _assemble(keys, now, stations, prepared, final, last)
 
 
 def _run(keys, stations, prepared, has_data, exclude):
@@ -253,7 +286,7 @@ def _run(keys, stations, prepared, has_data, exclude):
                   (nb, gap, rows)) for sid, (nb, gap, rows, _, _) in rows_by.items()}
 
 
-def _assemble(keys, now, stations, prepared, result):
+def _assemble(keys, now, stations, prepared, result, last):
     out_stations, per_station = [], {}
     for s in stations:
         checks, (nb, gap, rows) = result[s["id"]]
@@ -263,11 +296,24 @@ def _assemble(keys, now, stations, prepared, result):
         latest = {p: last_value(clean[p]) for p in PARAMS}
         # what the stations around it read right now: the number to use when this one is in doubt
         around = {p: med([last_value(prepared[i][0][p]) for i in nb], need=2) for p in ("pm25", "pm10")}
-        out_stations.append({
+        around_24h = {p: med([mean_24h(prepared[i][0][p]) for i in nb], need=2) for p in ("pm25", "pm10")}
+        doc = {
             "id": s["id"], "name": s["name"], "lat": s["lat"], "lon": s["lon"],
             "region": "NCR" if any(w in s["name"] for w in NCR) else "Delhi",
             "status": next(k for k, v in RANK.items() if v == status), "checks": checks, "latest": latest,
-            "neighbours_latest": {p: None if v is None else round(v, 2) for p, v in around.items()}})
+            "neighbours_latest": {p: None if v is None else round(v, 2) for p, v in around.items()},
+            "last_reading": last[s["id"]] and iso(last[s["id"]]),
+            "band": band(mean_24h(clean["pm25"]), mean_24h(clean["pm10"])),
+            "neighbours_band": band(around_24h["pm25"], around_24h["pm10"])}
+        # a monitor that has gone quiet keeps its last checks in view but isn't judged on them
+        if last[s["id"]] is None or last[s["id"]] < keys[-SILENT_HOURS]:
+            doc["status"] = "nodata"
+            if last[s["id"]] is None:
+                doc["detail"] = "No reading in the last 4 weeks."
+            else:
+                t = dt.datetime.strptime(last[s["id"]], "%Y-%m-%dT%H")
+                doc["detail"] = f"No reading since {t:%H}:00 on {t.day} {t:%b}."
+        out_stations.append(doc)
         per_station[s["id"]] = {
             "id": s["id"], "name": s["name"], "neighbours": nb,
             "hour_profile": profile(keys, gap), "hour_profile_7d": profile(keys, gap, RECENT_DAYS * 24),
@@ -275,7 +321,7 @@ def _assemble(keys, now, stations, prepared, result):
                       for r in rows]}
     latest_json = {
         "generated_at": dt.datetime.now(dt.timezone(dt.timedelta(hours=5, minutes=30))).isoformat(timespec="seconds"),
-        "data_through": now.strftime("%Y-%m-%dT%H:00:00+05:30"),
+        "data_through": iso(now.strftime("%Y-%m-%dT%H")),
         "stations": out_stations}
     return latest_json, per_station
 

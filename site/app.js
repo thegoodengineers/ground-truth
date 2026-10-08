@@ -25,6 +25,17 @@
   const CHECK_PARAM = { physics: () => "PM2.5 and PM10", neighbours: () => "PM10", history: (c) => (c.param === "relativehumidity" ? "humidity" : "PM10") };
   const MICRO = "A real local source, such as a busy junction, road dust, construction or burning within a few hundred metres, can also push one monitor away from neighbours 5–12 km off. Here, the monitor may be right.";
   const PM25_STANDARD = 60; // India NAAQS, 24-hour mean, µg/m³
+  // one line of plain guidance per CPCB AQI band, after CPCB's own health statements (draft: team review pending)
+  const BAND_TODO = {
+    Good: "Good for outdoor activity.",
+    Satisfactory: "Fine for outdoor activity. People with asthma may notice it.",
+    Moderate: "Children and people with asthma or heart disease should take it easy outdoors.",
+    Poor: "Keep long or hard outdoor activity short, especially for children.",
+    "Very poor": "Keep children's outdoor activity short. Hold assembly indoors.",
+    Severe: "Keep children indoors and avoid outdoor exercise.",
+  };
+  // a monitor that has gone quiet: the scorer stops judging it and says since when (docs/STACK.md)
+  const silent = (s) => s.detail != null;
 
   const $ = (s, el = document) => el.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -288,7 +299,7 @@
   // ---------- 3D map (scene3d.js, three.js): our own Delhi in fog ----------
   let view = null, immersive = false;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const reading = (s) => s.latest?.pm25 ?? s.neighbours_latest?.pm25 ?? null;
+  const reading = (s) => (silent(s) ? null : s.latest?.pm25 ?? s.neighbours_latest?.pm25 ?? null);
 
   function markerEl(s) {
     const el = document.createElement("button");
@@ -371,6 +382,7 @@
   function adviceHTML(s) {
     const mine = s.latest?.pm25, around = s.neighbours_latest?.pm25;
     const aroundTxt = around == null ? "" : ` The four nearest stations read <b class="mono">${fmt(around)} µg/m³</b> PM2.5 right now.`;
+    if (silent(s)) return `${bandHTML(s)}<div class="advice nodata">${esc(s.detail)} Its last answers are below, but they no longer describe the air now. Use what the stations around it read.${aroundTxt}</div>`;
     const text = {
       ok: `This station agrees with the stations around it. Its reading is a fair guide for this area.`,
       watch: `Something about this station is unusual. Before acting on its reading, compare it with the stations around it.${aroundTxt}`,
@@ -385,7 +397,22 @@
       const r = (mine + 1) / (around + 1);
       if (r > 1.5 || r < 1 / 1.5) gapTxt = ` Right now, though, it reads <b>${r > 1 ? "well above" : "well below"}</b> the stations around it (${fmt(mine)} against ${fmt(around)} µg/m³).${r > 1 ? ` <span class="micro">${MICRO}</span>` : ""}`;
     }
-    return `<div class="advice ${s.status}">${text}${gapTxt}</div>`;
+    return `${bandHTML(s)}<div class="advice ${s.status}">${text}${gapTxt}</div>`;
+  }
+
+  // how bad the air is, in CPCB's words, from the reading you can trust: its own if it agrees, else its neighbours'
+  function bandHTML(s) {
+    const own = s.status === "ok";
+    const b = own ? s.band : s.neighbours_band;
+    if (!b) return "";
+    return `<div class="aqi"><span class="label">Air quality, 24-hour average · ${own ? "this monitor" : "from the 4 monitors around it"}</span><b>${esc(b)}</b><p>${BAND_TODO[b]}</p></div>`;
+  }
+
+  function lastHTML(s) {
+    if (!s.last_reading) return `<div class="last off">No reading in the last 4 weeks.</div>`;
+    const t = new Date(s.last_reading);
+    const when = t.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    return `<div class="last${silent(s) ? " off" : ""}">Last reading ${when} IST, ${ago((Date.now() - t.getTime()) / 6e4)}</div>`;
   }
 
   function panelHTML(s, doc) {
@@ -406,6 +433,7 @@
         <div><small>This station, PM2.5 now</small><b>${fmt(s.latest?.pm25)}<small> µg/m³</small></b></div>
         <div><small>4 nearest stations, PM2.5 now</small><b>${fmt(s.neighbours_latest?.pm25)}<small> µg/m³</small></b></div>
       </div>
+      ${lastHTML(s)}
       <div class="std">India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.</div>
       ${adviceHTML(s)}
       <ul class="checks">${checks}</ul>
