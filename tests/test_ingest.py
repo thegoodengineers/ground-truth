@@ -178,9 +178,12 @@ def test_api_down_keeps_the_published_hour():
     assert log["new_hours"] == 0 and log["skipped"] > 0
     assert store.data["data/latest.json"]["data_through"] == before["data_through"]
     # and with the cache lost too, nothing can be scored, so the old file is left alone
+    kept = store.data["data/latest.json"]  # the second run republished the same hour (a new generated_at)
     store.data[ingest.RAW_KEY] = {}
     log = ingest.run(store, ingest.OpenAQ("k", opener=down, sleep=lambda s: None), STATIONS, later)
-    assert log["published"] is False and store.data["data/latest.json"] == before
+    assert log["published"] is False and store.data["data/latest.json"] is kept
+    same = lambda d: {k: v for k, v in d.items() if k != "generated_at"}  # noqa: E731
+    assert same(kept) == same(before)
 
 
 def test_a_worse_result_is_not_published():
