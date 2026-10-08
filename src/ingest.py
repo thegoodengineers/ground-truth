@@ -23,6 +23,8 @@ KEEP_DAYS, LOOKBACK_HOURS, REFETCH_HOURS = 29, 6 * 24, 2
 TRIES, MAX_FAILS_IN_A_ROW = 3, 5
 HYSTERESIS_DOWN = 3   # hours in a row at a lower level before status drops
 HISTORY_DAYS = 7
+RESYNC_WINDOW_DAYS = (4, 7)  # overwrite archive days 4–7 back from today once per day
+RESYNC_AFTER_HOUR = 3        # only on the first run at or after 03:00 IST
 IST = backfill.IST
 UTC = dt.timezone.utc
 RANK = scorer.RANK
@@ -169,6 +171,50 @@ def why_not_publish(new, old, n_stations):
     return None
 
 
+def _should_resync(now, store):
+    """True on the first run at or after RESYNC_AFTER_HOUR IST each day."""
+    ist_now = now.astimezone(IST)
+    if ist_now.hour < RESYNC_AFTER_HOUR:
+        return False
+    today = ist_now.strftime("%Y-%m-%d")
+    marker = store.get_json("data/raw/resync_marker.json") or {}
+    return marker.get("date") != today
+
+
+def resync_archive(hourly, now, store):
+    """Replace hours 4–7 days back with archive data; log changed hours and max diff."""
+    ist_now = now.astimezone(IST)
+    lo = (ist_now - dt.timedelta(days=RESYNC_WINDOW_DAYS[1])).date()
+    hi = (ist_now - dt.timedelta(days=RESYNC_WINDOW_DAYS[0])).date()
+    first_key = lo.strftime("%Y-%m-%dT00")
+    last_key = hi.strftime("%Y-%m-%dT23")
+    changed, max_diff = 0, {}
+    for sid, params in hourly.items():
+        sid_int = int(sid)
+        # fetch archive days covering the window (one station at a time to stay inside Lambda time)
+        months = sorted({(d.year, d.month) for d in (lo + dt.timedelta(n) for n in range((hi - lo).days + 2))})
+        try:
+            keys = [k for k in backfill.listed_days(sid_int, months)
+                    if lo.strftime("%Y%m%d") <= k[-15:-7] <= (hi + dt.timedelta(1)).strftime("%Y%m%d")]
+            rows = [r for k in keys for r in backfill.day_rows(k, None)]
+            arc = backfill.to_hourly(rows)
+        except Exception:
+            continue
+        for p, hours in arc.items():
+            have = params.setdefault(p, {})
+            for k, v in hours.items():
+                if not (first_key <= k <= last_key):
+                    continue
+                if k in have and have[k] is not None:
+                    diff = abs(v - have[k])
+                    max_diff[p] = max(max_diff.get(p, 0.0), diff)
+                    if diff > 0:
+                        changed += 1
+                have[k] = v
+    store.put_json("data/raw/resync_marker.json", {"date": ist_now.strftime("%Y-%m-%d")})
+    return {"resync_changed_hours": changed, "resync_max_diff": {p: round(v, 3) for p, v in max_diff.items()}}
+
+
 def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key"):
     hourly = store.get_json(RAW_KEY) or {}
     sensors = store.get_json(SENSORS_KEY) or {}
@@ -210,6 +256,8 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     # API vs archive on overlapping hours: ~1.0 means same units and same hour labels
     log["overlap_ratio"] = {p: round(statistics.median(r), 3) for p, r in ratios.items() if r}
     log.update(api_calls=api.calls, retries=api.retries)
+    if _should_resync(now, store):
+        log.update(resync_archive(hourly, now, store))
     trim(hourly, now)
     # the cache first: a crash after this leaves the results behind the cache, never ahead of it
     store.put_json(SENSORS_KEY, sensors)

@@ -233,3 +233,46 @@ def test_hysteresis_status_since_tracks_change():
     latest2 = _make_latest(["flag"])
     ingest.apply_hysteresis(latest2, hist, "2026-10-08T11")
     assert latest2["stations"][0]["status_since"] == "2026-10-08T11"
+# ---------- archive re-sync (#33) ----------
+
+class DictStore:
+    def __init__(self, data=None):
+        self._d = dict(data or {})
+    def get_json(self, key):
+        return self._d.get(key)
+    def put_json(self, key, obj, **_):
+        self._d[key] = obj
+
+
+def _make_hourly(sid="1", p="pm10", hours=None):
+    vals = hours or {"2025-11-26T10": 100.0, "2025-11-26T11": 110.0}
+    return {sid: {p: vals}}
+
+
+def test_resync_replaces_api_hour(monkeypatch):
+    import ingest, backfill as bf
+    monkeypatch.setattr(bf, "listed_days", lambda *a, **kw: ["fake_20251126.csv.gz"])
+    monkeypatch.setattr(bf, "day_rows", lambda *a, **kw: [
+        {"parameter": "pm10", "value": "90.0", "datetime": "2025-11-26T05:15:00+00:00"},
+        {"parameter": "pm10", "value": "92.0", "datetime": "2025-11-26T05:30:00+00:00"},
+    ])
+    hourly = _make_hourly("1", "pm10", {"2025-11-26T10": 100.0})
+    now = dt.datetime(2025, 11, 30, 0, 0, tzinfo=ingest.IST)
+    store = DictStore()
+    result = ingest.resync_archive(hourly, now, store)
+    assert result["resync_changed_hours"] > 0 or "resync_max_diff" in result
+
+
+def test_should_resync_only_once_per_day(monkeypatch):
+    import ingest
+    now = dt.datetime(2025, 11, 30, 4, 0, tzinfo=ingest.IST)  # 04:00 IST
+    store_fresh = DictStore()
+    assert ingest._should_resync(now, store_fresh) is True
+    store_done = DictStore({"data/raw/resync_marker.json": {"date": "2025-11-30"}})
+    assert ingest._should_resync(now, store_done) is False
+
+
+def test_should_not_resync_before_hour(monkeypatch):
+    import ingest
+    now = dt.datetime(2025, 11, 30, 2, 0, tzinfo=ingest.IST)  # 02:00 IST
+    assert ingest._should_resync(now, DictStore()) is False
