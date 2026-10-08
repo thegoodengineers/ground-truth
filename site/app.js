@@ -298,6 +298,7 @@
 
   // ---------- 3D map (scene3d.js, three.js): our own Delhi in fog ----------
   let view = null, immersive = false;
+  const mapWindow = () => $("#map").closest(".window"); // not the first .window: the tanker illustration comes before it
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const reading = (s) => (silent(s) ? null : s.latest?.pm25 ?? s.neighbours_latest?.pm25 ?? null);
 
@@ -321,22 +322,50 @@
           onBackgroundClick: () => { if (!immersive) enterImmersive(); },
         });
       } catch (e) {
-        $("#map").innerHTML = `<div class="empty"><h2>The 3D view couldn't start</h2><p>Your browser may not support WebGL. Every monitor is still listed in the panel and in the answers above.</p></div>`;
-        return;
+        $("#map").innerHTML = "";
+        return renderFlat();
       }
       if (selected != null) view.select(selected);
       mark("map:ready");
     };
-    if (window.GT3D) start(); else window.addEventListener("gt3d:loaded", start, { once: true });
+    let webgl = false;
+    try { webgl = !!document.createElement("canvas").getContext("webgl2"); } catch (e) { /* stays false */ }
+    if (!webgl) renderFlat();
+    else if (window.GT3D) start(); else window.addEventListener("gt3d:loaded", start, { once: true });
     $("#enter3d").addEventListener("click", (e) => { e.stopPropagation(); enterImmersive(); });
     $("#exit3d").addEventListener("click", exitImmersive);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && immersive) exitImmersive(); });
   }
 
+  // without WebGL: Delhi's wards as a flat SVG, with the same markers opening the same panel
+  async function renderFlat() {
+    const map = $("#map");
+    map.classList.add("flat");
+    $("#enter3d").hidden = true;
+    let wards = { features: [] };
+    try { wards = await getJSON("geo/delhi_wards.json"); } catch (e) { /* the markers still work on their own */ }
+    const k = Math.cos((28.63 * Math.PI) / 180), P = ([lon, lat]) => [lon * k, -lat]; // equirectangular at Delhi
+    const rings = wards.features.flatMap((f) => (f.geometry.type === "Polygon" ? [f.geometry.coordinates[0]] : f.geometry.coordinates.map((c) => c[0])));
+    const pts = rings.flat().map(P).concat(latest.stations.map((s) => P([s.lon, s.lat])));
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const pad = 0.02, x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, w = Math.max(...xs) + pad - x0, h = Math.max(...ys) + pad - y0;
+    const d = rings.map((r) => "M" + r.map((c) => P(c).map((v, i) => (v - (i ? y0 : x0)).toFixed(4)).join(" ")).join("L") + "Z").join("");
+    map.innerHTML = `<div class="flatmap" style="aspect-ratio:${w.toFixed(4)}/${h.toFixed(4)}"><svg viewBox="0 0 ${w.toFixed(4)} ${h.toFixed(4)}" aria-hidden="true"><path d="${d}"/></svg></div><p class="flatnote">A flat map, because this browser can't show the 3D view.</p>`;
+    const box = $(".flatmap", map), marks = new Map();
+    for (const s of latest.stations) {
+      const [x, y] = P([s.lon, s.lat]), el = markerEl(s);
+      el.style.left = `${((x - x0) / w) * 100}%`; el.style.top = `${((y - y0) / h) * 100}%`;
+      box.appendChild(el); marks.set(s.id, el);
+    }
+    view = { select: (id) => marks.forEach((el, k2) => el.classList.toggle("sel", k2 === id)), focus() {}, setImmersive() {} };
+    if (selected != null) view.select(selected);
+    mark("map:ready");
+  }
+
   function enterImmersive() {
     if (immersive) return;
     immersive = true;
-    $(".window").classList.add("immersive");
+    mapWindow().classList.add("immersive");
     document.documentElement.classList.add("lock");
     $("#exit3d").hidden = false; $("#enter3d").hidden = true;
     view?.setImmersive(true);
@@ -345,7 +374,7 @@
 
   function exitImmersive() {
     immersive = false;
-    $(".window").classList.remove("immersive");
+    mapWindow().classList.remove("immersive");
     document.documentElement.classList.remove("lock");
     $("#exit3d").hidden = true; $("#enter3d").hidden = false;
     view?.setImmersive(false);
@@ -550,7 +579,7 @@
       const b = e.target.closest("[data-open]");
       if (!b) return;
       select(Number(b.dataset.open), { fly: true });
-      $(".window").scrollIntoView({ behavior: "smooth", block: "center" });
+      mapWindow().scrollIntoView({ behavior: "smooth", block: "center" });
     });
     drawRoster();
   }
