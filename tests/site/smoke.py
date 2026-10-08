@@ -46,6 +46,12 @@ def site_url():  # not base_url: pytest-playwright already has a fixture by that
     server.shutdown()
 
 
+def _no_web_fonts(page):
+    """Answer Google Fonts with an empty stylesheet: the test needs no network, and the system fonts do."""
+    page.route(re.compile(r"https://fonts\.(googleapis|gstatic)\.com/.*"),
+               lambda route: route.fulfill(status=200, content_type="text/css", body=""))
+
+
 def _smoke(page, url):
     errors = []
     page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
@@ -93,7 +99,7 @@ def test_smoke(site_url, playwright, webgl):
     browser = playwright.chromium.launch(**launch_kwargs)
     ctx = browser.new_context()
     page = ctx.new_page()
-    page.route(re.compile(r"https://fonts.(googleapis|gstatic).com/.*"), lambda route: route.fulfill(status=200, content_type="text/css", body=""))  # offline: system fonts
+    _no_web_fonts(page)
     try:
         _smoke(page, site_url)
         _panel(page, site_url)
@@ -109,7 +115,7 @@ def test_tour(site_url, playwright):
     browser = playwright.chromium.launch(**launch_kwargs)
     ctx = browser.new_context()
     page = ctx.new_page()
-    page.route(re.compile(r"https://fonts.(googleapis|gstatic).com/.*"), lambda route: route.fulfill(status=200, content_type="text/css", body=""))  # offline: system fonts
+    _no_web_fonts(page)
     try:
         _tour(page, site_url)
     finally:

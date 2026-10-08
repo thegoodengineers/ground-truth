@@ -470,6 +470,8 @@
             <tr><td><code>no2</code> / <code>co</code></td><td>Latest NO₂ (µg/m³) and CO (mg/m³)</td></tr>
             <tr><td><code>relativehumidity</code></td><td>Latest relative humidity (%)</td></tr>
             <tr><td><code>neighbours_pm25</code> / <code>neighbours_pm10</code></td><td>Median of the four nearest monitors' latest readings</td></tr>
+            <tr><td><code>last_reading</code></td><td>IST hour of the monitor's newest PM reading; with none in the last 3 hours, <code>status</code> is <code>nodata</code></td></tr>
+            <tr><td><code>band</code> / <code>neighbours_band</code></td><td>CPCB AQI band of the 24-hour average, for this monitor and for its four neighbours</td></tr>
             <tr><td><code>data_through</code></td><td>IST timestamp of the latest scored hour</td></tr>
           </tbody>
         </table>

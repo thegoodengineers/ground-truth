@@ -343,6 +343,7 @@ CSV_COLUMNS = [
     "history_status", "history_detail",
     "pm25", "pm10", "no2", "co", "relativehumidity",
     "neighbours_pm25", "neighbours_pm10",
+    "last_reading", "band", "neighbours_band",
     "data_through",
 ]
 
@@ -369,6 +370,7 @@ def to_csv(latest_json):
             "relativehumidity": s["latest"].get("relativehumidity"),
             "neighbours_pm25": s.get("neighbours_latest", {}).get("pm25"),
             "neighbours_pm10": s.get("neighbours_latest", {}).get("pm10"),
+            "last_reading": s.get("last_reading"), "band": s.get("band"), "neighbours_band": s.get("neighbours_band"),
             "data_through": data_through,
         }
         w.writerow(row)
