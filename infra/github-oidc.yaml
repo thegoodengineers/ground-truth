@@ -48,7 +48,15 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub "repo:${Repo}:ref:refs/heads/${Branch}"
+              # GitHub's immutable subject claims carry the owner and repo ids, e.g.
+              # repo:thegoodengineers@325538093/ground-truth@1409974228:ref:refs/heads/main, so both forms are allowed.
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub "repo:${Repo}:ref:refs/heads/${Branch}"
+                  - !Sub
+                    - "repo:${Owner}@*/${Name}@*:ref:refs/heads/${Branch}"
+                    - Owner: !Select [0, !Split ["/", !Ref Repo]]
+                      Name: !Select [1, !Split ["/", !Ref Repo]]
       Policies:
         - PolicyName: deploy
           PolicyDocument:
