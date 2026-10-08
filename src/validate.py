@@ -17,6 +17,7 @@ SCORE_HOUR = 17  # each day is scored at 17:00 IST, when the 11:00-17:00 window 
 PLANT_AT = dt.datetime(2025, 11, 30, 23)
 DROPS = (0.2, 0.3, 0.4, 0.6)
 STATUSES = ("ok", "watch", "flag", "nodata")
+CHECKS = ("physics", "neighbours", "history")
 
 
 def day_label(d):
@@ -43,6 +44,9 @@ def daily_run(hourly, stations):
         latest, _ = scorer.score(hourly, stations, dt.datetime(day.year, day.month, day.day, SCORE_HOUR))
         status = {s["id"]: s["status"] for s in latest["stations"]}
         row = {"date": day.isoformat(), **{st: sum(v == st for v in status.values()) for st in STATUSES}}
+        # which check raised each flag (a monitor can be flagged by more than one)
+        for c in CHECKS:
+            row[f"flag_{c}"] = sum(s["status"] == "flag" and s["checks"][c]["status"] == "flag" for s in latest["stations"])
         # a change between two answers; going to or from 'no data' is the feed, not the checks
         row["changed"] = None if prev is None else sum(
             prev[i] != status[i] for i in status if "nodata" not in (prev[i], status[i]))
@@ -71,7 +75,10 @@ def planted_run(hourly, stations):
 
 
 def report(days, flag_days, planted, commit, n_stations):
-    judged = [d for d in days if d["ok"] + d["watch"] + d["flag"]]
+    # a feed outage (most monitors silent at 17:00) says nothing about the checks: count it, but outside the averages
+    outages = [d for d in days if d["ok"] + d["watch"] + d["flag"] < n_stations / 2]
+    days = [d for d in days if d not in outages]
+    judged = days
 
     def share(st):
         return 100 * sum(d[st] / (d["ok"] + d["watch"] + d["flag"]) for d in judged) / len(judged)
@@ -103,12 +110,21 @@ def report(days, flag_days, planted, commit, n_stations):
         f"| Not enough data | | {span('nodata')} |",
         f"| Answers that changed from the day before | {sum(changes) / len(changes):.1f} monitors | {min(changes)}-{max(changes)} |",
         "",
+        f"Outage days, left out of the table: {', '.join(day_label(dt.date.fromisoformat(d['date'])) for d in outages) or 'none'} "
+        "(most monitors had sent nothing for 3 hours at 17:00, so they were \"not enough data\").",
+        "",
+        "## Which check raises the flags",
+        "",
+        "| Check | Flags it raised, per day on average |",
+        "|---|---|",
+        *[f"| {c.capitalize()} | {sum(d[f'flag_{c}'] for d in days) / len(days):.1f} |" for c in CHECKS],
+        "",
         "## Who gets flagged",
         "",
         f"{len(top)} monitors were flagged on at least one day. The three flagged most often account for "
         f"{100 * sum(n for _, n in top3) / total:.0f}% of all flag-days:",
         "",
-        *[f"- {name}: {n} of {len(days)} days" for name, n in top3],
+        *[f"- {name}: {n} of {len(days) + len(outages)} days" for name, n in top3],
         "",
         "## Catching a planted drop",
         "",
@@ -146,7 +162,7 @@ def main():
     planted = planted_run(hourly, stations)
     print(f"planted runs done in {time.time() - t0:.0f} s: {planted}", flush=True)
     with open(os.path.join(a.out, "validation_daily.csv"), "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["date", *STATUSES, "changed"])
+        w = csv.DictWriter(f, fieldnames=["date", *STATUSES, "changed", *(f"flag_{c}" for c in CHECKS)])
         w.writeheader()
         w.writerows(days)
     with open(os.path.join(a.out, "VALIDATION.md"), "w", encoding="utf-8") as f:
