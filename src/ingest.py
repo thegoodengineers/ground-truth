@@ -19,7 +19,7 @@ hours between `data_through` and now, and IngestErrors, 1 when the run stopped e
 """
 import datetime as dt, json, os, statistics, time, urllib.error, urllib.parse, urllib.request
 
-import backfill, scorer
+import backfill, scorer, weather
 
 API = "https://api.openaq.org/v3"
 RAW_KEY, SENSORS_KEY = "data/raw/hourly.json", "data/raw/sensors.json"
@@ -356,6 +356,9 @@ def handler(event, context):
     cfg = backfill.region(os.environ.get("REGION", "delhi"))
     log = run(store, OpenAQ(key), backfill.stations(region_name=cfg["id"]), now, int(os.environ.get("MAX_CALLS", "300")),
               param, resync=True, region=cfg)
+    w = weather.publish(store, cfg, now=now)
+    log["weather"] = w if isinstance(w, str) else {"wind_kmh": w["wind_kmh"], "wind_from": w["wind_from"],
+                                                   "boundary_layer_m": w["boundary_layer_m"]}
     namespace = os.environ.get("METRIC_NAMESPACE", "GroundTruth")
     if namespace:
         stack = os.environ.get("STACK_NAME", "ground-truth")

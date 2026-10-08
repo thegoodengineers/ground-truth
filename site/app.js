@@ -123,6 +123,7 @@
     }
     latest.stations.forEach((s) => byId.set(s.id, s));
     renderFresh();
+    loadWeather();
     setInterval(renderPulse, 30000);
     renderStats();
     renderMap();
@@ -161,6 +162,21 @@
     const live = $("#chrome-live");
     if (live) live.textContent = `Readings through ${when}`;
     renderPulse();
+  }
+
+  // the weather: one line under the hero, and the wind for the 3D dust (data/weather.json, written hourly by the Lambda)
+  let weather = null;
+  async function loadWeather() {
+    try { weather = await getJSON("data/weather.json"); } catch (e) { return; }
+    const el = $("#weather");
+    if (!el || !weather || !weather.line) return;
+    el.textContent = weather.line;
+    el.title = `Wind ${fmt(weather.wind_kmh)} km/h from the ${weather.wind_from || "?"}` +
+      (weather.boundary_layer_m != null ? `, mixing height ${fmt(weather.boundary_layer_m)} m` : "") + ` (${weather.source})`;
+    // the arrow points where the wind blows to; weather.wind_from_deg is where it comes from
+    if (weather.wind_from_deg != null) el.style.setProperty("--wind", `${(weather.wind_from_deg + 180) % 360}deg`);
+    el.hidden = false;
+    view?.setWind?.(weather.wind_from_deg, weather.wind_kmh);
   }
 
   // is the hourly check itself running? from the time of its last run, ticking every 30 s
@@ -449,7 +465,7 @@
       el.style.left = `${((x - x0) / w) * 100}%`; el.style.top = `${((y - y0) / h) * 100}%`;
       box.appendChild(el); marks.set(s.id, el);
     }
-    view = { select: (id) => marks.forEach((el, k2) => el.classList.toggle("sel", k2 === id)), focus() {}, setImmersive() {} };
+    view = { select: (id) => marks.forEach((el, k2) => el.classList.toggle("sel", k2 === id)), focus() {}, setImmersive() {}, setWind() {} };
     if (selected != null) view.select(selected);
     mark("map:ready");
   }
@@ -769,6 +785,9 @@
     list.addEventListener("mousedown", (e) => { const li = e.target.closest("li[data-id]"); if (li) pick(Number(li.dataset.id)); });
     input.addEventListener("blur", () => setTimeout(close, 120));
   }
+
+  // the scene may be built after the weather arrived: hand it the wind then
+  window.addEventListener("gt3d:ready", () => { if (weather && weather.wind_from_deg != null) view?.setWind?.(weather.wind_from_deg, weather.wind_kmh); });
 
   // ---------- ?demo=1: the story, playing by itself ----------
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));

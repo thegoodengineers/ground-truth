@@ -1,0 +1,12 @@
+{
+ "fetched_at": "2026-10-08T22:17:46+00:00",
+ "time": "2026-10-09T03:45",
+ "wind_kmh": 5.0,
+ "wind_from_deg": 136,
+ "wind_from": "SE",
+ "boundary_layer_m": 250,
+ "temperature_c": 25.2,
+ "humidity_pct": 82,
+ "line": "Calm air tonight (wind 5 km/h) and the air is mixing only a few hundred metres up: pollution is building up across the city.",
+ "source": "Open-Meteo"
+}
