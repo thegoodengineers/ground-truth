@@ -1,0 +1,32 @@
+{
+  "CPCB": {
+    "full_name": "Central Pollution Control Board",
+    "dashboard": "https://app.cpcbccr.com/AQI_India/",
+    "grievance": "https://cpcb.nic.in/openpdffile.php?id=PressRelease_2148_pdffile.pdf"
+  },
+  "DPCC": {
+    "full_name": "Delhi Pollution Control Committee",
+    "dashboard": "https://www.dpcc.delhigovt.nic.in/",
+    "grievance": "https://www.dpcc.delhigovt.nic.in/pages/en/pg-contact-us.html"
+  },
+  "HSPCB": {
+    "full_name": "Haryana State Pollution Control Board",
+    "dashboard": "https://hspcb.gov.in/",
+    "grievance": "https://hspcb.gov.in/grievance-redressal/"
+  },
+  "UPPCB": {
+    "full_name": "Uttar Pradesh Pollution Control Board",
+    "dashboard": "https://www.uppcb.com/",
+    "grievance": "https://www.uppcb.com/contact.aspx"
+  },
+  "IMD": {
+    "full_name": "India Meteorological Department",
+    "dashboard": "https://mausam.imd.gov.in/",
+    "grievance": "https://pgportal.gov.in/"
+  },
+  "IITM": {
+    "full_name": "Indian Institute of Tropical Meteorology",
+    "dashboard": "https://www.tropmet.res.in/",
+    "grievance": "https://pgportal.gov.in/"
+  }
+}

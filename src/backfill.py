@@ -24,8 +24,11 @@ def stations(path=STATIONS_TSV):
     out = []
     for line in open(path):
         if line.strip():
-            i, name, lat, lon = line.rstrip("\n").split("\t")
-            out.append({"id": int(i), "name": name.rsplit(" - ", 1)[0].strip(), "lat": float(lat), "lon": float(lon)})
+            parts = line.rstrip("\n").split("\t")
+            i, name, lat, lon = parts[:4]
+            operator = parts[4] if len(parts) > 4 else None
+            out.append({"id": int(i), "name": name.rsplit(" - ", 1)[0].strip(),
+                        "lat": float(lat), "lon": float(lon), "operator": operator})
     return out
 
 

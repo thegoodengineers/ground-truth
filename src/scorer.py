@@ -299,6 +299,7 @@ def _assemble(keys, now, stations, prepared, result, last):
         around_24h = {p: med([mean_24h(prepared[i][0][p]) for i in nb], need=2) for p in ("pm25", "pm10")}
         doc = {
             "id": s["id"], "name": s["name"], "lat": s["lat"], "lon": s["lon"],
+            "operator": s.get("operator"),
             "region": "NCR" if any(w in s["name"] for w in NCR) else "Delhi",
             "status": next(k for k, v in RANK.items() if v == status), "checks": checks, "latest": latest,
             "neighbours_latest": {p: None if v is None else round(v, 2) for p, v in around.items()},
