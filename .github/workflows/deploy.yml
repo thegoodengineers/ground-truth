@@ -1,0 +1,74 @@
+name: deploy
+
+# A merge to main updates the live stack and site, with no laptop and no stored AWS keys (issue 22):
+# the job assumes a role through GitHub's OIDC provider (infra/github-oidc.yaml) that is trusted for
+# this repo's main branch only. It runs after the test workflow has passed on main.
+
+on:
+  workflow_run:
+    workflows: [test]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # to request the OIDC token
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_REGION: us-east-1
+      STACK: ground-truth
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Build and deploy the stack
+        run: |
+          sam build
+          sam deploy --stack-name "$STACK" --region "$AWS_REGION" \
+            --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset \
+            --role-arn "${{ vars.AWS_CFN_ROLE_ARN }}" \
+            --tags project=ground-truth \
+            --parameter-overrides "AlertEmail=${{ vars.ALERT_EMAIL }}" "UseCloudFront=${{ vars.USE_CLOUDFRONT || 'false' }}"
+
+      - name: Upload the site (never data/, the Lambda owns it)
+        run: |
+          out() { aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          bucket=$(out SiteBucketName)
+          aws s3 sync site/ "s3://$bucket/" --delete --exclude "data/*" --cache-control "public, max-age=300"
+          aws s3 sync site/vendor/ "s3://$bucket/vendor/" --cache-control "public, max-age=604800"
+          dist=$(out DistributionId)
+          if [ -n "$dist" ] && [ "$dist" != "None" ]; then
+            aws cloudfront create-invalidation --distribution-id "$dist" --paths "/index.html" "/app.js" "/theme.css" "/scene3d.js" "/spray3d.js" >/dev/null
+            echo "CloudFront invalidated"
+          fi
+          echo "live at $(out SiteUrl)"
+
+      - name: Check the site answers
+        run: |
+          url=$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='SiteUrl'].OutputValue" --output text)
+          curl -sSf -o /dev/null -w "%{http_code} %{url_effective}\n" "$url"
+          curl -sSI "$url" | grep -i "content-security-policy" >/dev/null && echo "security headers present"

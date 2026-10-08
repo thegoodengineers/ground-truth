@@ -10,7 +10,11 @@ Each run:
 3. Trim the cache to 29 days and save it, run the scorer, and write `data/stations/<id>.json` + `data/latest.json`,
    unless the result is worse than what is already published (`why_not_publish`); then the old files stay.
 
-Environment: SITE_BUCKET (required), OPENAQ_KEY_PARAM (default /ground-truth/openaq-key), MAX_CALLS (default 300).
+Environment: SITE_BUCKET (required), OPENAQ_KEY_PARAM (default /ground-truth/openaq-key), MAX_CALLS (default 300),
+METRIC_NAMESPACE (default GroundTruth; empty disables the CloudWatch metrics).
+
+After every run two CloudWatch metrics are published (the alarms in template.yaml watch them): DataAgeHours, the
+hours between `data_through` and now, and IngestErrors, 1 when the run stopped early (bad key, API unreachable).
 """
 import datetime as dt, json, os, statistics, time, urllib.error, urllib.parse, urllib.request
 
@@ -300,6 +304,27 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     return log
 
 
+def data_age_hours(log, now, published=None):
+    """Hours from the newest scored hour to `now`. Falls back to the published latest.json when this run didn't
+    score (an empty cache, or stopped early); None when nothing has ever been scored."""
+    through = log.get("data_through") or (published or {}).get("data_through")
+    if not through:
+        return None
+    t = dt.datetime.fromisoformat(through) if "+" in through else key_time(through)
+    # an IST hour key names the hour that ended at :59, so age counts from the end of that hour
+    end = t + dt.timedelta(hours=1) if "+" not in through else t
+    return max(0.0, round((now - end).total_seconds() / 3600, 2))
+
+
+def metrics(log, now, published=None, stack="ground-truth"):
+    """The CloudWatch metric data for a run: [(name, value, unit)]."""
+    out = [("IngestErrors", 1.0 if log.get("error") else 0.0, "Count")]
+    age = data_age_hours(log, now, published)
+    if age is not None:
+        out.append(("DataAgeHours", age, "None"))
+    return out
+
+
 class S3Store:
     def __init__(self, bucket, client):
         self.bucket, self.s3 = bucket, client
@@ -326,7 +351,17 @@ def handler(event, context):
     param = os.environ.get("OPENAQ_KEY_PARAM", "/ground-truth/openaq-key")
     key = boto3.client("ssm").get_parameter(Name=param, WithDecryption=True)["Parameter"]["Value"]
     store = S3Store(os.environ["SITE_BUCKET"], boto3.client("s3"))
-    log = run(store, OpenAQ(key), backfill.stations(), dt.datetime.now(UTC), int(os.environ.get("MAX_CALLS", "300")), param,
-              resync=True)
+    now = dt.datetime.now(UTC)
+    log = run(store, OpenAQ(key), backfill.stations(), now, int(os.environ.get("MAX_CALLS", "300")), param, resync=True)
+    namespace = os.environ.get("METRIC_NAMESPACE", "GroundTruth")
+    if namespace:
+        stack = os.environ.get("STACK_NAME", "ground-truth")
+        data = [{"MetricName": n, "Value": v, "Unit": u, "Dimensions": [{"Name": "Stack", "Value": stack}]}
+                for n, v, u in metrics(log, now, store.get_json("data/latest.json"), stack)]
+        log["metrics"] = {d["MetricName"]: d["Value"] for d in data}
+        try:
+            boto3.client("cloudwatch").put_metric_data(Namespace=namespace, MetricData=data)
+        except Exception as e:  # a metrics hiccup must never fail the run that just published data
+            log["metrics_error"] = repr(e)
     print(json.dumps(log))
     return log
