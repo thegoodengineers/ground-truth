@@ -288,3 +288,15 @@ def test_hysteresis_shows_silence_at_once_and_ignores_reruns():
         latest = _make_latest(["ok"])
         ingest.apply_hysteresis(latest, hist, "2026-10-08T14")
     assert latest["stations"][0]["status"] == "watch"
+
+
+def test_metrics_report_data_age_and_run_errors():
+    now = dt.datetime(2026, 10, 8, 12, 30, tzinfo=UTC)  # 18:00 IST
+    m = dict((n, (v, u)) for n, v, u in ingest.metrics({"data_through": "2026-10-08T14"}, now))
+    assert m["IngestErrors"] == (0.0, "Count")
+    assert m["DataAgeHours"] == (3.0, "None")  # the 14:00 IST hour ended at 15:00; now is 18:00
+    m = dict((n, (v, u)) for n, v, u in ingest.metrics({"error": "OpenAQ rejected the API key"}, now,
+                                                        published={"data_through": "2026-10-08T17:00:00+05:30"}))
+    assert m["IngestErrors"] == (1.0, "Count")
+    assert m["DataAgeHours"] == (1.0, "None")  # falls back to the published hour
+    assert ingest.metrics({}, now) == [("IngestErrors", 0.0, "Count")]  # nothing scored yet: no age point
