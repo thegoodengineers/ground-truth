@@ -469,6 +469,14 @@
     panel.querySelector("#as-table")?.addEventListener("click", () => toggleTable(doc));
     const h2 = panel.querySelector("h2");
     if (h2 && !quiet) { h2.setAttribute("tabindex", "-1"); h2.focus({ preventScroll: true }); }
+    panel.querySelector("#share-btn")?.addEventListener("click", function () {
+      const url = `${location.origin}${location.pathname}${location.search}#${id}`;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => { this.textContent = "✓ Copied!"; setTimeout(() => { this.textContent = "🔗 Copy link"; }, 2000); });
+      } else {
+        prompt("Copy this link:", url);
+      }
+    });
     mark(`station:${id}`);
   }
 
@@ -519,7 +527,7 @@
     return `
       <span class="label">${s.region === "NCR" ? "NCR" : "Delhi"} · OpenAQ location ${s.id}</span>
       <h2>${esc(short(s.name))}</h2>
-      <div class="meta">${pill(s.status)}</div>
+      <div class="meta">${pill(s.status)}<button class="share-btn" id="share-btn" type="button" aria-label="Copy link to this monitor" title="Copy link">🔗 Copy link</button></div>
       ${todo(s.status)}
       ${raisedBy(s)}
       <div class="now">
