@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Ground Truth - deploy from GitHub Actions with OIDC, no long-lived keys (issue 22). Deployed once by hand:
+  aws cloudformation deploy --template-file infra/github-oidc.yaml --stack-name ground-truth-github-oidc
+    --capabilities CAPABILITY_NAMED_IAM --profile groundtruth
+  Then put the two role ARNs in the repo variables AWS_DEPLOY_ROLE_ARN and AWS_CFN_ROLE_ARN.
+
+Parameters:
+  Repo:
+    Type: String
+    Default: thegoodengineers/ground-truth
+  Branch:
+    Type: String
+    Default: main
+  StackName:
+    Type: String
+    Default: ground-truth
+    Description: The SAM stack the workflow deploys.
+
+Resources:
+  # GitHub's OIDC identity provider. One per account; the thumbprint is ignored by AWS for GitHub since 2023,
+  # but the property is required.
+  GitHubOIDC:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList: [6938fd4d98bab03faadb97b34396831e3780aea1]
+      Tags:
+        - Key: project
+          Value: ground-truth
+
+  # What the workflow itself may do: drive CloudFormation for this one stack (which does the real work through
+  # the service role below), upload the SAM artifact, sync the site (never data/), and invalidate CloudFront.
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackName}-github-deploy"
+      Description: Assumed by GitHub Actions on main to deploy Ground Truth
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOIDC
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub "repo:${Repo}:ref:refs/heads/${Branch}"
+      Policies:
+        - PolicyName: deploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ThisStackOnly
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ListStackResources
+                  - cloudformation:UpdateStack
+                Resource:
+                  - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${StackName}/*"
+              - Sid: SamTransform
+                Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31"
+              - Sid: HandCloudFormationItsRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CloudFormationRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+              - Sid: SamArtifactBucket
+                Effect: Allow
+                Action: [s3:PutObject, s3:GetObject, s3:ListBucket, s3:GetBucketLocation]
+                Resource:
+                  - arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-*
+                  - arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-*/*
+              - Sid: SiteSyncList
+                Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource: !Sub "arn:aws:s3:::${StackName}-sitebucket-*"
+              - Sid: SiteSyncObjects
+                Effect: Allow
+                Action: [s3:PutObject, s3:DeleteObject, s3:GetObject]
+                Resource: !Sub "arn:aws:s3:::${StackName}-sitebucket-*/*"
+              - Sid: NeverTouchData  # the ingest Lambda owns data/; an explicit Deny beats any Allow
+                Effect: Deny
+                Action: [s3:PutObject, s3:DeleteObject]
+                Resource: !Sub "arn:aws:s3:::${StackName}-sitebucket-*/data/*"
+              - Sid: Invalidate
+                Effect: Allow
+                Action: [cloudfront:CreateInvalidation, cloudfront:GetInvalidation]
+                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/*"
+      Tags:
+        - Key: project
+          Value: ground-truth
+
+  # What CloudFormation may do on the workflow's behalf: create and update the resources in template.yaml.
+  CloudFormationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackName}-cloudformation"
+      Description: CloudFormation service role for the Ground Truth stack
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: stack-resources
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Serverless
+                Effect: Allow
+                Action:
+                  - lambda:*
+                  - events:*
+                  - scheduler:*
+                  - logs:*
+                  - sns:*
+                  - cloudwatch:*
+                  - budgets:*
+                  - cloudfront:*
+                  - s3:*
+                Resource: "*"
+              - Sid: LambdaRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:UpdateRole
+                  - iam:PassRole
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${StackName}-*"
+              - Sid: ReadSamArtifacts
+                Effect: Allow
+                Action: [s3:GetObject]
+                Resource: arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-*/*
+      Tags:
+        - Key: project
+          Value: ground-truth
+
+Outputs:
+  DeployRoleArn:
+    Description: Repo variable AWS_DEPLOY_ROLE_ARN
+    Value: !GetAtt DeployRole.Arn
+  CloudFormationRoleArn:
+    Description: Repo variable AWS_CFN_ROLE_ARN
+    Value: !GetAtt CloudFormationRole.Arn
