@@ -21,8 +21,8 @@
       status: {
         ok:     { label: "पड़ोसी सेंसर से मेल",     short: "मेल",          todo: "सेंसर विश्वसनीय लग रहा है: यही रीडिंग उपयोग करें।" },
         watch:  { label: "जाँच करें",               short: "जाँच करें",   todo: "अनिश्चित: कोई कदम उठाने से पहले आस-पास के 4 मॉनिटर से तुलना करें।" },
-        flag:   { label: "मेल नहीं",                short: "मेल नहीं",    todo: "संदिग्ध: इसके 4 पड़ोसी सेंसर का माध्यमिक मान उपयोग करें।" },
-        nodata: { label: "पर्याप्त डेटा नहीं",       short: "डेटा नहीं",   todo: "अभी जाँच संभव नहीं: 4 पड़ोसी सेंसर का माध्यमिक मान उपयोग करें।" },
+        flag:   { label: "मेल नहीं",                short: "मेल नहीं",    todo: "आँकड़े मेल नहीं खाते: इसके 4 पड़ोसी सेंसरों का बीच वाला मान (माध्यिका) उपयोग करें।" },
+        nodata: { label: "पर्याप्त डेटा नहीं",       short: "डेटा नहीं",   todo: "अभी जाँच संभव नहीं: 4 पड़ोसी सेंसरों का बीच वाला मान (माध्यिका) उपयोग करें।" },
       },
       checkLabel: { ok: "सही", watch: "जाँच करें", flag: "मेल नहीं", nodata: "डेटा नहीं" },
       findStation: "अपना स्टेशन खोजें",
@@ -708,11 +708,16 @@
   const AREAS = ["Central Delhi", "North Delhi", "South Delhi", "East Delhi", "West Delhi", "Noida", "Ghaziabad", "Gurugram and Manesar", "Faridabad", "Bahadurgarh"];
   let rosterFilter = "all";
 
-  function renderRoster() {
-    latest.stations.forEach((s) => { s._area = area(s); });
+  // the labels only: safe to call again (the language toggle does), unlike renderRoster's listeners
+  function drawFilters() {
     const count = (st) => latest.stations.filter((s) => s.status === st).length;
     $("#filters").innerHTML = [["all", "All", latest.stations.length], ...["flag", "watch", "ok", "nodata"].map((st) => [st, STATUS[st].short, count(st)])]
       .map(([f, label, n]) => `<button type="button" data-f="${f}" aria-pressed="${f === rosterFilter}">${f === "all" ? "" : icon(f, 12)}${label} <span class="count">${n}</span></button>`).join("");
+  }
+
+  function renderRoster() {
+    latest.stations.forEach((s) => { s._area = area(s); });
+    drawFilters();
     $("#filters").addEventListener("click", (e) => {
       const b = e.target.closest("[data-f]");
       if (!b) return;
@@ -828,7 +833,7 @@
       try { localStorage.setItem("gt-lang", lang); } catch (_) {}
       applyLang();
       // Re-render dynamic content that reads STATUS / CHECK_LABEL
-      if (latest) { renderStats(); renderLegend(); renderRoster(); }
+      if (latest) { renderStats(); renderLegend(); drawFilters(); drawRoster(); }
       if (selected != null) select(selected, { redraw: true });
     });
   }
