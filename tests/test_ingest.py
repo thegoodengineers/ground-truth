@@ -26,8 +26,8 @@ class MemStore:
 class FakeAPI:
     """Serves /locations/{id} and /sensors/{id}/hours. Sensor id = location*10 + param index."""
 
-    def __init__(self, fail_first=0, now=NOW):
-        self.requests, self.fail_first, self.now = [], fail_first, now
+    def __init__(self, fail_first=0, now=NOW, retry_after=None):
+        self.requests, self.fail_first, self.now, self.retry_after = [], fail_first, now, retry_after
 
     def __call__(self, req, timeout=None):
         assert req.get_header("X-api-key") == "k"
@@ -36,7 +36,8 @@ class FakeAPI:
         self.requests.append((u.path, q))
         if self.fail_first:
             self.fail_first -= 1
-            raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", {}, None)
+            hdrs = {"Retry-After": self.retry_after} if self.retry_after else {}
+            raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", hdrs, None)
         parts = u.path.split("/")
         if parts[-2] == "locations":
             loc = int(parts[-1])
@@ -128,3 +129,63 @@ def test_score_hour_ignores_a_single_early_clock():
     hourly = {"1": {"pm10": {"2026-10-08T12": 1, "2026-10-08T20": 1}}, "2": {"pm10": {"2026-10-08T12": 1}},
               "3": {"pm25": {"2026-10-08T12": 1}}, "4": {}}
     assert ingest.score_hour(hourly, 4) == "2026-10-08T12"
+
+
+# ---------- resilience (#19) ----------
+
+def test_retry_after_is_respected_and_tries_stop_at_three():
+    waits = []
+    a = ingest.OpenAQ("k", opener=FakeAPI(fail_first=1, retry_after="7"), sleep=waits.append)
+    assert a.sensors(1)["pm10"] == 10
+    assert 7 in waits and a.retries == 1
+    a = ingest.OpenAQ("k", opener=FakeAPI(fail_first=5), sleep=lambda s: None)
+    with pytest.raises(urllib.error.HTTPError):
+        a.sensors(1)
+    assert a.calls == 3
+
+
+def test_next_run_starts_with_the_stations_the_budget_skipped():
+    store = MemStore()
+    ingest.run(store, api(FakeAPI()), STATIONS, NOW, max_calls=8)  # station 1 in full, one sensor of station 2
+    fake = FakeAPI()
+    ingest.run(store, api(fake), STATIONS, NOW)
+    assert fake.requests[0][0] == "/v3/locations/3"
+    assert all(len(store.data[ingest.RAW_KEY][str(i)]) == 5 for i in range(1, 5))
+
+
+def test_wrong_key_stops_the_run_and_says_so():
+    calls = []
+
+    def refused(req, timeout=None):
+        calls.append(req)
+        raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", {}, None)
+    log = ingest.run(MemStore(), ingest.OpenAQ("k", opener=refused, sleep=lambda s: None), STATIONS, NOW)
+    assert len(calls) == 1 and "rejected the API key" in log["error"] and log["published"] is False
+
+
+def test_api_down_keeps_the_published_hour():
+    store = MemStore()
+    ingest.run(store, api(FakeAPI()), STATIONS, NOW)
+    before = store.data["data/latest.json"]
+
+    def down(req, timeout=None):
+        raise urllib.error.URLError("no route to host")
+    later = NOW + dt.timedelta(hours=1)
+    log = ingest.run(store, ingest.OpenAQ("k", opener=down, sleep=lambda s: None), STATIONS, later)
+    assert log["new_hours"] == 0 and log["skipped"] > 0
+    assert store.data["data/latest.json"]["data_through"] == before["data_through"]
+    # and with the cache lost too, nothing can be scored, so the old file is left alone
+    store.data[ingest.RAW_KEY] = {}
+    log = ingest.run(store, ingest.OpenAQ("k", opener=down, sleep=lambda s: None), STATIONS, later)
+    assert log["published"] is False and store.data["data/latest.json"] == before
+
+
+def test_a_worse_result_is_not_published():
+    st = lambda last: {"latest": {}, "last_reading": last}  # noqa: E731
+    new = {"data_through": "2026-10-08T14:00:00+05:30",
+           "stations": [st("2026-10-08T14:00:00+05:30"), st("2026-10-08T12:00:00+05:30"), st("2026-10-08T11:00:00+05:30"), st(None)]}
+    assert ingest.why_not_publish(new, None, 4) is None  # 2 of 4 reported in the last 3 hours
+    new["stations"][1] = st("2026-10-08T11:00:00+05:30")
+    assert "only 1 of 4" in ingest.why_not_publish(new, None, 4)
+    new["stations"][1] = st("2026-10-08T13:00:00+05:30")
+    assert "older than" in ingest.why_not_publish(new, {"data_through": "2026-10-08T15:00:00+05:30"}, 4)
