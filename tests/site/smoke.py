@@ -29,6 +29,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
     def translate_path(self, path):
+        path = path.split("?", 1)[0].split("#", 1)[0]  # ?demo=1 is a query, not part of the file name
         # /data/... -> sample/data/..., everything else -> site/...
         if path.startswith("/data/"):
             return str(DATA / path[6:])
