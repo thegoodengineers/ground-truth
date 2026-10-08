@@ -11,8 +11,8 @@ Owners: **Abhijeet** (thegoodengineer) = AWS · **Chirag** (Chirag6722) = backen
 - [x] **Scorer: three checks** (#8). Files: `src/scorer.py`. Done: `make test` green; 235 and 8235 match `spike/RESULTS.md`.
 - [x] **Tests + CI** (#9). Files: `tests/`, `.github/workflows/test.yml`. Done: CI green on the PR; breaking the 11-17 window turns it red.
 - [x] **Ingest Lambda + SAM + Makefile.** Files: `src/ingest.py`, `template.yaml`, `Makefile`, `tests/test_ingest.py`. Done: `make lint test` green.
-- [ ] **AWS account, profile, key in SSM** (#1, Abhijeet). Done: `aws sts get-caller-identity --profile groundtruth` works and the SSM parameter exists.
-- [ ] **First deploy** (#2, Abhijeet). Uses `template.yaml`. Done: `make deploy && make url` prints an HTTPS URL that serves `index.html`.
+- [ ] **AWS account, profile, key in SSM** (#1, Abhijeet). Done: `aws sts get-caller-identity --profile groundtruth` works and the SSM parameter exists. *Profile and parameter done; the parameter holds a placeholder until someone signs up for an OpenAQ key.*
+- [x] **First deploy** (#2, Abhijeet). Uses `template.yaml`. Done: `make deploy && make url` prints an HTTPS URL that serves `index.html`. *CloudFront is blocked on the account; a Lambda function URL serves HTTPS (#64).*
 - [ ] **Live data** (#3, Abhijeet). Done: `make seed && make run` prints `"scored": true` and an `overlap_ratio` near 1.0 for pm10/pm25; two scheduled runs later `data_through` has advanced.
 - [x] **Site v1: map + station panel + `?demo=1`** (#12-#14). Files: `site/index.html`, `site/app.js`, `site/theme.css`, `site/scene3d.js`. Done: `make local`, open `http://localhost:8000`: all stations on the map; clicking one opens three check cards and the hour-of-day chart; `?demo=1` plays the tour by itself; no console errors.
 - [ ] **Video pipeline** (#10, Sunday). Files: `video/script.md`, `video/narrate.py`, `video/scenes/scenes.html`, `video/record.py`, `video/capture_demo.py`, `video/assemble.py`. Done: `make video` produces `video/final.mp4` under 3:00, never sped up.
@@ -23,7 +23,7 @@ Owners: **Abhijeet** (thegoodengineer) = AWS · **Chirag** (Chirag6722) = backen
 
 - [x] **UI rounds with screenshots** (#15). Files: `site/*`. Done: screenshots at 1440, 1024 and 400 px reviewed and fixed; no horizontal scroll; loading, empty and error states designed.
 - [x] **README for judges.** Files: `README.md`, `docs/img/demo.gif`. Done: GIF at the top, architecture, `make local`, test count from a real run. Live URL and video link get filled in on Sunday.
-- [ ] **Deploy from CI on merge to main** (OIDC role, no stored keys). Files: `.github/workflows/deploy.yml`. Done: a merge updates the live site.
+- [x] **Deploy from CI on merge to main** (OIDC role, no stored keys). Files: `.github/workflows/deploy.yml`, `infra/github-oidc.yaml`. Done: a merge updates the live site.
 - [ ] **Blog on AWS Builder Center** (enters the top-5 blogs prize). Files: `docs/BLOG.md` (drafted). Done: published and linked in the submission.
 
 ## Nice
