@@ -50,7 +50,7 @@ jobs:
           sam build
           # --s3-bucket, not --resolve-s3: resolving would make SAM manage its own bucket stack, which this role may not touch
           sam deploy --stack-name "$STACK" --region "$AWS_REGION" \
-            --capabilities CAPABILITY_IAM --s3-bucket "${{ vars.SAM_BUCKET }}" --no-confirm-changeset --no-fail-on-empty-changeset \
+            --capabilities CAPABILITY_IAM --no-resolve-s3 --s3-bucket "${{ vars.SAM_BUCKET }}" --no-confirm-changeset --no-fail-on-empty-changeset \
             --role-arn "${{ vars.AWS_CFN_ROLE_ARN }}" \
             --tags project=ground-truth \
             --parameter-overrides "AlertEmail=${{ vars.ALERT_EMAIL }}" "UseCloudFront=${{ vars.USE_CLOUDFRONT || 'false' }}"
