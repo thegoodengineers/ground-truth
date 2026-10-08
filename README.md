@@ -6,7 +6,7 @@ Environmental Hacks 2026 · Air track · team thegoodengineers
 
 ![Ground Truth: the fog hero, the ten-second explainer, the 3D Delhi and a flagged monitor's panel](docs/img/demo.gif)
 
-**Live site:** _CloudFront URL after `make deploy`_ · **Demo video:** _YouTube link on submission_ · **Writeup:** [docs/submission.md](docs/submission.md)
+**Live site:** [zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws](https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/) · **Demo video:** _YouTube link on submission_ · **Writeup:** [docs/submission.md](docs/submission.md)
 
 ## The problem
 
@@ -37,7 +37,7 @@ The full analysis is in [spike/RESULTS.md](spike/RESULTS.md).
 
 - **We tried to fool it 30 times. It caught all 30.** In real November 2025 data, we lowered one quiet monitor's daytime PM10 by 40%, one monitor at a time. Every one was flagged, and only 3 other monitors were wrongly flagged across all 30 runs.
 - **Every day of October and November 2025, scored as the live site would have** ([docs/VALIDATION.md](docs/VALIDATION.md), made by `src/validate.py`). About 1 in 5 monitors was flagged on a typical day, most of them by the physics check: readings that can't be real. The neighbour and history checks flagged about 3 monitors a day between them. A planted daytime drop of 30% was flagged 29 times out of 30, a drop of 40% every time, and a drop of 20% 10 times out of 30.
-- **62 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, and the hourly ingest against a fake API, including OpenAQ failures.
+- **69 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, the hourly ingest against a fake API, including OpenAQ failures, and the HTTPS front with its security headers.
 
 ## Built on AWS
 
@@ -53,8 +53,24 @@ flowchart LR
 
 - **EventBridge** starts the check every hour.
 - **Lambda** (Python 3.11) reads new readings from OpenAQ, with the key in **SSM Parameter Store**, runs the three checks and writes JSON to **S3**.
-- **CloudFront** serves the site and the data from a private bucket.
+- **CloudFront** serves the site and the data from a private bucket, with a response headers policy (CSP, HSTS, nosniff). Until AWS Support verifies this account for CloudFront, a second small **Lambda function URL** serves the bucket over HTTPS with the same headers, and the bucket's **S3 website endpoint** is the HTTP fallback (`UseCloudFront` in the template flips it).
+- **CloudWatch** alarms (Lambda errors, a run that stopped early, data older than 3 hours) and a **Budgets** alarm ($5 a month) go to an **SNS** email. What to do when one fires: [docs/RUNBOOK.md](docs/RUNBOOK.md).
+- A merge to `main` deploys through **GitHub Actions with OIDC**: no AWS keys stored anywhere ([infra/github-oidc.yaml](infra/github-oidc.yaml), [.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
 - Everything is one **AWS SAM** template ([template.yaml](template.yaml)), in us-east-1 next to the public OpenAQ archive on Open Data on AWS.
+
+### Cost
+
+Every resource is tagged `project=ground-truth`, and a $5/month budget on that tag emails at 80%.
+
+| What | A month | Why |
+|---|---|---|
+| Lambda, the hourly check | 720 runs × about 5 min × 512 MB on arm64 = about 110,000 GB-seconds | about $1.45 at list price; $0 inside the free tier's 400,000 GB-s |
+| Lambda, serving the site | about 10 requests a page view, a few ms each | cents |
+| S3 | about 10 MB stored, about 45,000 writes, reads | about $0.25 |
+| CloudWatch, SNS, Budgets | 2 custom metrics, 3 alarms, 1 topic, 1 budget | $0 inside the free tier (10 metrics, 10 alarms, 2 budgets), else about $1 |
+| **Total** | | **about $0.30 a month inside the free tier, about $3 without it** |
+
+Measured: the stack went live on 9 Oct 2026 at 02:20 IST. The project tag becomes filterable in Cost Explorer about a day after the first tagged usage; the measured 48-hour number goes here when it is readable.
 
 ## Run it
 
@@ -62,9 +78,13 @@ flowchart LR
 make setup        # dev tools: pytest, ruff, cfn-lint
 make local        # the site on http://localhost:8000 with real sample data, no AWS needed
 make test lint    # tests and linters
-make deploy       # with the groundtruth AWS profile: stack + site
+make deploy ALERT_EMAIL=you@example.com   # with the groundtruth AWS profile: stack + site
+make sample       # until the first live run: publish the committed sample as data/
 make seed && make run   # 28 days of history into the cache, then the first hourly run
+make url          # the HTTPS site and the HTTP website endpoint
 ```
+
+The OpenAQ key lives in SSM Parameter Store as `/ground-truth/openaq-key` (a SecureString, put there by hand once). Set `USE_CLOUDFRONT=true` once the account is verified for CloudFront.
 
 Open `http://localhost:8000/?demo=1` for the self-playing tour.
 

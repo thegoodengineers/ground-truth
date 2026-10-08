@@ -51,3 +51,13 @@ What we already know, so nobody re-learns it this weekend. Dated entries, newest
 - **Per-instance opacity:** tinting puffs towards the fog colour instead of fading them looked lighter over the city. A one-line shader hook (`alpha` instanced attribute, `diffuseColor.a *= vAlpha`) matched the old smog exactly (mean brightness 207.6 vs 207.7).
 - **Two 3D scenes on one page both run** unless each checks it is actually visible. The tanker illustration kept animating under the full-screen map.
 - **`$(".window")` takes the first window on the page.** Once the tanker illustration was added above the map, "Explore Delhi in 3D" made the illustration full screen. Find the map's window from `#map`.
+
+## 2026-10-09: the first deploy (#2, #22, #23, #35, #36)
+
+- **CloudFront is off for unverified accounts.** The first `sam deploy` rolled back with `Your account must be verified before you can add new CloudFront resources`. Only AWS Support can lift it. The stack now takes `UseCloudFront`; off, a Lambda function URL serves the bucket over HTTPS and sends the same security headers the CloudFront policy would, and the S3 website endpoint serves HTTP. Keep the CSP in `src/serve.py` and `template.yaml` identical; `tests/test_serve.py` fails if they drift.
+- **A public function URL needs two permissions since 2025:** `lambda:InvokeFunctionUrl` *and* `lambda:InvokeFunction` with the condition `lambda:InvokedViaFunctionUrl = true`. With only the first, every request is 403 `Forbidden`.
+- **A new account's Lambda concurrency limit is 10,** so `ReservedConcurrentExecutions: 1` fails (`decreases account's UnreservedConcurrentExecution below its minimum`). Dropped: one run an hour with a 15-minute timeout can't overlap anyway.
+- **SNS email subscriptions need a confirmation**, but the token in the email can be confirmed with `aws sns confirm-subscription` instead of a click.
+- **Cost allocation tags activate only after billing has seen the tag**, up to a day after the first tagged usage. The `AWS::Budgets::Budget` with a tag filter was accepted before that, but the budget reads $0 until the tag is active (`aws ce update-cost-allocation-tags-status --cost-allocation-tags-status TagKey=project,Status=Active`).
+- **Deploy from CI without keys:** `infra/github-oidc.yaml` creates the OIDC provider, a deploy role trusted only for `repo:thegoodengineers/ground-truth:ref:refs/heads/main`, and a CloudFormation service role that does the actual resource work; the deploy role can only drive this stack, upload the SAM artifact, sync `site/` (an explicit Deny on `data/*`) and invalidate CloudFront.
+- **The stale-data alarm fires until the real OpenAQ key is in SSM:** without it the Lambda can only score the archive, which runs about 4 days behind.
