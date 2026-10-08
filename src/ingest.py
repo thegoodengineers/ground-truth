@@ -25,6 +25,7 @@ HYSTERESIS_DOWN = 3   # hours in a row at a lower level before status drops
 HISTORY_DAYS = 7
 RESYNC_WINDOW_DAYS = (4, 7)  # overwrite archive days 4–7 back from today once per day
 RESYNC_AFTER_HOUR = 3        # only on the first run at or after 03:00 IST
+RESYNC_BUDGET_S = 90         # the archive pass stops after this, so the run stays inside the Lambda timeout
 IST = backfill.IST
 UTC = dt.timezone.utc
 RANK = scorer.RANK
@@ -195,8 +196,11 @@ def resync_archive(hourly, now, store):
     hi = (ist_now - dt.timedelta(days=RESYNC_WINDOW_DAYS[0])).date()
     first_key = lo.strftime("%Y-%m-%dT00")
     last_key = hi.strftime("%Y-%m-%dT23")
-    changed, max_diff = 0, {}
+    changed, max_diff, t0, done = 0, {}, time.monotonic(), 0
     for sid, params in hourly.items():
+        if time.monotonic() - t0 > RESYNC_BUDGET_S:
+            break
+        done += 1
         sid_int = int(sid)
         # fetch archive days covering the window (one station at a time to stay inside Lambda time)
         months = sorted({(d.year, d.month) for d in (lo + dt.timedelta(n) for n in range((hi - lo).days + 2))})
@@ -219,10 +223,11 @@ def resync_archive(hourly, now, store):
                         changed += 1
                 have[k] = v
     store.put_json("data/raw/resync_marker.json", {"date": ist_now.strftime("%Y-%m-%d")})
-    return {"resync_changed_hours": changed, "resync_max_diff": {p: round(v, 3) for p, v in max_diff.items()}}
+    return {"resync_changed_hours": changed, "resync_max_diff": {p: round(v, 3) for p, v in max_diff.items()},
+            "resync_stations": f"{done} of {len(hourly)}"}
 
 
-def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key"):
+def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key", resync=False):
     hourly = store.get_json(RAW_KEY) or {}
     sensors = store.get_json(SENSORS_KEY) or {}
     log = {"new_hours": 0, "skipped": 0, "overlap_ratio": {}}
@@ -263,7 +268,7 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     # API vs archive on overlapping hours: ~1.0 means same units and same hour labels
     log["overlap_ratio"] = {p: round(statistics.median(r), 3) for p, r in ratios.items() if r}
     log.update(api_calls=api.calls, retries=api.retries)
-    if _should_resync(now, store):
+    if resync and _should_resync(now, store):  # off in tests: it reads the real archive
         log.update(resync_archive(hourly, now, store))
     trim(hourly, now)
     # the cache first: a crash after this leaves the results behind the cache, never ahead of it
@@ -321,6 +326,7 @@ def handler(event, context):
     param = os.environ.get("OPENAQ_KEY_PARAM", "/ground-truth/openaq-key")
     key = boto3.client("ssm").get_parameter(Name=param, WithDecryption=True)["Parameter"]["Value"]
     store = S3Store(os.environ["SITE_BUCKET"], boto3.client("s3"))
-    log = run(store, OpenAQ(key), backfill.stations(), dt.datetime.now(UTC), int(os.environ.get("MAX_CALLS", "300")), param)
+    log = run(store, OpenAQ(key), backfill.stations(), dt.datetime.now(UTC), int(os.environ.get("MAX_CALLS", "300")), param,
+              resync=True)
     print(json.dumps(log))
     return log
