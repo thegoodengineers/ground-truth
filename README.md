@@ -36,7 +36,7 @@ The full analysis is in [spike/RESULTS.md](spike/RESULTS.md).
 ## Proof
 
 - **We tried to fool it 30 times. It caught all 30.** In real November 2025 data, we lowered one quiet monitor's daytime PM10 by 40%, one monitor at a time. Every one was flagged, and only 3 other monitors were wrongly flagged across all 30 runs.
-- **53 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, and the hourly ingest against a fake API, including OpenAQ failures.
+- **62 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, and the hourly ingest against a fake API, including OpenAQ failures.
 
 ## Built on AWS
 
@@ -73,7 +73,7 @@ Open `http://localhost:8000/?demo=1` for the self-playing tour.
 |---|---|
 | [site/](site/) | The website: landing, explainer, 3D Delhi (three.js), station panel |
 | [src/](src/) | Backfill, scorer and the hourly ingest Lambda (pure Python, no dependencies) |
-| [tests/](tests/) | 53 tests on real data |
+| [tests/](tests/) | 62 tests on real data, plus browser smoke tests |
 | [spike/](spike/) | The data analysis the checks are built on |
 | [docs/](docs/) | Plan, stack and data contract, tasks, learnings, submission |
 | [sample/](sample/) | Real scorer output to 4 Oct 2026 |

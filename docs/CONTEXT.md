@@ -58,7 +58,7 @@ The October 2025 water-tanker story is our motivation, not our claim. We tested 
 | `src/backfill.py` | Seeds the 28-day hourly cache from the archive |
 | `src/scorer.py` | The three checks; writes `latest.json` and `stations/<id>.json` (contract in [STACK.md](STACK.md)) |
 | `src/ingest.py` | The hourly Lambda: OpenAQ API → cache → scorer → S3 |
-| `tests/` | 53 tests, most on real November 2025 data, including the planted-anomaly test |
+| `tests/` | 62 tests, most on real November 2025 data, plus Playwright smoke tests in `tests/site/`, including the planted-anomaly test |
 | `template.yaml` | AWS SAM: S3 (private) + CloudFront + hourly EventBridge → Lambda, SSM key |
 | `site/` | The website: `index.html`, `app.js`, `theme.css`, `scene3d.js`, `spray3d.js` |
 | `sample/data/` | Real scorer output up to 4 Oct 2026, for running the site without AWS |
@@ -84,11 +84,10 @@ The October 2025 water-tanker story is our motivation, not our claim. We tested 
 - the full site: problem and answer, the ten-second explainer, the four answers, live 3D map and panel, every monitor by area with filters, the three checks with formulas, the tanker illustration, proof, AWS, FAQ;
 - README, submission text (`docs/submission.md`) and blog draft (`docs/BLOG.md`).
 
-**Done, in review (branch `feat/must-haves`):**
-- #18 when each monitor last reported; a monitor silent for 3 hours is "no data" and its neighbours are shown;
-- #19 the hourly run survives OpenAQ failures and never replaces a good result with a worse one;
-- #30 the CPCB AQI band in plain words, from the neighbours when a monitor is in doubt (the one-line guidance per band is a draft for the team to review);
-- #24 the 3D map on phones and slow laptops, a flat map without WebGL, and a fix for "Explore Delhi in 3D" opening the wrong window.
+**Also on main (PR #54 and Bhumika's PRs, merged 8 Oct):**
+- #18 freshness, #19 ingest resilience, #30 CPCB bands, #24 phones and no-WebGL;
+- #21 status smoothing ("flagged since", no flip-flopping), #25 list view and keyboard access, #26 copy link, #28 Hindi toggle, #31 48-hour evidence chart, #32 who runs each monitor, #33 nightly archive re-sync, #34 browser smoke tests in CI, #37 CSV download.
+- Still to review by the team: the one-line advice per AQI band (`BAND_TODO` in `site/app.js`) and the Hindi copy.
 
 **Not done:**
 - **Nothing is deployed yet.** AWS issues #1–#3 are with Abhijeet. The live site, and the Live pill showing "Live", wait on that.
