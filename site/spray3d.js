@@ -1,7 +1,8 @@
 /* The October 2025 story, as an illustration: a water tanker sprays the air at a monitor's inlet, the dust
    settles right there and the reading drops, while the monitors a few hundred metres away still read the
    real air. Then the neighbours check notices. Same fog, dust and masts as scene3d.js; all numbers are
-   illustrative. Plays only while on screen; with reduced motion it shows the end state. */
+   illustrative. Plays only while on screen. With reduced motion, or on a machine drawing WebGL without a GPU,
+   it opens on the end state and waits for Play. */
 import * as THREE from "./vendor/three/three.module.min.js";
 
 const FOG = 0xe8e7e4, DUST = new THREE.Color(0x6e6457), FOGC = new THREE.Color(FOG);
@@ -144,7 +145,9 @@ function water(scene) {
 function init(stage) {
   const $ = (s) => document.querySelector(s);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+  const gl = renderer.getContext(), info = gl.getExtension("WEBGL_debug_renderer_info");
+  const soft = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : "");
+  renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia("(max-width: 760px)").matches ? 1.5 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.setAttribute("aria-hidden", "true");
   stage.prepend(renderer.domElement);
@@ -196,7 +199,7 @@ function init(stage) {
     el.style.transform = `translate(${((v.x + 1) / 2) * stage.clientWidth}px, ${((1 - v.y) / 2) * stage.clientHeight}px) translate(-50%, -100%)`;
   }
 
-  let t = 0, lastStep = -1, playing = !reduced, visible = false, last = performance.now();
+  let t = 0, lastStep = -1, playing = !reduced && !soft, visible = false, last = performance.now();
   function frame(dt) {
     // where the tanker is: drives in, parks next to the monitor, drives off
     const x = t < 3.5 ? -60 : t < 6.5 ? -60 + 63.2 * span(t, 3.5, 6.5) : t < 15.5 ? 3.2 : 3.2 + 60 * span(t, 15.5, 18);
@@ -234,7 +237,8 @@ function init(stage) {
 
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (visible && playing) { t = (t + dt) % LOOP; frame(dt); }
+    // the full-screen 3D map (html.lock) covers this; no point drawing both
+    if (visible && playing && !document.documentElement.classList.contains("lock")) { t = (t + dt) % LOOP; frame(dt); }
     requestAnimationFrame(loop);
   }
   // jump to a step: run the simulation forward to it, so the dust and the water are where they'd be
@@ -248,14 +252,17 @@ function init(stage) {
     toggle.setAttribute("aria-pressed", String(!playing));
   });
   new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(stage);
-  if (reduced) { toggle.textContent = "Play"; seek(15); } else frame(0);
+  if (!playing) { toggle.textContent = "Play"; toggle.setAttribute("aria-pressed", "true"); seek(15); } else frame(0);
   requestAnimationFrame(loop);
   window.__spray = { seek, get t() { return t; } }; // for the capture scripts
 }
 
 const stage = document.getElementById("spray-stage");
 if (stage) {
-  try { init(stage); } catch (e) {
+  try {
+    if (!document.createElement("canvas").getContext("webgl2")) throw new Error("no WebGL2");
+    init(stage);
+  } catch (e) {
     stage.classList.add("nogl");
     document.getElementById("sp-caption").innerHTML = STEPS.map(([, k, s], i) => `<b>${i + 1} · ${k}.</b> ${s}`).join("<br>");
   }

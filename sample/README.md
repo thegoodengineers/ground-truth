@@ -7,7 +7,7 @@
 
 Build the site against this, not hand-written mocks. To serve it locally next to the site, copy `sample/data` to `site/data`.
 
-On this data: 38 stations ok, 8 watch, 4 flag, 2 no data. The flags are Vikas Sadan (physics), IGI Airport and Indirapuram (neighbours), and Jahangirpuri (history: daytime humidity up 5.2 pts on its previous 3 weeks).
+On this data: 36 stations ok, 7 watch, 4 flag, 5 no data. Three of the five (NSIT Dwarka, Sector 30 and Sector 11 Faridabad) stopped reporting a day or more before the data ends, so they aren't judged; the other two have no readings at all. The flags are Vikas Sadan (physics), IGI Airport and Indirapuram (neighbours), and Jahangirpuri (history: daytime humidity up 5.2 pts on its previous 3 weeks).
 
 To regenerate:
 ```

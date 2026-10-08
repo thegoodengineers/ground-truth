@@ -25,6 +25,17 @@
   const CHECK_PARAM = { physics: () => "PM2.5 and PM10", neighbours: () => "PM10", history: (c) => (c.param === "relativehumidity" ? "humidity" : "PM10") };
   const MICRO = "A real local source, such as a busy junction, road dust, construction or burning within a few hundred metres, can also push one monitor away from neighbours 5–12 km off. Here, the monitor may be right.";
   const PM25_STANDARD = 60; // India NAAQS, 24-hour mean, µg/m³
+  // one line of plain guidance per CPCB AQI band, after CPCB's own health statements (draft: team review pending)
+  const BAND_TODO = {
+    Good: "Good for outdoor activity.",
+    Satisfactory: "Fine for outdoor activity. People with asthma may notice it.",
+    Moderate: "Children and people with asthma or heart disease should take it easy outdoors.",
+    Poor: "Keep long or hard outdoor activity short, especially for children.",
+    "Very poor": "Keep children's outdoor activity short. Hold assembly indoors.",
+    Severe: "Keep children indoors and avoid outdoor exercise.",
+  };
+  // a monitor that has gone quiet: the scorer stops judging it and says since when (docs/STACK.md)
+  const silent = (s) => s.detail != null;
 
   const $ = (s, el = document) => el.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -287,8 +298,9 @@
 
   // ---------- 3D map (scene3d.js, three.js): our own Delhi in fog ----------
   let view = null, immersive = false;
+  const mapWindow = () => $("#map").closest(".window"); // not the first .window: the tanker illustration comes before it
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const reading = (s) => s.latest?.pm25 ?? s.neighbours_latest?.pm25 ?? null;
+  const reading = (s) => (silent(s) ? null : s.latest?.pm25 ?? s.neighbours_latest?.pm25 ?? null);
 
   function markerEl(s) {
     const el = document.createElement("button");
@@ -310,22 +322,50 @@
           onBackgroundClick: () => { if (!immersive) enterImmersive(); },
         });
       } catch (e) {
-        $("#map").innerHTML = `<div class="empty"><h2>The 3D view couldn't start</h2><p>Your browser may not support WebGL. Every monitor is still listed in the panel and in the answers above.</p></div>`;
-        return;
+        $("#map").innerHTML = "";
+        return renderFlat();
       }
       if (selected != null) view.select(selected);
       mark("map:ready");
     };
-    if (window.GT3D) start(); else window.addEventListener("gt3d:loaded", start, { once: true });
+    let webgl = false;
+    try { webgl = !!document.createElement("canvas").getContext("webgl2"); } catch (e) { /* stays false */ }
+    if (!webgl) renderFlat();
+    else if (window.GT3D) start(); else window.addEventListener("gt3d:loaded", start, { once: true });
     $("#enter3d").addEventListener("click", (e) => { e.stopPropagation(); enterImmersive(); });
     $("#exit3d").addEventListener("click", exitImmersive);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && immersive) exitImmersive(); });
   }
 
+  // without WebGL: Delhi's wards as a flat SVG, with the same markers opening the same panel
+  async function renderFlat() {
+    const map = $("#map");
+    map.classList.add("flat");
+    $("#enter3d").hidden = true;
+    let wards = { features: [] };
+    try { wards = await getJSON("geo/delhi_wards.json"); } catch (e) { /* the markers still work on their own */ }
+    const k = Math.cos((28.63 * Math.PI) / 180), P = ([lon, lat]) => [lon * k, -lat]; // equirectangular at Delhi
+    const rings = wards.features.flatMap((f) => (f.geometry.type === "Polygon" ? [f.geometry.coordinates[0]] : f.geometry.coordinates.map((c) => c[0])));
+    const pts = rings.flat().map(P).concat(latest.stations.map((s) => P([s.lon, s.lat])));
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const pad = 0.02, x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, w = Math.max(...xs) + pad - x0, h = Math.max(...ys) + pad - y0;
+    const d = rings.map((r) => "M" + r.map((c) => P(c).map((v, i) => (v - (i ? y0 : x0)).toFixed(4)).join(" ")).join("L") + "Z").join("");
+    map.innerHTML = `<div class="flatmap" style="aspect-ratio:${w.toFixed(4)}/${h.toFixed(4)}"><svg viewBox="0 0 ${w.toFixed(4)} ${h.toFixed(4)}" aria-hidden="true"><path d="${d}"/></svg></div><p class="flatnote">A flat map, because this browser can't show the 3D view.</p>`;
+    const box = $(".flatmap", map), marks = new Map();
+    for (const s of latest.stations) {
+      const [x, y] = P([s.lon, s.lat]), el = markerEl(s);
+      el.style.left = `${((x - x0) / w) * 100}%`; el.style.top = `${((y - y0) / h) * 100}%`;
+      box.appendChild(el); marks.set(s.id, el);
+    }
+    view = { select: (id) => marks.forEach((el, k2) => el.classList.toggle("sel", k2 === id)), focus() {}, setImmersive() {} };
+    if (selected != null) view.select(selected);
+    mark("map:ready");
+  }
+
   function enterImmersive() {
     if (immersive) return;
     immersive = true;
-    $(".window").classList.add("immersive");
+    mapWindow().classList.add("immersive");
     document.documentElement.classList.add("lock");
     $("#exit3d").hidden = false; $("#enter3d").hidden = true;
     view?.setImmersive(true);
@@ -334,7 +374,7 @@
 
   function exitImmersive() {
     immersive = false;
-    $(".window").classList.remove("immersive");
+    mapWindow().classList.remove("immersive");
     document.documentElement.classList.remove("lock");
     $("#exit3d").hidden = true; $("#enter3d").hidden = false;
     view?.setImmersive(false);
@@ -371,6 +411,7 @@
   function adviceHTML(s) {
     const mine = s.latest?.pm25, around = s.neighbours_latest?.pm25;
     const aroundTxt = around == null ? "" : ` The four nearest stations read <b class="mono">${fmt(around)} µg/m³</b> PM2.5 right now.`;
+    if (silent(s)) return `${bandHTML(s)}<div class="advice nodata">${esc(s.detail)} Its last answers are below, but they no longer describe the air now. Use what the stations around it read.${aroundTxt}</div>`;
     const text = {
       ok: `This station agrees with the stations around it. Its reading is a fair guide for this area.`,
       watch: `Something about this station is unusual. Before acting on its reading, compare it with the stations around it.${aroundTxt}`,
@@ -385,7 +426,22 @@
       const r = (mine + 1) / (around + 1);
       if (r > 1.5 || r < 1 / 1.5) gapTxt = ` Right now, though, it reads <b>${r > 1 ? "well above" : "well below"}</b> the stations around it (${fmt(mine)} against ${fmt(around)} µg/m³).${r > 1 ? ` <span class="micro">${MICRO}</span>` : ""}`;
     }
-    return `<div class="advice ${s.status}">${text}${gapTxt}</div>`;
+    return `${bandHTML(s)}<div class="advice ${s.status}">${text}${gapTxt}</div>`;
+  }
+
+  // how bad the air is, in CPCB's words, from the reading you can trust: its own if it agrees, else its neighbours'
+  function bandHTML(s) {
+    const own = s.status === "ok";
+    const b = own ? s.band : s.neighbours_band;
+    if (!b) return "";
+    return `<div class="aqi"><span class="label">Air quality, 24-hour average · ${own ? "this monitor" : "from the 4 monitors around it"}</span><b>${esc(b)}</b><p>${BAND_TODO[b]}</p></div>`;
+  }
+
+  function lastHTML(s) {
+    if (!s.last_reading) return `<div class="last off">No reading in the last 4 weeks.</div>`;
+    const t = new Date(s.last_reading);
+    const when = t.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    return `<div class="last${silent(s) ? " off" : ""}">Last reading ${when} IST, ${ago((Date.now() - t.getTime()) / 6e4)}</div>`;
   }
 
   function panelHTML(s, doc) {
@@ -406,6 +462,7 @@
         <div><small>This station, PM2.5 now</small><b>${fmt(s.latest?.pm25)}<small> µg/m³</small></b></div>
         <div><small>4 nearest stations, PM2.5 now</small><b>${fmt(s.neighbours_latest?.pm25)}<small> µg/m³</small></b></div>
       </div>
+      ${lastHTML(s)}
       <div class="std">India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.</div>
       ${adviceHTML(s)}
       <ul class="checks">${checks}</ul>
@@ -522,7 +579,7 @@
       const b = e.target.closest("[data-open]");
       if (!b) return;
       select(Number(b.dataset.open), { fly: true });
-      $(".window").scrollIntoView({ behavior: "smooth", block: "center" });
+      mapWindow().scrollIntoView({ behavior: "smooth", block: "center" });
     });
     drawRoster();
   }

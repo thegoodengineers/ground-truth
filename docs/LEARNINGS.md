@@ -43,3 +43,11 @@ What we already know, so nobody re-learns it this weekend. Dated entries, newest
 - MapLibre waits for every source before firing `load`, so one unreachable tile server stalls the whole map. The base city (wards, boundary) loads from our own files first; the online streets and 3D buildings are added only after a reachability check.
 - MapLibre positions markers itself; a `position` rule on the marker element breaks it.
 - Headless Chromium needs `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` to render WebGL for screenshots and the video capture.
+
+## 2026-10-08: phones, slow laptops and no WebGL (#24)
+
+- **Measure with the GPU on:** on a Windows box, headless Chromium with `--use-gl=angle --use-angle=d3d11 --enable-gpu` uses the real GPU. Without flags it falls back to SwiftShader, which is a fair stand-in for a laptop without a GPU.
+- **On a phone, each WebGL call costs, not the pixels.** At 390 px with a 4x CPU throttle the map ran at 10 fps with 9 objects per monitor. A blank WebGL canvas of the same size ran at 60, so the cost was ours. Instancing the monitors (7 draw calls for 52) and merging the wards got it to about 30 fps once the quality steps settle.
+- **Per-instance opacity:** tinting puffs towards the fog colour instead of fading them looked lighter over the city. A one-line shader hook (`alpha` instanced attribute, `diffuseColor.a *= vAlpha`) matched the old smog exactly (mean brightness 207.6 vs 207.7).
+- **Two 3D scenes on one page both run** unless each checks it is actually visible. The tanker illustration kept animating under the full-screen map.
+- **`$(".window")` takes the first window on the page.** Once the tanker illustration was added above the map, "Explore Delhi in 3D" made the illustration full screen. Find the map's window from `#map`.

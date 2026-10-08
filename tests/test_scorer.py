@@ -153,14 +153,16 @@ def test_latest_json_contract(baseline):
     json.dumps(latest)  # serialisable, no NaN
     assert latest["data_through"] == "2025-11-30T23:00:00+05:30"
     for s in latest["stations"]:
-        assert {"id", "name", "lat", "lon", "region", "status", "checks", "latest", "neighbours_latest"} <= set(s)
+        assert {"id", "name", "lat", "lon", "region", "status", "checks", "latest", "neighbours_latest",
+                "last_reading", "band", "neighbours_band"} <= set(s)
+        assert s["band"] in scorer.BANDS + (None,) and s["neighbours_band"] in scorer.BANDS + (None,)
         assert set(s["neighbours_latest"]) == {"pm25", "pm10"}
         assert s["status"] in STATUSES and s["region"] in {"Delhi", "NCR"}
         assert set(s["checks"]) == {"physics", "neighbours", "history"}
         for c in s["checks"].values():
             assert c["status"] in STATUSES and isinstance(c["detail"], str) and c["detail"]
         worst = max(scorer.RANK[c["status"]] for c in s["checks"].values())
-        assert scorer.RANK[s["status"]] == worst
+        assert scorer.RANK[s["status"]] == worst or (s["status"] == "nodata" and s["detail"].startswith("No reading"))
         assert set(s["latest"]) == set(scorer.PARAMS)
 
 
@@ -187,6 +189,57 @@ def test_neighbours_latest_is_the_median_of_the_neighbours_now(baseline, data):
         values.append(scorer.last_value(clean["pm25"]))
     import statistics
     assert s["neighbours_latest"]["pm25"] == pytest.approx(statistics.median([v for v in values if v is not None]), abs=0.01)
+
+
+# ---------- freshness and AQI band ----------
+
+def test_silent_station_is_nodata_with_its_last_reading(data, baseline):
+    """A monitor whose last 4 hours are empty isn't judged; every other monitor keeps its answer."""
+    hourly, stations = data
+    quiet = copy.deepcopy(hourly)
+    gone = {(NOW - dt.timedelta(hours=h)).strftime("%Y-%m-%dT%H") for h in range(4)}
+    for series in quiet[str(QUIET)].values():
+        for k in gone:
+            series.pop(k, None)
+    before, after = by_id(baseline[0]), by_id(scorer.score(quiet, stations, NOW)[0])
+    s = after[QUIET]
+    assert s["status"] == "nodata"
+    assert s["last_reading"] == "2025-11-30T19:00:00+05:30"
+    assert s["detail"] == "No reading since 19:00 on 30 Nov."
+    assert s["checks"] == before[QUIET]["checks"]  # its last checks stay visible
+    assert before[QUIET]["last_reading"] == "2025-11-30T23:00:00+05:30" and "detail" not in before[QUIET]
+    others = lambda latest: {sid: x["status"] for sid, x in latest.items() if sid != QUIET}  # noqa: E731
+    assert others(after) == others(before)
+
+
+@pytest.mark.parametrize("pm25,pm10,expected", [
+    (30, None, "Good"), (30.01, None, "Satisfactory"), (60, None, "Satisfactory"), (60.5, None, "Moderate"),
+    (90, None, "Moderate"), (91, None, "Poor"), (120, None, "Poor"), (121, None, "Very poor"),
+    (250, None, "Very poor"), (251, None, "Severe"),
+    (None, 50, "Good"), (None, 51, "Satisfactory"), (None, 100, "Satisfactory"), (None, 101, "Moderate"),
+    (None, 250, "Moderate"), (None, 251, "Poor"), (None, 350, "Poor"), (None, 351, "Very poor"),
+    (None, 430, "Very poor"), (None, 431, "Severe"),
+    (20, 300, "Poor"), (200, 40, "Very poor"),  # the worse of the two
+    (None, None, None)])
+def test_cpcb_band_edges(pm25, pm10, expected):
+    assert scorer.band(pm25, pm10) == expected
+
+
+def test_24h_average_needs_16_hours():
+    assert scorer.mean_24h([None] * 9 + [100.0] * 15) is None
+    assert scorer.mean_24h([None] * 8 + [100.0] * 16) == 100.0
+
+
+def test_neighbours_band_comes_from_the_neighbours_24h_averages(baseline, data):
+    hourly, stations = data
+    latest, per_station = baseline
+    keys = scorer.hour_keys(NOW, 28)
+    import statistics
+    for s in latest["stations"]:
+        nb = [scorer.prepare(hourly[str(i)], keys)[0] for i in per_station[s["id"]]["neighbours"]]
+        avg = {p: [m for m in (scorer.mean_24h(c[p]) for c in nb) if m is not None] for p in ("pm25", "pm10")}
+        want = scorer.band(*(statistics.median(avg[p]) if len(avg[p]) >= 2 else None for p in ("pm25", "pm10")))
+        assert s["neighbours_band"] == want
 
 
 def test_copy_never_accuses(baseline):

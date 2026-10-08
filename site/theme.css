@@ -143,6 +143,11 @@ button, input, select { font: inherit; }
 .now b { display: block; font: 500 30px/1.1 var(--mono); letter-spacing: -.04em; margin-top: 4px; }
 .now b small, .now small { color: var(--ink-3); font: 12px var(--sans); letter-spacing: 0; }
 .std { color: var(--ink-3); font-size: 12.5px; margin: 0 0 4px; }
+.last { font: 12.5px var(--mono); color: var(--ink-2); margin: 10px 0 2px; }
+.last.off { color: var(--nodata-ink); font-weight: 600; }
+.aqi { margin: 14px 0 0; padding: 13px 15px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface-2); }
+.aqi b { display: block; font-size: 22px; letter-spacing: -.02em; font-weight: 600; margin: 2px 0; }
+.aqi p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
 .advice { margin: 12px 0 20px; padding: 13px 15px; border-radius: var(--r-sm); font-size: 14.5px; line-height: 1.5; border: 1px solid; }
 .advice b { font-weight: 600; }
 .advice.ok { background: var(--ok-tint); border-color: var(--ok-line); color: #12401a; }
@@ -327,7 +332,7 @@ footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .enter3d { position: absolute; left: 16px; top: 16px; z-index: 3; display: inline-flex; align-items: center; gap: 10px; height: 42px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--ink); background: rgba(255, 255, 255, .88); backdrop-filter: blur(10px); font-weight: 500; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
 .enter3d:hover { background: #fff; }
 .enter3d span { font-family: var(--mono); }
-.exit3d { margin-left: 8px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font: 500 13px var(--sans); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.exit3d { white-space: nowrap; margin-left: 8px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font: 500 13px var(--sans); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .exit3d:hover { border-color: var(--ink); }
 .legend { position: relative; z-index: 3; background: var(--surface); }
 #map { position: relative; cursor: grab; }
@@ -339,6 +344,12 @@ footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .gt-marker:hover svg, .gt-marker:focus-visible svg { transform: scale(1.25); }
 .gt-marker.sel svg { transform: scale(1.6); }
 .gt-marker.sel { z-index: 5; }
+#map.flat { display: grid; place-items: center; align-content: center; gap: 8px; padding: 16px; cursor: default; }
+.flatmap { position: relative; width: min(100%, 560px); }
+.flatmap svg { display: block; width: 100%; height: auto; }
+.flatmap path { fill: #f1f1ee; stroke: #d2d2ce; stroke-width: .0015; stroke-linejoin: round; }
+.flatmap .gt-marker { transform: translate(-50%, -50%); }
+.flatnote { margin: 0; font: 12px var(--mono); color: var(--ink-3); }
 .gt-marker.ncr svg { opacity: .85; }
 .gt-marker::after { content: attr(data-name); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; font: 500 12px/1.3 var(--sans); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .15s; }
 .gt-marker:hover::after, .gt-marker:focus-visible::after, .gt-marker.sel::after { opacity: 1; }
@@ -388,6 +399,8 @@ html.lock, html.lock body { overflow: hidden; }
   .sec-head { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
+  /* on a phone the exit sits just above the bottom sheet, where a thumb reaches */
+  .window.immersive .exit3d { position: fixed; z-index: 6; right: 12px; bottom: calc(46% + 24px); height: 44px; padding: 0 16px; box-shadow: var(--shadow); }
   .meanings { grid-template-columns: 1fr; }
   .nav nav a { display: none; }
   .fresh { max-width: 58vw; overflow: hidden; text-overflow: ellipsis; }

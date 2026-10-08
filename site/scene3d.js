@@ -13,6 +13,13 @@ const FOG = 0xe8e7e4;
 const STATE = { ok: 0x0ca30c, watch: 0xf2a60c, flag: 0xd03b3b, nodata: 0xa3a4a9 };
 const TINT = { ok: 0xa9cdb0, watch: 0xefc867, flag: 0xe2867f, nodata: 0xcfd0d3 };
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const small = matchMedia("(max-width: 760px), (pointer: coarse)").matches; // phones and tablets start lighter
+
+// a GPU-less machine draws WebGL in software; it gets the lightest scene from the start
+function softwareGL(renderer) {
+  const gl = renderer.getContext(), ext = gl.getExtension("WEBGL_debug_renderer_info");
+  return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "");
+}
 
 function radial(inner, outer) {
   const c = document.createElement("canvas"); c.width = c.height = 128;
@@ -45,7 +52,7 @@ function buildGround(scene, wards, boundary) {
   plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true; scene.add(plane);
 
   const mats = [0xf4f4f2, 0xf1f1ee, 0xeeeeeb].map((c) => new THREE.MeshLambertMaterial({ color: c }));
-  const edge = [];
+  const edge = [], merged = mats.map(() => ({ pos: [], nor: [] })); // one mesh per shade, not one per ward: 3 draw calls, not 290
   wards.features.forEach((f, i) => {
     const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
     for (const p of polys) {
@@ -53,13 +60,19 @@ function buildGround(scene, wards, boundary) {
       p.slice(1).forEach((hole) => shape.holes.push(shapeFromRing(hole)));
       const g = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: false });
       g.rotateX(-Math.PI / 2);
-      const m = new THREE.Mesh(g, mats[i % 3]); m.receiveShadow = true; scene.add(m);
+      merged[i % 3].pos.push(...g.attributes.position.array); merged[i % 3].nor.push(...g.attributes.normal.array);
+      g.dispose();
       p[0].forEach(([lon, lat], k) => {
         if (!k) return;
         const [x0, y0] = xy(...p[0][k - 1]), [x1, y1] = xy(lon, lat);
         edge.push(x0, 0.52, -y0, x1, 0.52, -y1);
       });
     }
+  });
+  merged.forEach(({ pos, nor }, k) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+    const m = new THREE.Mesh(g, mats[k]); m.receiveShadow = true; scene.add(m);
   });
   const eg = new THREE.BufferGeometry(); eg.setAttribute("position", new THREE.Float32BufferAttribute(edge, 3));
   scene.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: 0xd2d2ce })));
@@ -71,7 +84,7 @@ function buildGround(scene, wards, boundary) {
   return ring.map(([lon, lat]) => xy(lon, lat));
 }
 
-function buildCity(scene, ringXY) {
+function buildCity(scene, ringXY, share = 1) {
   // low city blocks and a few trees, scattered inside Delhi's boundary (deterministic, so every visit looks the same)
   const xs = ringXY.map((p) => p[0]), ys = ringXY.map((p) => p[1]);
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
@@ -80,10 +93,11 @@ function buildCity(scene, ringXY) {
   const inside = () => { for (let g = 0; g < 50; g++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); if (pointInRing(x, y, ringXY)) return [x, y]; } return null; };
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
 
-  const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), 4200);
+  const nBlocks = Math.round(4200 * share), nTrees = Math.round(900 * share);
+  const blocks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), nBlocks);
   const col = new THREE.Color();
   let n = 0;
-  for (let i = 0; i < 4200; i++) {
+  for (let i = 0; i < nBlocks; i++) {
     const p = inside(); if (!p) continue;
     const w = 0.35 + rnd() * 0.75, d = 0.35 + rnd() * 0.75, h = 0.25 + Math.pow(rnd(), 3) * 3.2;
     q.setFromAxisAngle(up, rnd() * Math.PI);
@@ -92,9 +106,9 @@ function buildCity(scene, ringXY) {
   }
   blocks.count = n; blocks.castShadow = true; blocks.receiveShadow = true; scene.add(blocks);
 
-  const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(0.45, 1.6, 7), new THREE.MeshLambertMaterial({ color: 0xa7b0a3 }), 900);
+  const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(0.45, 1.6, 7), new THREE.MeshLambertMaterial({ color: 0xa7b0a3 }), nTrees);
   n = 0;
-  for (let i = 0; i < 900; i++) {
+  for (let i = 0; i < nTrees; i++) {
     const p = inside(); if (!p) continue;
     const s = 0.6 + rnd() * 0.7;
     m.compose(new THREE.Vector3(p[0], 0.5 + 0.8 * s, -p[1]), q.identity(), new THREE.Vector3(s, s, s));
@@ -140,44 +154,67 @@ function buildLandmarks(scene) {
   put(lt, 77.2588, 28.5535);
 }
 
+// Every part of every monitor is one InstancedMesh, so 52 monitors cost 7 draw calls, not ~470: on a phone each
+// WebGL call is what costs. Glows and smog are camera-facing quads, turned to the camera before each frame.
 function buildMonitors(scene, stations, reading) {
   const steel = new THREE.MeshStandardMaterial({ color: 0x2f3033, roughness: 0.6, metalness: 0.3 });
   const box = new THREE.MeshStandardMaterial({ color: 0x3e3f43, roughness: 0.7 });
-  const smogTex = radial("rgba(118,106,90,0.55)", "rgba(118,106,90,0)");
-  const glowTex = radial("rgba(255,255,255,1)", "rgba(255,255,255,0)");
-  const tops = new Map(), pickables = [];
+  const flat = (map, opacity) => new THREE.MeshBasicMaterial({ map, transparent: true, opacity, depthWrite: false });
+  const tint = (opacity, side) => new THREE.MeshLambertMaterial({ transparent: true, opacity, side, depthWrite: false });
+  const n = stations.length, quad = new THREE.PlaneGeometry(1, 1);
+  const inst = (geo, mat, count, shadow = false) => {
+    const im = new THREE.InstancedMesh(geo, mat, count); im.count = 0; im.frustumCulled = false; im.castShadow = shadow; scene.add(im); return im;
+  };
+  const poles = inst(new THREE.CylinderGeometry(0.16, 0.22, 7, 8), steel, n, true);
+  const boxes = inst(new THREE.BoxGeometry(1.6, 1.2, 0.9), box, n, true);
+  const leds = inst(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial(), n);
+  const glows = inst(quad, flat(radial("rgba(255,255,255,1)", "rgba(255,255,255,0)"), 0.5), n);
+  const cols = inst(new THREE.CylinderGeometry(1.9, 1.9, 1, 28, 1, true), tint(0.55, THREE.DoubleSide), n);
+  const caps = inst(new THREE.CircleGeometry(1.9, 28).rotateX(-Math.PI / 2), tint(0.8), n);
+  // smog: brown puffs, each with its own opacity (an instanced attribute, multiplied in after the texture)
+  const smogGeo = quad.clone(), smogAlpha = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 1);
+  smogGeo.setAttribute("alpha", smogAlpha);
+  const smogMat = flat(radial("rgba(118,106,90,0.55)", "rgba(118,106,90,0)"), 1);
+  smogMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = "attribute float alpha;\nvarying float vAlpha;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nvAlpha = alpha;");
+    sh.fragmentShader = "varying float vAlpha;\n" + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>\ndiffuseColor.a *= vAlpha;");
+  };
+  const smog = inst(smogGeo, smogMat, n * 3);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), at = new THREE.Vector3(), size = new THREE.Vector3(), c = new THREE.Color();
+  const put = (im, x, y, z, color = null, sx = 1, sy = 1) => {
+    m.compose(at.set(x, y, z), q.identity(), size.set(sx, sy, sx)); im.setMatrixAt(im.count, m);
+    if (color != null) im.setColorAt(im.count, c.set(color));
+    return im.count++;
+  };
+  const faces = []; // [mesh, index, x, y, z, width, height] for every camera-facing quad
+  const tops = new Map(), ids = [];
   for (const s of stations) {
-    const [x, y] = xy(s.lon, s.lat), z = -y, g = new THREE.Group();
-    g.position.set(x, 0.5, z);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 7, 8), steel); pole.position.y = 3.5; g.add(pole);
-    const sb = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 0.9), box); sb.position.y = 6.2; g.add(sb);
-    const led = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial({ color: STATE[s.status] })); led.position.y = 7.3; g.add(led);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: STATE[s.status], transparent: true, opacity: 0.5, depthWrite: false })); glow.scale.set(2.6, 2.6, 1); glow.position.y = 7.3; g.add(glow);
-    g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    const [x, y] = xy(s.lon, s.lat), z = -y;
+    ids.push(s.id);
+    put(poles, x, 4, z); put(boxes, x, 6.7, z); put(leds, x, 7.8, z, STATE[s.status]);
+    faces.push([glows, put(glows, x, 7.8, z, STATE[s.status]), x, 7.8, z, 2.6, 2.6]);
     const pm = reading(s);
     if (pm != null) {
       const h = Math.max(pm, 4) * 0.34;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, h, 28, 1, true),
-        new THREE.MeshLambertMaterial({ color: TINT[s.status], transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
-      col.position.y = 8 + h / 2; g.add(col);
-      const capm = new THREE.Mesh(new THREE.CircleGeometry(1.9, 28), new THREE.MeshLambertMaterial({ color: TINT[s.status], transparent: true, opacity: 0.8, depthWrite: false }));
-      capm.rotation.x = -Math.PI / 2; capm.position.y = 8 + h; g.add(capm);
+      put(cols, x, 8.5 + h / 2, z, TINT[s.status], 1, h); put(caps, x, 8.5 + h, z, TINT[s.status]);
       // smog: layered clouds, wider and thicker where the reading is higher
       for (let k = 0; k < 3; k++) {
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smogTex, transparent: true, depthWrite: false, opacity: Math.min(0.75, 0.2 + pm / 260) * (1 - k * 0.2) }));
-        const size = 30 + pm * 0.55 + k * 12; sp.scale.set(size, size * 0.45, 1); sp.position.set((k - 1) * 4, 4 + k * 5, (k % 2) * 3);
-        g.add(sp);
+        const w = 30 + pm * 0.55 + k * 12, i = put(smog, 0, 0, 0);
+        smogAlpha.setX(i, Math.min(0.75, 0.2 + pm / 260) * (1 - k * 0.2));
+        faces.push([smog, i, x + (k - 1) * 4, 4.5 + k * 5, z + (k % 2) * 3, w, w * 0.45]);
       }
       tops.set(s.id, new THREE.Vector3(x, 0.5 + 8 + h + 1.2, z));
     } else tops.set(s.id, new THREE.Vector3(x, 9, z));
-    sb.userData.id = s.id; pole.userData.id = s.id; pickables.push(sb, pole);
-    scene.add(g);
   }
-  return { tops, pickables };
+  const face = (camera) => {
+    for (const [im, i, x, y, z, w, h] of faces) { m.compose(at.set(x, y, z), camera.quaternion, size.set(w, h, 1)); im.setMatrixAt(i, m); }
+    glows.instanceMatrix.needsUpdate = smog.instanceMatrix.needsUpdate = true;
+  };
+  return { tops, pickables: [poles, boxes], ids, face };
 }
 
-function buildDust(scene, median) {
-  const n = Math.round(Math.min(9000, 2500 + median * 45));
+function buildDust(scene, median, cap) {
+  let n = Math.round(Math.min(cap, 2500 + median * 45));
   const pos = new Float32Array(n * 3), vel = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
     pos[i * 3] = (Math.random() - 0.5) * 700; pos[i * 3 + 1] = 1 + Math.random() * 70; pos[i * 3 + 2] = (Math.random() - 0.5) * 760;
@@ -187,7 +224,7 @@ function buildDust(scene, median) {
   const dot = radial("rgba(100,92,80,1)", "rgba(100,92,80,0)");
   const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 1.1, map: dot, color: 0x6e6457, transparent: true, opacity: 0.55, depthWrite: false, sizeAttenuation: true }));
   scene.add(pts);
-  return () => {
+  const step = () => {
     for (let i = 0; i < n; i++) {
       pos[i * 3] += vel[i * 3]; pos[i * 3 + 1] += vel[i * 3 + 1]; pos[i * 3 + 2] += vel[i * 3 + 2];
       if (pos[i * 3] > 350) pos[i * 3] = -350;
@@ -195,6 +232,8 @@ function buildDust(scene, median) {
     }
     g.attributes.position.needsUpdate = true;
   };
+  const resize = (k) => { n = Math.floor(n * k); g.setDrawRange(0, n); pts.visible = n > 0; };
+  return { step, resize, get on() { return n > 0; } };
 }
 
 async function init(container, { stations, reading, makeMarker, onPick, onBackgroundClick }) {
@@ -204,9 +243,11 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
   scene.fog = new THREE.Fog(FOG, 180, 820);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const soft = softwareGL(renderer), light = soft || small;
+  let dirty = true; // something changed that needs a redraw
+  renderer.setPixelRatio(Math.min(devicePixelRatio, soft ? 1 : small ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = !light; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
   renderer.domElement.setAttribute("aria-hidden", "true");
 
@@ -219,23 +260,39 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
 
   scene.add(new THREE.HemisphereLight(0xf7f7f8, 0xcfcfca, 1.6));
   const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-  sun.position.set(-220, 320, 160); sun.castShadow = true;
+  sun.position.set(-220, 320, 160); sun.castShadow = !light;
   Object.assign(sun.shadow.camera, { left: -380, right: 380, top: 380, bottom: -380, near: 10, far: 1200 });
   sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; scene.add(sun);
 
   const ringXY = buildGround(scene, wards, boundary);
-  buildCity(scene, ringXY);
+  buildCity(scene, ringXY, light ? 0.45 : 1);
   buildLandmarks(scene);
-  const { tops, pickables } = buildMonitors(scene, stations, reading);
+  const { tops, pickables, ids, face } = buildMonitors(scene, stations, reading);
   const vals = stations.map(reading).filter((v) => v != null).sort((a, b) => a - b);
-  const stepDust = buildDust(scene, vals.length ? vals[Math.floor(vals.length / 2)] : 40);
+  const dust = buildDust(scene, vals.length ? vals[Math.floor(vals.length / 2)] : 40, soft ? 0 : small ? 3000 : 9000);
+
+  // when frames average over 33 ms for 2 s, give up one thing at a time, cheapest loss first
+  const stepsDown = [
+    () => { renderer.shadowMap.enabled = false; sun.castShadow = false; },
+    () => dust.resize(0.5),
+    () => { renderer.setPixelRatio(1); size(); },
+    () => dust.resize(0),
+  ].slice(soft ? 4 : small ? 1 : 0);
+  let slow = { t: 0, n: 0 };
+  const pace = (dt) => {
+    if (!stepsDown.length || dt > 1000) return; // a long gap is a hidden tab, not a slow frame
+    slow.t += dt; slow.n++;
+    if (slow.t < 2000) return;
+    if (slow.t / slow.n > 33) { stepsDown.shift()(); dirty = true; }
+    slow = { t: 0, n: 0 };
+  };
 
   // HTML markers (the site's own status icons), kept above each monitor
   const layer = document.createElement("div"); layer.className = "gt3d-markers"; container.appendChild(layer);
   const marks = new Map();
   for (const s of stations) { const el = makeMarker(s); layer.appendChild(el); marks.set(s.id, el); }
 
-  const size = () => { const w = container.clientWidth, h = container.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  const size = () => { const w = container.clientWidth, h = container.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); dirty = true; };
   new ResizeObserver(size).observe(container); size();
 
   // click on the scene: a monitor, or the background
@@ -247,22 +304,30 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObjects(pickables, false)[0];
-    if (hit) onPick(hit.object.userData.id); else onBackgroundClick();
+    if (hit) onPick(ids[hit.instanceId]); else onBackgroundClick();
   });
 
-  let tween = null, visible = true, immersive = false, first = true;
-  new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(container);
+  // rAF itself stops in a hidden tab; off screen we skip the work, and a still scene with no dust isn't redrawn
+  let tween = null, visible = true, immersive = false, first = true, last = 0;
+  new IntersectionObserver(([en]) => { visible = en.isIntersecting; last = 0; }).observe(container);
   const v = new THREE.Vector3();
-  const loop = () => {
+  const loop = (now) => {
     requestAnimationFrame(loop);
     if (!visible && !immersive) return;
+    if (last) pace(now - last);
+    last = now;
+    const moving = !!tween;
     if (tween) {
       const t = Math.min(1, (performance.now() - tween.t0) / tween.ms), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       controls.target.lerpVectors(tween.fromT, tween.toT, e); camera.position.lerpVectors(tween.fromC, tween.toC, e);
       if (t >= 1) tween = null;
     }
-    controls.update();
-    if (!reduced) stepDust();
+    const changed = controls.update();
+    const drifting = !reduced && dust.on;
+    if (drifting) dust.step();
+    if (!(moving || changed || drifting || dirty)) { last = 0; return; }
+    dirty = false;
+    face(camera);
     renderer.render(scene, camera);
     const w = container.clientWidth, h = container.clientHeight;
     for (const [id, el] of marks) {
