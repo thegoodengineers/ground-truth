@@ -166,6 +166,10 @@ Resources:
                 Effect: Allow
                 Action: [s3:GetObject]
                 Resource: arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-*/*
+              - Sid: SamTransform  # the service role runs the Serverless transform when it creates the changeset
+                Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31"
       Tags:
         - Key: project
           Value: ground-truth
