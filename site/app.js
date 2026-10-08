@@ -2,13 +2,42 @@
 (() => {
   "use strict";
 
-  const STATUS = {
-    ok: { label: "Agrees with neighbours", short: "Agrees", todo: "Sensor looks reliable: use this reading." },
-    watch: { label: "Worth a look", short: "Worth a look", todo: "Uncertain: compare it with the 4 monitors around it before acting." },
-    flag: { label: "Doesn't add up", short: "Doesn't add up", todo: "Flagged: use the median of its 4 neighbours instead." },
-    nodata: { label: "Not enough data", short: "No data", todo: "Can't be checked right now: use the median of its 4 neighbours." },
+  const I18N = {
+    en: {
+      status: {
+        ok:     { label: "Agrees with neighbours", short: "Agrees",        todo: "Sensor looks reliable: use this reading." },
+        watch:  { label: "Worth a look",            short: "Worth a look", todo: "Uncertain: compare it with the 4 monitors around it before acting." },
+        flag:   { label: "Doesn't add up",          short: "Doesn't add up", todo: "Flagged: use the median of its 4 neighbours instead." },
+        nodata: { label: "Not enough data",          short: "No data",     todo: "Can't be checked right now: use the median of its 4 neighbours." },
+      },
+      checkLabel: { ok: "Passes", watch: "Worth a look", flag: "Doesn't add up", nodata: "No data" },
+      findStation: "Find your station",
+      findPlaceholder: "Find your station, e.g. Anand Vihar",
+      filterPlaceholder: "Filter by name or area, e.g. Noida",
+      langToggleLabel: "Switch to Hindi",
+      langToggleText: "हिं",
+    },
+    hi: {
+      status: {
+        ok:     { label: "पड़ोसी सेंसर से मेल",     short: "मेल",          todo: "सेंसर विश्वसनीय लग रहा है: यही रीडिंग उपयोग करें।" },
+        watch:  { label: "जाँच करें",               short: "जाँच करें",   todo: "अनिश्चित: कोई कदम उठाने से पहले आस-पास के 4 मॉनिटर से तुलना करें।" },
+        flag:   { label: "मेल नहीं",                short: "मेल नहीं",    todo: "संदिग्ध: इसके 4 पड़ोसी सेंसर का माध्यमिक मान उपयोग करें।" },
+        nodata: { label: "पर्याप्त डेटा नहीं",       short: "डेटा नहीं",   todo: "अभी जाँच संभव नहीं: 4 पड़ोसी सेंसर का माध्यमिक मान उपयोग करें।" },
+      },
+      checkLabel: { ok: "सही", watch: "जाँच करें", flag: "मेल नहीं", nodata: "डेटा नहीं" },
+      findStation: "अपना स्टेशन खोजें",
+      findPlaceholder: "स्टेशन खोजें, जैसे आनंद विहार",
+      filterPlaceholder: "नाम या क्षेत्र से फ़िल्टर करें, जैसे नोएडा",
+      langToggleLabel: "Switch to English",
+      langToggleText: "EN",
+    },
   };
-  const CHECK_LABEL = { ok: "Passes", watch: "Worth a look", flag: "Doesn't add up", nodata: "No data" };
+
+  let lang = (localStorage.getItem("gt-lang") === "hi") ? "hi" : "en";
+  const t = () => I18N[lang];
+
+  const STATUS = new Proxy({}, { get: (_, k) => t().status[k] });
+  const CHECK_LABEL = new Proxy({}, { get: (_, k) => t().checkLabel[k] });
   const ORDER = ["flag", "watch", "ok", "nodata"];
   const CHECKS = [
     ["physics", "Physics", "Can this reading be real?"],
@@ -780,7 +809,31 @@
     mark("tour:end");
   }
 
-  document.addEventListener("DOMContentLoaded", boot);
+  function applyLang() {
+    document.documentElement.lang = lang;
+    const btn = $("#lang-toggle");
+    if (btn) { btn.textContent = t().langToggleText; btn.setAttribute("aria-label", t().langToggleLabel); }
+    const search = $("#search");
+    if (search) { search.setAttribute("placeholder", t().findPlaceholder); search.labels?.[0]?.setAttribute && search.labels[0].textContent === "Find your station" && (search.labels[0].textContent = t().findStation); }
+    const rosterQ = $("#roster-q");
+    if (rosterQ) rosterQ.setAttribute("placeholder", t().filterPlaceholder);
+    // Noto Sans Devanagari for Hindi text
+    document.body.classList.toggle("lang-hi", lang === "hi");
+  }
+
+  function setupLangToggle() {
+    applyLang();
+    $("#lang-toggle")?.addEventListener("click", () => {
+      lang = lang === "en" ? "hi" : "en";
+      try { localStorage.setItem("gt-lang", lang); } catch (_) {}
+      applyLang();
+      // Re-render dynamic content that reads STATUS / CHECK_LABEL
+      if (latest) { renderStats(); renderLegend(); renderRoster(); }
+      if (selected != null) select(selected, { redraw: true });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => { setupLangToggle(); boot(); });
 
   // Fill the suggested citation date
   document.addEventListener("DOMContentLoaded", () => {

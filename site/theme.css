@@ -56,6 +56,9 @@ button, input, select { font: inherit; }
 .nav nav { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 .nav nav a { text-decoration: none; color: var(--ink-2); font-size: 14.5px; padding: 6px 12px; border-radius: 999px; }
 .nav nav a:hover { color: var(--ink); background: rgba(8, 9, 10, .05); }
+.lang-toggle { font: 500 12px/1 var(--sans); color: var(--ink-2); padding: 5px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-2); cursor: pointer; white-space: nowrap; transition: background .15s; }
+.lang-toggle:hover { background: rgba(8,9,10,.07); color: var(--ink); }
+.lang-hi body, body.lang-hi { font-family: "Noto Sans Devanagari", var(--sans); }
 .fresh { font: 12px var(--mono); color: var(--ink-2); padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-2); white-space: nowrap; }
 .fresh.stale { border-color: var(--watch-line); background: var(--watch-tint); color: var(--watch-ink); }
 .pulse { font: 12px var(--mono); padding: 6px 12px; border-radius: 999px; white-space: nowrap; border: 1px solid; }
