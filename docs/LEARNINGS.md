@@ -84,6 +84,6 @@ What we already know, so nobody re-learns it this weekend. Dated entries, newest
 1. Run the Lambda once (`make run`) and read its JSON log line.
 2. `overlap_ratio` for `pm25` and `pm10` should be 0.95-1.05; that means the API and the archive agree on units and on IST hour labels. About 1000 for `co` would mean the API serves µg/m³ where the archive has mg/m³.
 3. `data_through` should be within 2 hours of the newest hour OpenAQ's Explorer shows for these monitors (not necessarily of now: see above), and `published` should be `true`.
-4. Every station should resolve to PM2.5 and PM10 sensors (`data/raw/sensors.json`); list any that don't.
+4. Every station should resolve to PM2.5 and PM10 sensors (`data/raw/sensors_v2.json`); list any that don't.
 5. Spot-check three stations' latest IST hour against the CPCB dashboard.
 6. Write the real numbers here, replacing this list.

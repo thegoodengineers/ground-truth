@@ -2,7 +2,7 @@
 
 Each run:
 1. Load the cache `data/raw/hourly.json` (seeded once from the public archive with backfill.py) and the
-   sensor map `data/raw/sensors.json` (fetched from the API the first time a station is seen).
+   sensor map `data/raw/sensors_v2.json` (fetched from the API the first time a station is seen).
 2. For every station and parameter, fetch raw readings from the last stored hour (minus 2 h, to pick up
    late data) up to now, and average them into IST hours exactly as the archive backfill does. The free key
    allows 60 requests/min, so calls are paced. The stations with the oldest data go first, so whatever a run
@@ -23,7 +23,8 @@ import datetime as dt, json, os, statistics, time, urllib.error, urllib.parse, u
 import backfill, fires, scorer, weather
 
 API = "https://api.openaq.org/v3"
-RAW_KEY, SENSORS_KEY = "data/raw/hourly.json", "data/raw/sensors.json"
+# v2: maps saved before sensors() chose the current sensor can point at retired ones, so they are rebuilt once
+RAW_KEY, SENSORS_KEY = "data/raw/hourly.json", "data/raw/sensors_v2.json"
 STATUS_HIST_KEY = "data/raw/status_history.json"
 KEEP_DAYS, LOOKBACK_HOURS, REFETCH_HOURS = 29, 6 * 24, 2
 TRIES, MAX_FAILS_IN_A_ROW = 3, 5
@@ -123,14 +124,18 @@ class OpenAQ:
             self.sleep(min(60, wait))
 
     def sensors(self, location_id):
-        """{param: sensor_id} for the parameters we score."""
+        """{param: sensor_id} for the parameters we score. A location can list a retired sensor next to the one
+        reporting now for the same parameter (taking the last one listed mapped Anand Vihar's pm25 to 384, while
+        its readings come from 12235610), so take the one that reported last, or failing that the newest id."""
         res = self.get(f"/locations/{location_id}")["results"]
-        out = {}
+        best = {}
         for s in (res[0].get("sensors", []) if res else []):
             name = s.get("parameter", {}).get("name")
             if name in backfill.PARAMS:
-                out[name] = s["id"]
-        return out
+                rank = ((s.get("datetimeLast") or {}).get("utc") or "", s["id"])
+                if name not in best or rank > best[name]:
+                    best[name] = rank
+        return {p: sid for p, (_, sid) in best.items()}
 
     def hours(self, param, sensor_id, since):
         """{IST hour key: mean} built from raw readings since `since` (UTC). The API's own /hours endpoint

@@ -303,3 +303,29 @@ def test_metrics_report_data_age_and_run_errors():
     assert m["IngestErrors"] == (1.0, "Count")
     assert m["DataAgeHours"] == (1.0, "None")  # falls back to the published hour
     assert ingest.metrics({}, now) == [("IngestErrors", 0.0, "Count")]  # nothing scored yet: no age point
+
+
+def _location(*sensors):
+    """An opener answering /locations/{id} with these (id, param, datetimeLast or None) sensors."""
+    def opener(req, timeout=None):
+        rows = [{"id": i, "parameter": {"name": p}, **({"datetimeLast": {"utc": last}} if last else {})} for i, p, last in sensors]
+        return io.BytesIO(json.dumps({"results": [{"id": 235, "sensors": rows}]}).encode())
+    return ingest.OpenAQ("k", opener=opener, sleep=lambda s: None)
+
+
+def test_sensors_take_the_current_sensor_not_a_retired_one():
+    # a retired sensor listed after the current one (as at Anand Vihar, 235) used to win
+    a = _location((12235609, "pm10", None), (12235610, "pm25", None), (381, "pm10", None), (384, "pm25", None))
+    assert a.sensors(235) == {"pm10": 12235609, "pm25": 12235610}
+    # when the API says when each sensor last reported, that decides, whatever the ids
+    a = _location((900, "pm25", "2024-01-01T00:00:00Z"), (50, "pm25", "2026-10-08T09:00:00Z"))
+    assert a.sensors(235) == {"pm25": 50}
+
+
+def test_a_map_saved_before_the_fix_is_rebuilt():
+    stale = {str(s["id"]): {"pm10": 999} for s in STATIONS}  # retired sensors the old code picked
+    store, fake = MemStore({"data/raw/sensors.json": stale}), FakeAPI()
+    ingest.run(store, api(fake), STATIONS, NOW)
+    assert sum(path.startswith("/v3/locations/") for path, _ in fake.requests) == len(STATIONS)
+    assert store.data[ingest.SENSORS_KEY]["1"]["pm10"] == 10
+    assert not any("/sensors/999/" in path for path, _ in fake.requests)
