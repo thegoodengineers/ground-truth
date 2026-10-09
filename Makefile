@@ -5,8 +5,8 @@ STACK   ?= ground-truth
 ALERT_EMAIL ?=
 # "true" once AWS Support has verified the account for CloudFront (issue 2); until then a function URL serves HTTPS.
 USE_CLOUDFRONT ?= false
-# Which city: a file in src/regions/ (delhi, mumbai). The Lambda's REGION is set in template.yaml.
-REGION ?= delhi
+# Which city: a file in src/regions/ (delhi, mumbai). Not REGION, which is the AWS region above; the Lambda's REGION is set in template.yaml.
+CITY ?= delhi
 AWS      = aws --profile $(PROFILE) --region $(REGION)
 OUT      = $(AWS) cloudformation describe-stacks --stack-name $(STACK) --query "Stacks[0].Outputs[?OutputKey=='$(1)'].OutputValue" --output text
 
@@ -52,7 +52,7 @@ sample:
 
 # One-off: seed the 28-day cache from the public archive so the first run has history.
 seed:
-	python src/backfill.py .cache/hourly.json --days 29 --cache .cache/archive --region $(REGION)
+	python src/backfill.py .cache/hourly.json --days 29 --cache .cache/archive --region $(CITY)
 	$(AWS) s3 cp .cache/hourly.json s3://$$($(call OUT,SiteBucketName))/data/raw/hourly.json
 
 # Run the ingest now instead of waiting for the hour; prints the run's summary.
