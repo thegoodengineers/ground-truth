@@ -68,3 +68,19 @@ What we already know, so nobody re-learns it this weekend. Dated entries, newest
 - **Mumbai from the archive** (`src/regions/mumbai.json`, 14 monitors found by `spike/find_region.py`: 10 MPCB, 4 IITM, ids 6927-11611): `python src/scorer.py .cache/mumbai_hourly.json out --region mumbai` produces valid output (8 ok, 2 flag, 4 not enough data on 5 Oct 2026).
 - **The data is thinner.** Over the 29 days to 5 Oct 2026, Mumbai's monitors had PM readings in 53% of station-hours against Delhi's 72%; four monitors (Colaba, Powai, Borivali East MPCB, Vile Parle West) were below 30% and sit at "not enough data". Only 2 of 14 report humidity (39 of 52 in Delhi), so the history check's humidity half is mostly silent. The neighbour radius had to grow to 14 km, and Nerul still has one neighbour. Not shipped on the site: the method runs, the coverage doesn't earn the answers yet. The write-up can say exactly that.
 - The site still reads Delhi's geo files; a second city needs its boundary in `site/geo/` and the scene to read `latest.json`'s `region.map`. That is the next step, not this one.
+
+## 2026-10-09: the live data check (#17), still waiting on the key
+
+The deployed Lambda runs every hour, but until the OpenAQ key is in SSM it can only score the archive: on 9 Oct the live `data_through` was 5 Oct 23:00. So the API side of this check has not run yet, and nothing below is a measured API result.
+
+**What we can already say**
+- From the live `latest.json` (9 Oct): `New Delhi-8118` (8118) and `Lodhi Road, Delhi` (11607) have no reading in the last 4 weeks, so they show "not enough data". 11607 did report in Oct-Nov 2025; 8118 has no PM2.5 or PM10 in the archive at all.
+- From the code: a full run fetches 52 stations x up to 5 sensors, about 260 calls, paced at 1.1 s (`OpenAQ.pace`), so about 5 minutes and under 60 a minute. `MAX_CALLS=300` covers it, and the 15-minute Lambda timeout leaves room for the nightly archive pass.
+
+**The check, once the key is in SSM** (`/ground-truth/openaq-key`)
+1. Run the Lambda once (`make run`) and read its JSON log line.
+2. `overlap_ratio` for `pm25` and `pm10` should be 0.95-1.05; that means the API and the archive agree on units and on IST hour labels. About 1000 for `co` would mean the API serves µg/m³ where the archive has mg/m³.
+3. `data_through` should be within 2 hours of now, and `published` should be `true`.
+4. Every station should resolve to PM2.5 and PM10 sensors (`data/raw/sensors.json`); list any that don't.
+5. Spot-check three stations' latest IST hour against the CPCB dashboard.
+6. Write the real numbers here, replacing this list.
