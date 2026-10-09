@@ -345,6 +345,10 @@
     "Play": "चलाएँ",
     "Pause": "रोकें",
     "Delhi": "दिल्ली",
+    "{0} hours": "{0} घंटे",
+    "{0} days": "{0} दिन",
+    "The public feed from the monitors (CPCB, through OpenAQ) is {0} behind right now. Every answer here is for the newest hour it has: {1} IST.":
+      "मॉनिटरों का सार्वजनिक फ़ीड (CPCB, OpenAQ के ज़रिए) अभी {0} पीछे चल रहा है। यहाँ हर जवाब उसके सबसे नए घंटे का है: {1} IST।",
     // the ?demo=1 tour
     "{0} air-quality monitors across Delhi and NCR, checked every hour.": "दिल्ली और NCR के {0} वायु-गुणवत्ता मॉनिटर, हर घंटे जाँचे जाते हैं।",
     "Delhi in 3D. Each mast is a monitor; its column is as tall as its PM2.5 reading, and the smog is thicker where the air is worse.":
