@@ -426,9 +426,6 @@ html.lock, html.lock body { overflow: hidden; }
 
 /* ── mobile bottom sheet (≤ 480px) ──────────────────────────────────────── */
 @media (max-width: 480px) {
-  /* no horizontal scroll on any element */
-  html, body { overflow-x: hidden; max-width: 100vw; }
-
   /* map fills the screen height above the sheet */
   .window .app { display: block; position: relative; }
   .window .mapcol { border-bottom: 0; }
@@ -465,6 +462,8 @@ html.lock, html.lock body { overflow: hidden; }
     border-radius: var(--r) var(--r) 0 0;
     box-shadow: 0 -4px 24px rgba(0,0,0,.12);
   }
+  /* the exit sits just above this shorter sheet */
+  .window.immersive .exit3d { bottom: calc(40svh + 12px); }
 
   /* prevent nav overflow */
   .nav .wrap { gap: 8px; }
