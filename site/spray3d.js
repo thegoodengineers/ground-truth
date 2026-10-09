@@ -8,6 +8,7 @@ import * as THREE from "./vendor/three/three.module.min.js";
 const FOG = 0xe8e7e4, DUST = new THREE.Color(0x6e6457), FOGC = new THREE.Color(FOG);
 const OK = 0x0ca30c, FLAG = 0xd03b3b;
 const LOOP = 18;
+const T = window.GT_I18N ? window.GT_I18N.t : (s) => s; // Hindi when it is on (i18n.js)
 const STEPS = [
   [0, "Before", "The monitor and the monitors around it agree: about 310 µg/m³ PM2.5."],
   [3.5, "The tanker", "A water tanker pulls up next to the monitor."],
@@ -228,7 +229,7 @@ function init(stage) {
 
     const step = STEPS.reduce((k, [s], i) => (t >= s ? i : k), 0);
     if (step !== lastStep) {
-      lastStep = step; cap.innerHTML = `<b>${step + 1} · ${STEPS[step][1]}.</b> ${STEPS[step][2]}`;
+      lastStep = step; cap.innerHTML = `<b>${step + 1} · ${T(STEPS[step][1])}.</b> ${T(STEPS[step][2])}`;
       steps.forEach((b, i) => { b.setAttribute("aria-current", String(i === step)); b.classList.toggle("done", i < step); });
     }
     stage.classList.toggle("blink", t > 17.6);
@@ -248,11 +249,11 @@ function init(stage) {
   }
   steps.forEach((b, i) => b.addEventListener("click", () => { seek(STEPS[i][0] + (i === 2 ? 4.6 : 0.4)); }));
   toggle.addEventListener("click", () => {
-    playing = !playing; toggle.textContent = playing ? "Pause" : "Play";
+    playing = !playing; toggle.textContent = T(playing ? "Pause" : "Play");
     toggle.setAttribute("aria-pressed", String(!playing));
   });
   new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(stage);
-  if (!playing) { toggle.textContent = "Play"; toggle.setAttribute("aria-pressed", "true"); seek(15); } else frame(0);
+  if (!playing) { toggle.textContent = T("Play"); toggle.setAttribute("aria-pressed", "true"); seek(15); } else frame(0);
   requestAnimationFrame(loop);
   window.__spray = { seek, get t() { return t; } }; // for the capture scripts
 }
@@ -264,6 +265,6 @@ if (stage) {
     init(stage);
   } catch (e) {
     stage.classList.add("nogl");
-    document.getElementById("sp-caption").innerHTML = STEPS.map(([, k, s], i) => `<b>${i + 1} · ${k}.</b> ${s}`).join("<br>");
+    document.getElementById("sp-caption").innerHTML = STEPS.map(([, k, s], i) => `<b>${i + 1} · ${T(k)}.</b> ${T(s)}`).join("<br>");
   }
 }

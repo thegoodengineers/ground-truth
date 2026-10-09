@@ -19,12 +19,12 @@
     },
     hi: {
       status: {
-        ok:     { label: "पड़ोसी सेंसर से मेल",     short: "मेल",          todo: "सेंसर विश्वसनीय लग रहा है: यही रीडिंग उपयोग करें।" },
-        watch:  { label: "जाँच करें",               short: "जाँच करें",   todo: "अनिश्चित: कोई कदम उठाने से पहले आस-पास के 4 मॉनिटर से तुलना करें।" },
-        flag:   { label: "मेल नहीं",                short: "मेल नहीं",    todo: "आँकड़े मेल नहीं खाते: इसके 4 पड़ोसी सेंसरों का बीच वाला मान (माध्यिका) उपयोग करें।" },
-        nodata: { label: "पर्याप्त डेटा नहीं",       short: "डेटा नहीं",   todo: "अभी जाँच संभव नहीं: 4 पड़ोसी सेंसरों का बीच वाला मान (माध्यिका) उपयोग करें।" },
+        ok:     { label: "पड़ोसियों से मेल खाता है", short: "मेल खाता है",   todo: "सेंसर ठीक लगता है: यही रीडिंग इस्तेमाल करें।" },
+        watch:  { label: "एक बार देखें",           short: "एक बार देखें",  todo: "पक्का नहीं: फ़ैसले से पहले आस-पास के 4 मॉनिटरों से तुलना करें।" },
+        flag:   { label: "आँकड़े मेल नहीं खाते",     short: "मेल नहीं खाते", todo: "आँकड़े मेल नहीं खाते: इसके 4 पड़ोसियों का बीच वाला मान (माध्यिका) इस्तेमाल करें।" },
+        nodata: { label: "पर्याप्त डेटा नहीं",      short: "डेटा नहीं",     todo: "अभी जाँच संभव नहीं: 4 पड़ोसियों का बीच वाला मान (माध्यिका) इस्तेमाल करें।" },
       },
-      checkLabel: { ok: "सही", watch: "जाँच करें", flag: "मेल नहीं", nodata: "डेटा नहीं" },
+      checkLabel: { ok: "पास", watch: "एक बार देखें", flag: "मेल नहीं खाता", nodata: "डेटा नहीं" },
       findStation: "अपना स्टेशन खोजें",
       findPlaceholder: "स्टेशन खोजें, जैसे आनंद विहार",
       filterPlaceholder: "नाम या क्षेत्र से फ़िल्टर करें, जैसे नोएडा",
@@ -33,26 +33,27 @@
     },
   };
 
-  let lang = (localStorage.getItem("gt-lang") === "hi") ? "hi" : "en";
+  // the language, the page dictionary and tr`...` live in i18n.js; choosing a language reloads the page in it
+  const { lang, tr, t: tx, detail } = window.GT_I18N;
   const t = () => I18N[lang];
 
   const STATUS = new Proxy({}, { get: (_, k) => t().status[k] });
   const CHECK_LABEL = new Proxy({}, { get: (_, k) => t().checkLabel[k] });
   const ORDER = ["flag", "watch", "ok", "nodata"];
   const CHECKS = [
-    ["physics", "Physics", "Can this reading be real?"],
-    ["neighbours", "Neighbours", "Does it agree with the stations around it?"],
-    ["history", "History", "Has it suddenly changed?"],
+    ["physics", tx("Physics"), tx("Can this reading be real?")],
+    ["neighbours", tx("Neighbours"), tx("Does it agree with the stations around it?")],
+    ["history", tx("History"), tx("Has it suddenly changed?")],
   ];
   const PARAMS = {
-    pm10: { name: "PM10 (all dust)", unit: "%" },
-    pm25: { name: "PM2.5 (fine dust)", unit: "%" },
-    no2: { name: "NO2 (traffic gas)", unit: "%" },
-    relativehumidity: { name: "Humidity", unit: "pts" },
+    pm10: { name: tx("PM10 (all dust)"), unit: "%" },
+    pm25: { name: tx("PM2.5 (fine dust)"), unit: "%" },
+    no2: { name: tx("NO2 (traffic gas)"), unit: "%" },
+    relativehumidity: { name: tx("Humidity"), unit: "pts" },
   };
   // which measure each check looks at, so a card can say exactly what raised it
-  const CHECK_PARAM = { physics: () => "PM2.5 and PM10", neighbours: () => "PM10", history: (c) => (c.param === "relativehumidity" ? "humidity" : "PM10") };
-  const MICRO = "A real local source, such as a busy junction, road dust, construction or burning within a few hundred metres, can also push one monitor away from neighbours 5–12 km off. Here, the monitor may be right.";
+  const CHECK_PARAM = { physics: () => tx("PM2.5 and PM10"), neighbours: () => "PM10", history: (c) => (c.param === "relativehumidity" ? tx("humidity") : "PM10") };
+  const MICRO = tx("A real local source, such as a busy junction, road dust, construction or burning within a few hundred metres, can also push one monitor away from neighbours 5–12 km off. Here, the monitor may be right.");
   const PM25_STANDARD = 60; // India NAAQS, 24-hour mean, µg/m³
   // one line of plain guidance per CPCB AQI band, after CPCB's own health statements (draft: team review pending)
   const BAND_TODO = {
@@ -89,7 +90,7 @@
   function raisedBy(s) {
     if (s.status === "ok" || s.status === "nodata") return "";
     const hits = CHECKS.filter(([k]) => s.checks[k].status === s.status).map(([k, name]) => `${name} (${CHECK_PARAM[k](s.checks[k])})`);
-    return hits.length ? `<p class="raised">Raised by: <b>${hits.join(" + ")}</b></p>` : "";
+    return hits.length ? `<p class="raised">${tx("Raised by:")} <b>${hits.join(" + ")}</b></p>` : "";
   }
   const short = (name) => name.replace(/,\s*(New )?Delhi$/, "").replace(/\s+-\s+(DPCC|CPCB|IMD|HSPCB|UPPCB)\b.*$/, "");
   // in a list grouped by city, the city is already the heading; twins with one name get their OpenAQ id
@@ -112,12 +113,12 @@
     try {
       latest = await getJSON("data/latest.json");
     } catch (e) {
-      $("#fresh").textContent = "Data unavailable";
+      $("#fresh").textContent = tx("Data unavailable");
       $("#fresh").classList.add("stale");
-      $("#panel").innerHTML = `<div class="empty"><h2>Data is updating</h2><p>We couldn't load the latest readings. Try again in a minute.</p><button class="btn ghost" data-reload>Try again</button></div>`;
+      $("#panel").innerHTML = `<div class="empty"><h2>${tx("Data is updating")}</h2><p>${tx("We couldn't load the latest readings. Try again in a minute.")}</p><button class="btn ghost" data-reload>${tx("Try again")}</button></div>`;
       $("#panel").querySelector("[data-reload]").addEventListener("click", () => location.reload());
       $("#stats").querySelectorAll(".skel").forEach((el) => { el.classList.remove("skel"); el.textContent = "–"; });
-      $("#chrome-live").textContent = "Offline";
+      $("#chrome-live").textContent = tx("Offline");
       mark("error");
       return;
     }
@@ -150,18 +151,18 @@
     if (byId.has(id)) select(id, { fly: true });
   }
 
-  const ago = (min) => (min < 1 ? "just now" : min < 60 ? `${Math.round(min)} min ago` : min < 48 * 60 ? `${Math.round(min / 60)} h ago` : `${Math.round(min / 1440)} days ago`);
+  const ago = (min) => (min < 1 ? tx("just now") : min < 60 ? tr`${Math.round(min)} min ago` : min < 48 * 60 ? tr`${Math.round(min / 60)} h ago` : tr`${Math.round(min / 1440)} days ago`);
 
   function renderFresh() {
     const el = $("#fresh");
     const t = new Date(latest.data_through);
     const hours = (Date.now() - t.getTime()) / 36e5;
     const when = t.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
-    el.textContent = `Readings through ${when} IST`;
+    el.textContent = tr`Readings through ${when} IST`;
     el.title = `Generated ${latest.generated_at}`;
     el.classList.toggle("stale", hours > 3);
     const live = $("#chrome-live");
-    if (live) live.textContent = `Readings through ${when}`;
+    if (live) live.textContent = tr`Readings through ${when}`;
     renderPulse();
   }
 
@@ -171,7 +172,7 @@
     try { weather = await getJSON("data/weather.json"); } catch (e) { return; }
     const el = $("#weather");
     if (!el || !weather || !weather.line) return;
-    el.textContent = weather.line;
+    el.textContent = detail(weather.line);
     el.title = `Wind ${fmt(weather.wind_kmh)} km/h from the ${weather.wind_from || "?"}` +
       (weather.boundary_layer_m != null ? `, mixing height ${fmt(weather.boundary_layer_m)} m` : "") + ` (${weather.source})`;
     // the arrow points where the wind blows to; weather.wind_from_deg is where it comes from
@@ -187,7 +188,7 @@
     try { firesDoc = await getJSON("data/fires.json"); } catch (e) { return; }
     const el = $("#fires");
     if (!el || !firesDoc || !firesDoc.line) return;
-    el.textContent = firesDoc.line;
+    el.textContent = detail(firesDoc.line);
     el.title = `${firesDoc.high_confidence ?? 0} at high confidence, about ${fmt(firesDoc.distance_km)} km away (${firesDoc.source})`;
     el.hidden = false;
     view?.setFires?.(firesDoc);
@@ -201,7 +202,7 @@
     const min = (Date.now() - run.getTime()) / 6e4;
     const live = min <= 75;
     el.className = `pulse ${live ? "on" : "off"}`;
-    el.textContent = live ? `Live · checked ${ago(min)} · next check in ${Math.max(1, Math.round(60 - (min % 60)))} min` : `Paused · last check ${ago(min)}`;
+    el.textContent = live ? tr`Live · checked ${ago(min)} · next check in ${Math.max(1, Math.round(60 - (min % 60)))} min` : tr`Paused · last check ${ago(min)}`;
     el.title = live ? "The check runs every hour on AWS" : "The hourly check hasn't run recently; the answers below are from its last run";
     el.hidden = false;
   }
@@ -214,7 +215,7 @@
     set(0, n);
     set(1, count("flag"));
     set(2, count("watch"));
-    $("#hero-label").textContent = `Delhi + NCR · ${n} monitors · checked hourly`;
+    $("#hero-label").textContent = tr`Delhi + NCR · ${n} monitors · checked hourly`;
   }
 
   // the hero shows the product: the clearest current case, straight from the data
@@ -236,12 +237,12 @@
     if (!s) { el.remove(); return; }
     const c = CHECKS.map(([k, name]) => [name, s.checks[k]]).find(([, v]) => v.status === s.status) || ["", { detail: "" }];
     el.innerHTML = `
-      <span class="label">Right now, for example</span>
+      <span class="label">${tx("Right now, for example")}</span>
       <h3>${esc(short(s.name))}</h3>
       ${pill(s.status)}
       ${todo(s.status)}
-      <div class="nums">This station <b>${fmt(s.latest?.pm25)}</b> µg/m³ PM2.5 · the 4 stations around it <b>${fmt(s.neighbours_latest?.pm25)}</b></div>
-      <button class="btn dark" type="button" data-open="${s.id}">See why <span class="arr">→</span></button>`;
+      <div class="nums">${tr`This station <b>${fmt(s.latest?.pm25)}</b> µg/m³ PM2.5 · the 4 stations around it <b>${fmt(s.neighbours_latest?.pm25)}</b>`}</div>
+      <button class="btn dark" type="button" data-open="${s.id}">${tx("See why")} <span class="arr">→</span></button>`;
     el.querySelector("[data-open]").addEventListener("click", () => openStation(s.id, spotFor(s)));
     el.hidden = false;
   }
@@ -257,34 +258,34 @@
     const nbs = (doc.neighbours || []).map((i) => byId.get(i)).filter(Boolean);
     const name = esc(short(s.name));
     $("#step1-art").innerHTML = `<div class="reading">${mast(58)}<div class="big">${fmt(s.latest.pm25)}</div><div class="unit">µg/m³ PM2.5</div><div class="who">${name}</div></div>`;
-    $("#step1-title").textContent = `${short(s.name)} says ${fmt(s.latest.pm25)}`;
-    $("#step1-text").textContent = "That's its PM2.5 reading for the latest hour. On its own, there's no way to tell whether it's right.";
+    $("#step1-title").textContent = tr`${short(s.name)} says ${fmt(s.latest.pm25)}`;
+    $("#step1-text").textContent = tx("That's its PM2.5 reading for the latest hour. On its own, there's no way to tell whether it's right.");
     const around = s.neighbours_latest?.pm25;
-    $("#step2-art").innerHTML = `<div class="nbgrid">${nbs.map((n) => `<div class="nb"><b>${fmt(n.latest?.pm25)}</b><span>${esc(short(n.name))}</span></div>`).join("")}<div class="nbmid">middle value <b>${fmt(around)}</b> µg/m³</div></div>`;
-    $("#step2-title").textContent = `Its four neighbours say ${fmt(around)}`;
-    $("#step2-text").textContent = "We take the middle value of the four nearest monitors, within 12 km. One odd neighbour can't drag it.";
+    $("#step2-art").innerHTML = `<div class="nbgrid">${nbs.map((n) => `<div class="nb"><b>${fmt(n.latest?.pm25)}</b><span>${esc(short(n.name))}</span></div>`).join("")}<div class="nbmid">${tx("middle value")} <b>${fmt(around)}</b> µg/m³</div></div>`;
+    $("#step2-title").textContent = tr`Its four neighbours say ${fmt(around)}`;
+    $("#step2-text").textContent = tx("We take the middle value of the four nearest monitors, within 12 km. One odd neighbour can't drag it.");
     const use = s.status === "ok" ? s.latest.pm25 : around;
-    $("#step3-art").innerHTML = `<div class="verdict">${pill(s.status)}<div class="use">For today, use<b>${fmt(use)}</b>µg/m³ PM2.5</div></div>`;
-    $("#step3-title").textContent = s.status === "ok" ? "It adds up, so use it" : `${STATUS[s.status].label}: use ${fmt(around)}`;
-    $("#step3-text").textContent = "Before answering, we also check the reading against physics and against the monitor's own last three weeks. Every answer shows its evidence.";
+    $("#step3-art").innerHTML = `<div class="verdict">${pill(s.status)}<div class="use">${tx("For today, use")}<b>${fmt(use)}</b>µg/m³ PM2.5</div></div>`;
+    $("#step3-title").textContent = s.status === "ok" ? tx("It adds up, so use it") : tr`${STATUS[s.status].label}: use ${fmt(around)}`;
+    $("#step3-text").textContent = tx("Before answering, we also check the reading against physics and against the monitor's own last three weeks. Every answer shows its evidence.");
   }
 
   function renderMeanings() {
     const groups = {};
     latest.stations.forEach((s) => (groups[s.status] = groups[s.status] || []).push(s));
     const copy = {
-      ok: ["Its numbers add up against physics, its neighbours and its own past.", "Use its reading as it is."],
-      watch: ["Something about it is unusual, but not clearly wrong.", "Compare its reading with what its neighbours read before acting on it."],
-      flag: ["Its numbers don't add up: impossible values, or far out of line with its neighbours or its past.", "Use what the four monitors around it read instead."],
-      nodata: ["We can't check it right now: too few recent readings from it or its neighbours to run the checks.", "Use what the four monitors around it read."],
+      ok: [tx("Its numbers add up against physics, its neighbours and its own past."), tx("Use its reading as it is.")],
+      watch: [tx("Something about it is unusual, but not clearly wrong."), tx("Compare its reading with what its neighbours read before acting on it.")],
+      flag: [tx("Its numbers don't add up: impossible values, or far out of line with its neighbours or its past."), tx("Use what the four monitors around it read instead.")],
+      nodata: [tx("We can't check it right now: too few recent readings from it or its neighbours to run the checks."), tx("Use what the four monitors around it read.")],
     };
     $("#meanings").innerHTML = ["ok", "watch", "flag", "nodata"].map((st) => {
       const list = (groups[st] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
       const shown = list.slice(0, st === "ok" ? 4 : 6);
       return `<article class="meaning">
         <div class="head">${icon(st, 30)}<h3>${STATUS[st].label}</h3></div>
-        <dl><dt>What it means</dt><dd>${copy[st][0]}</dd><dt>What to do</dt><dd>${copy[st][1]}</dd>${st === "nodata" ? `<dt>Why it happens</dt><dd>Almost always, the monitor stopped sending readings to the public feed (CPCB, through OpenAQ): a power cut, a network outage or maintenance. It isn't a fault in our checks. The <i>Live · checked … ago</i> pill at the top shows that our own hourly run is working.</dd>` : ""}</dl>
-        <div class="now-count"><b>${list.length}</b><span>monitor${list.length === 1 ? "" : "s"} right now${list.length > shown.length ? `, for example:` : list.length ? ":" : ""}</span></div>
+        <dl><dt>${tx("What it means")}</dt><dd>${copy[st][0]}</dd><dt>${tx("What to do")}</dt><dd>${copy[st][1]}</dd>${st === "nodata" ? `<dt>${tx("Why it happens")}</dt><dd>${tx("Almost always, the monitor stopped sending readings to the public feed (CPCB, through OpenAQ): a power cut, a network outage or maintenance. It isn't a fault in our checks. The <i>Live · checked … ago</i> pill at the top shows that our own hourly run is working.")}</dd>` : ""}</dl>
+        <div class="now-count"><b>${list.length}</b><span>${tx(list.length === 1 ? "monitor right now" : "monitors right now")}${list.length > shown.length ? tx(", for example:") : list.length ? ":" : ""}</span></div>
         <div class="chips">${shown.map((s) => `<button type="button" data-open="${s.id}">${esc(short(s.name))}</button>`).join("")}</div>
       </article>`;
     }).join("");
@@ -299,7 +300,7 @@
     const X = (i) => 16 + (i / (values.length - 1)) * (w - 32), Y = (v) => h - 18 - ((v - (lo - pad)) / (hi - lo + 2 * pad)) * (h - 36);
     const d = pts.map(([i, v], k) => `${k ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join("");
     const b = band ? `<rect x="${X(band[0] - .5)}" y="10" width="${X(band[1] + .5) - X(band[0] - .5)}" height="${h - 28}" fill="rgba(242,166,12,.12)"/><text x="${(X(band[0]) + X(band[1])) / 2}" y="${h - 4}" text-anchor="middle" font-family="Geist Mono" font-size="10" fill="#8b8d93">11:00-17:00</text>` : "";
-    const z = zero ? `<path d="M16 ${Y(0)}H${w - 16}" stroke="#b4b5ba" stroke-dasharray="3 3"/><text x="${w - 16}" y="${Y(0) - 5}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#8b8d93">same as neighbours</text>` : "";
+    const z = zero ? `<path d="M16 ${Y(0)}H${w - 16}" stroke="#b4b5ba" stroke-dasharray="3 3"/><text x="${w - 16}" y="${Y(0) - 5}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#8b8d93">${tx("same as neighbours")}</text>` : "";
     return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${b}${z}<path d="${d}" fill="none" stroke="#08090a" stroke-width="2" stroke-linejoin="round"/></svg>`;
   }
 
@@ -314,7 +315,7 @@
       const y0 = Y(0), y1 = Y(v), r = i >= vals.length - recent;
       return `<rect x="${(16 + i * bw + 1).toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${Math.max(1, Math.abs(y1 - y0)).toFixed(1)}" rx="1.5" fill="${r ? "#08090a" : "#c9cace"}"/>`;
     }).join("");
-    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="M16 ${Y(0)}H${w - 16}" stroke="#d6d6d9"/>${bars}<text x="16" y="${h - 6}" font-family="Geist Mono" font-size="10" fill="#8b8d93">3 weeks before</text><text x="${w - 16}" y="${h - 6}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#08090a">last 7 days</text></svg>`;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="M16 ${Y(0)}H${w - 16}" stroke="#d6d6d9"/>${bars}<text x="16" y="${h - 6}" font-family="Geist Mono" font-size="10" fill="#8b8d93">${tx("3 weeks before")}</text><text x="${w - 16}" y="${h - 6}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#08090a">${tx("last 7 days")}</text></svg>`;
   }
 
   async function renderCheckExamples() {
@@ -323,9 +324,9 @@
     const link = (s) => `<button type="button" data-open="${s.id}" data-spot="${s._spot}">${esc(short(s.name))}</button>`;
 
     // physics: what an impossible reading looks like, and who does it now
-    $("#ex-physics").innerHTML = `<svg viewBox="0 0 320 150" aria-hidden="true"><text x="96" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">PM10 (all dust)</text><text x="224" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">PM2.5 (fine dust)</text><rect x="66" y="58" width="60" height="66" rx="5" fill="#c9cace"/><rect x="194" y="22" width="60" height="102" rx="5" fill="#d03b3b" opacity=".85"/><path d="M60 58h200" stroke="#08090a" stroke-dasharray="4 4"/><text x="96" y="50" text-anchor="middle" font-family="Geist Mono" font-size="10.5" fill="#4f5156">the limit</text><text x="224" y="80" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#ffffff">impossible</text></svg>`;
+    $("#ex-physics").innerHTML = `<svg viewBox="0 0 320 150" aria-hidden="true"><text x="96" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM10 (all dust)")}</text><text x="224" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM2.5 (fine dust)")}</text><rect x="66" y="58" width="60" height="66" rx="5" fill="#c9cace"/><rect x="194" y="22" width="60" height="102" rx="5" fill="#d03b3b" opacity=".85"/><path d="M60 58h200" stroke="#08090a" stroke-dasharray="4 4"/><text x="96" y="50" text-anchor="middle" font-family="Geist Mono" font-size="10.5" fill="#4f5156">${tx("the limit")}</text><text x="224" y="80" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#ffffff">${tx("impossible")}</text></svg>`;
     const p = worst("physics", "fail_pct");
-    if (p) { p._spot = "physics"; $("#ex-physics-case").innerHTML = `Right now: ${link(p)} reports impossible values in ${p.checks.physics.fail_pct}% of last week's hours.`; }
+    if (p) { p._spot = "physics"; $("#ex-physics-case").innerHTML = tr`Right now: ${link(p)} reports impossible values in ${p.checks.physics.fail_pct}% of last week's hours.`; }
 
     const n = worst("neighbours", "z");
     if (n) {
@@ -335,7 +336,7 @@
         const pct = (doc.hour_profile_7d?.pm10 || []).map((g) => (g == null ? null : (Math.exp(g) - 1) * 100));
         $("#ex-neighbours").innerHTML = svgLine(pct, { band: [11, 16] });
       } catch (e) { /* the card still reads without the picture */ }
-      $("#ex-neighbours-case").innerHTML = `Right now: ${link(n)}. ${esc(n.checks.neighbours.detail)}`;
+      $("#ex-neighbours-case").innerHTML = tr`Right now: ${link(n)}. ${esc(detail(n.checks.neighbours.detail))}`;
     }
 
     const h = worst("history", "z");
@@ -346,7 +347,7 @@
         const key = `d_${h.checks.history.param}`;
         $("#ex-history").innerHTML = svgDaily(doc.daily.map((r) => r[key]));
       } catch (e) { /* the card still reads without the picture */ }
-      $("#ex-history-case").innerHTML = `Right now: ${link(h)}. ${esc(h.checks.history.detail)}`;
+      $("#ex-history-case").innerHTML = tr`Right now: ${link(h)}. ${esc(detail(h.checks.history.detail))}`;
     }
     document.querySelectorAll(".c3-case [data-open]").forEach((b) => b.addEventListener("click", () => openStation(Number(b.dataset.open), b.dataset.spot)));
   }
@@ -428,7 +429,7 @@
     if (mapEl) mapEl.hidden = show;
     if (btn) {
       btn.setAttribute("aria-pressed", String(show));
-      btn.textContent = show ? "Map view" : "List view";
+      btn.textContent = tx(show ? "Map view" : "List view");
     }
     if (show) renderListView();
   }
@@ -534,9 +535,9 @@
     panel.querySelector("#share-btn")?.addEventListener("click", function () {
       const url = `${location.origin}${location.pathname}${location.search}#${id}`;
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => { this.textContent = "✓ Copied!"; setTimeout(() => { this.textContent = "🔗 Copy link"; }, 2000); });
+        navigator.clipboard.writeText(url).then(() => { this.textContent = `✓ ${tx("Copied!")}`; setTimeout(() => { this.textContent = `🔗 ${tx("Copy link")}`; }, 2000); });
       } else {
-        prompt("Copy this link:", url);
+        prompt(tx("Copy this link:"), url);
       }
     });
     mark(`station:${id}`);
@@ -544,21 +545,21 @@
 
   function adviceHTML(s) {
     const mine = s.latest?.pm25, around = s.neighbours_latest?.pm25;
-    const aroundTxt = around == null ? "" : ` The four nearest stations read <b class="mono">${fmt(around)} µg/m³</b> PM2.5 right now.`;
-    if (silent(s)) return `${bandHTML(s)}<div class="advice nodata">${esc(s.detail)} Its last answers are below, but they no longer describe the air now. Use what the stations around it read.${aroundTxt}</div>`;
+    const aroundTxt = around == null ? "" : tr` The four nearest stations read <b class="mono">${fmt(around)} µg/m³</b> PM2.5 right now.`;
+    if (silent(s)) return `${bandHTML(s)}<div class="advice nodata">${tr`${esc(detail(s.detail))} Its last answers are below, but they no longer describe the air now. Use what the stations around it read.${aroundTxt}`}</div>`;
     const text = {
-      ok: `This station agrees with the stations around it. Its reading is a fair guide for this area.`,
-      watch: `Something about this station is unusual. Before acting on its reading, compare it with the stations around it.${aroundTxt}`,
+      ok: tx("This station agrees with the stations around it. Its reading is a fair guide for this area."),
+      watch: tr`Something about this station is unusual. Before acting on its reading, compare it with the stations around it.${aroundTxt}`,
       flag: around == null
-        ? `This station's numbers don't add up, and its neighbours have no reading right now either. Treat today's number with care.`
-        : `This station's numbers don't add up. For decisions today, use what the stations around it read.${aroundTxt}`,
-      nodata: `There isn't enough recent data to check this station.${aroundTxt}`,
+        ? tx("This station's numbers don't add up, and its neighbours have no reading right now either. Treat today's number with care.")
+        : tr`This station's numbers don't add up. For decisions today, use what the stations around it read.${aroundTxt}`,
+      nodata: tr`There isn't enough recent data to check this station.${aroundTxt}`,
     }[s.status];
     // a big gap right now is worth saying even when the weekly checks pass
     let gapTxt = "";
     if (mine != null && around != null && Math.max(mine, around) >= 15) {
       const r = (mine + 1) / (around + 1);
-      if (r > 1.5 || r < 1 / 1.5) gapTxt = ` Right now, though, it reads <b>${r > 1 ? "well above" : "well below"}</b> the stations around it (${fmt(mine)} against ${fmt(around)} µg/m³).${r > 1 ? ` <span class="micro">${MICRO}</span>` : ""}`;
+      if (r > 1.5 || r < 1 / 1.5) gapTxt = tr` Right now, though, it reads <b>${tx(r > 1 ? "well above" : "well below")}</b> the stations around it (${fmt(mine)} against ${fmt(around)} µg/m³).` + (r > 1 ? ` <span class="micro">${MICRO}</span>` : "");
     }
     return `${bandHTML(s)}<div class="advice ${s.status}">${text}${gapTxt}${smokeHTML(s)}</div>`;
   }
@@ -583,8 +584,8 @@
   function smokeHTML(s) {
     const rose = roseTogether(smokeDoc);
     if (!rose) return "";
-    const fireTxt = firesDoc && firesDoc.count ? ` ${esc(firesDoc.line)}` : "";
-    return `<span class="smoke">The whole area rose together in the last few hours (this station ${Math.round((rose.mine - 1) * 100)}%, its neighbours ${Math.round((rose.theirs - 1) * 100)}%), which is what smoke does, not what a broken monitor does.${fireTxt}</span>`;
+    const fireTxt = firesDoc && firesDoc.count ? ` ${esc(detail(firesDoc.line))}` : "";
+    return `<span class="smoke">${tr`The whole area rose together in the last few hours (this station ${Math.round((rose.mine - 1) * 100)}%, its neighbours ${Math.round((rose.theirs - 1) * 100)}%), which is what smoke does, not what a broken monitor does.`}${fireTxt}</span>`;
   }
 
   // how bad the air is, in CPCB's words, from the reading you can trust: its own if it agrees, else its neighbours'
@@ -592,50 +593,50 @@
     const own = s.status === "ok";
     const b = own ? s.band : s.neighbours_band;
     if (!b) return "";
-    return `<div class="aqi"><span class="label">Air quality, 24-hour average · ${own ? "this monitor" : "from the 4 monitors around it"}</span><b>${esc(b)}</b><p>${BAND_TODO[b]}</p></div>`;
+    return `<div class="aqi"><span class="label">${tr`Air quality, 24-hour average · ${tx(own ? "this monitor" : "from the 4 monitors around it")}`}</span><b>${esc(window.GT_I18N.band(b))}</b><p>${window.GT_I18N.bandTodo(b, BAND_TODO[b])}</p></div>`;
   }
 
   function lastHTML(s) {
-    if (!s.last_reading) return `<div class="last off">No reading in the last 4 weeks.</div>`;
+    if (!s.last_reading) return `<div class="last off">${tx("No reading in the last 4 weeks.")}</div>`;
     const t = new Date(s.last_reading);
     const when = t.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
-    return `<div class="last${silent(s) ? " off" : ""}">Last reading ${when} IST, ${ago((Date.now() - t.getTime()) / 6e4)}</div>`;
+    return `<div class="last${silent(s) ? " off" : ""}">${tr`Last reading ${when} IST, ${ago((Date.now() - t.getTime()) / 6e4)}`}</div>`;
   }
 
   function panelHTML(s, doc) {
     const nb = doc?.neighbours?.map((i) => byId.get(i)).filter(Boolean) || [];
     const checks = CHECKS.map(([k, name, q]) => {
       const c = s.checks[k];
-      const note = k === "neighbours" && (c.status === "watch" || c.status === "flag") ? `<p class="micro">Note: ${MICRO}</p>` : "";
-      return `<li class="check" data-check="${k}"><div><h3>${name} <span class="param">${CHECK_PARAM[k](c)}</span></h3><div class="q">${q}</div></div>${pill(c.status, CHECK_LABEL[c.status])}<p>${esc(c.detail)}</p>${note}</li>`;
+      const note = k === "neighbours" && (c.status === "watch" || c.status === "flag") ? `<p class="micro">${tx("Note:")} ${MICRO}</p>` : "";
+      return `<li class="check" data-check="${k}"><div><h3>${name} <span class="param">${CHECK_PARAM[k](c)}</span></h3><div class="q">${q}</div></div>${pill(c.status, CHECK_LABEL[c.status])}<p>${esc(detail(c.detail))}</p>${note}</li>`;
     }).join("");
     const opts = Object.entries(PARAMS).map(([k, p]) => `<option value="${k}"${k === param ? " selected" : ""}>${p.name}</option>`).join("");
     return `
-      <span class="label">${s.region === "NCR" ? "NCR" : "Delhi"} · OpenAQ location ${s.id}</span>
+      <span class="label">${s.region === "NCR" ? "NCR" : tx("Delhi")} · ${tr`OpenAQ location ${s.id}`}</span>
       <h2>${esc(short(s.name))}</h2>
-      <div class="meta">${pill(s.status)}<button class="share-btn" id="share-btn" type="button" aria-label="Copy link to this monitor" title="Copy link">🔗 Copy link</button></div>
+      <div class="meta">${pill(s.status)}<button class="share-btn" id="share-btn" type="button" aria-label="${tx("Copy link to this monitor")}" title="${tx("Copy link")}">🔗 ${tx("Copy link")}</button></div>
       ${todo(s.status)}
       ${raisedBy(s)}
       <div class="now">
-        <div><small>This station, PM2.5 now</small><b>${fmt(s.latest?.pm25)}<small> µg/m³</small></b></div>
-        <div><small>4 nearest stations, PM2.5 now</small><b>${fmt(s.neighbours_latest?.pm25)}<small> µg/m³</small></b></div>
+        <div><small>${tx("This station, PM2.5 now")}</small><b>${fmt(s.latest?.pm25)}<small> µg/m³</small></b></div>
+        <div><small>${tx("4 nearest stations, PM2.5 now")}</small><b>${fmt(s.neighbours_latest?.pm25)}<small> µg/m³</small></b></div>
       </div>
       ${lastHTML(s)}
-      <div class="std">India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.</div>
+      <div class="std">${tr`India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.`}</div>
       ${adviceHTML(s)}
       <ul class="checks">${checks}</ul>
       <div class="chartbox">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap">
-          <div><h3>Hour by hour, against its neighbours</h3><p class="csub">Above zero: this station reads higher than the 4 nearest stations at that hour.</p></div>
-          <label class="sr-only" for="param">Measure</label>
+          <div><h3>${tx("Hour by hour, against its neighbours")}</h3><p class="csub">${tx("Above zero: this station reads higher than the 4 nearest stations at that hour.")}</p></div>
+          <label class="sr-only" for="param">${tx("Measure")}</label>
           <select id="param">${opts}</select>
         </div>
-        <div class="chartwrap">${doc ? `<canvas id="chart" role="img" aria-label="Hour-of-day gap against neighbours"></canvas>` : `<div class="empty" style="min-height:220px"><p>${doc === null ? "Loading the chart…" : ""}</p></div>`}</div>
-        <div class="chartlegend"><span><i style="background:var(--series-7d)"></i>Last 7 days</span><span><i style="background:var(--series-28d)"></i>Last 28 days</span><span><i class="band"></i>11:00-17:00</span><button class="linkish" id="as-table" type="button">Show as table</button></div>
+        <div class="chartwrap">${doc ? `<canvas id="chart" role="img" aria-label="Hour-of-day gap against neighbours"></canvas>` : `<div class="empty" style="min-height:220px"><p>${doc === null ? tx("Loading the chart…") : ""}</p></div>`}</div>
+        <div class="chartlegend"><span><i style="background:var(--series-7d)"></i>${tx("Last 7 days")}</span><span><i style="background:var(--series-28d)"></i>${tx("Last 28 days")}</span><span><i class="band"></i>11:00-17:00</span><button class="linkish" id="as-table" type="button">${tx("Show as table")}</button></div>
         <div id="tablebox"></div>
       </div>
-      ${doc ? `<div class="chartbox" id="evidence-box"><h3>Last 48 hours: this station vs neighbours</h3><p class="csub">PM2.5 µg/m³. Neighbour band is the range of the ${(doc.neighbours || []).length} nearest stations.</p><div class="chartwrap"><canvas id="evidence-chart" role="img" aria-label="PM2.5 last 48 hours"></canvas></div></div>` : ""}
-      ${nb.length ? `<div class="nbs"><span class="label">Compared with</span>${nb.map((n) => `<button data-goto="${n.id}" type="button">${icon(n.status, 11)}${esc(short(n.name))}</button>`).join("")}</div>` : ""}
+      ${doc ? `<div class="chartbox" id="evidence-box"><h3>${tx("Last 48 hours: this station vs neighbours")}</h3><p class="csub">${tr`PM2.5 µg/m³. Neighbour band is the range of the ${(doc.neighbours || []).length} nearest stations.`}</p><div class="chartwrap"><canvas id="evidence-chart" role="img" aria-label="PM2.5 last 48 hours"></canvas></div></div>` : ""}
+      ${nb.length ? `<div class="nbs"><span class="label">${tx("Compared with")}</span>${nb.map((n) => `<button data-goto="${n.id}" type="button">${icon(n.status, 11)}${esc(short(n.name))}</button>`).join("")}</div>` : ""}
     `;
   }
 
@@ -671,8 +672,8 @@
       data: {
         labels: [...Array(24).keys()],
         datasets: [
-          { label: "Last 28 days", data: series(doc, "hour_profile"), borderColor: css.getPropertyValue("--series-28d").trim(), borderWidth: 2, pointRadius: 0, cubicInterpolationMode: "monotone", spanGaps: true },
-          { label: "Last 7 days", data: series(doc, "hour_profile_7d"), borderColor: css.getPropertyValue("--series-7d").trim(), borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, cubicInterpolationMode: "monotone", spanGaps: true },
+          { label: tx("Last 28 days"), data: series(doc, "hour_profile"), borderColor: css.getPropertyValue("--series-28d").trim(), borderWidth: 2, pointRadius: 0, cubicInterpolationMode: "monotone", spanGaps: true },
+          { label: tx("Last 7 days"), data: series(doc, "hour_profile_7d"), borderColor: css.getPropertyValue("--series-7d").trim(), borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, cubicInterpolationMode: "monotone", spanGaps: true },
         ],
       },
       options: {
@@ -684,7 +685,7 @@
             backgroundColor: "#ffffff", borderColor: "#d6d6d9", borderWidth: 1, titleColor: "#08090a", bodyColor: "#4f5156", titleFont: { family: "Geist Mono", size: 12 }, bodyFont: { family: "Geist", size: 12.5 }, padding: 10,
             callbacks: {
               title: (items) => `${String(items[0].label).padStart(2, "0")}:00 IST`,
-              label: (it) => ` ${it.dataset.label}: ${it.raw == null ? "no data" : `${it.raw > 0 ? "+" : ""}${it.raw.toFixed(unit === "%" ? 0 : 1)}${unit === "%" ? "%" : " pts"}`}`,
+              label: (it) => ` ${it.dataset.label}: ${it.raw == null ? tx("no data") : `${it.raw > 0 ? "+" : ""}${it.raw.toFixed(unit === "%" ? 0 : 1)}${unit === "%" ? "%" : " pts"}`}`,
             },
           },
         },
@@ -742,11 +743,11 @@
 
   function toggleTable(doc) {
     const box = $("#tablebox");
-    if (box.innerHTML) { box.innerHTML = ""; $("#as-table").textContent = "Show as table"; return; }
+    if (box.innerHTML) { box.innerHTML = ""; $("#as-table").textContent = tx("Show as table"); return; }
     const a = series(doc, "hour_profile_7d"), b = series(doc, "hour_profile");
     const u = PARAMS[param].unit === "%" ? "%" : " pts";
-    box.innerHTML = `<table class="data"><thead><tr><th>Hour (IST)</th><th>Last 7 days</th><th>Last 28 days</th></tr></thead><tbody>${a.map((v, h) => `<tr><td>${String(h).padStart(2, "0")}:00</td><td>${v == null ? "–" : v.toFixed(0) + u}</td><td>${b[h] == null ? "–" : b[h].toFixed(0) + u}</td></tr>`).join("")}</tbody></table>`;
-    $("#as-table").textContent = "Hide table";
+    box.innerHTML = `<table class="data"><thead><tr><th>${tx("Hour (IST)")}</th><th>${tx("Last 7 days")}</th><th>${tx("Last 28 days")}</th></tr></thead><tbody>${a.map((v, h) => `<tr><td>${String(h).padStart(2, "0")}:00</td><td>${v == null ? "–" : v.toFixed(0) + u}</td><td>${b[h] == null ? "–" : b[h].toFixed(0) + u}</td></tr>`).join("")}</tbody></table>`;
+    $("#as-table").textContent = tx("Hide table");
   }
 
   function spotCheck(k) {
@@ -767,7 +768,7 @@
   // the labels only: safe to call again (the language toggle does), unlike renderRoster's listeners
   function drawFilters() {
     const count = (st) => latest.stations.filter((s) => s.status === st).length;
-    $("#filters").innerHTML = [["all", "All", latest.stations.length], ...["flag", "watch", "ok", "nodata"].map((st) => [st, STATUS[st].short, count(st)])]
+    $("#filters").innerHTML = [["all", tx("All"), latest.stations.length], ...["flag", "watch", "ok", "nodata"].map((st) => [st, STATUS[st].short, count(st)])]
       .map(([f, label, n]) => `<button type="button" data-f="${f}" aria-pressed="${f === rosterFilter}">${f === "all" ? "" : icon(f, 12)}${label} <span class="count">${n}</span></button>`).join("");
   }
 
@@ -793,12 +794,12 @@
 
   function drawRoster() {
     const q = $("#roster-q").value.trim().toLowerCase();
-    const shown = latest.stations.filter((s) => (rosterFilter === "all" || s.status === rosterFilter) && (!q || s.name.toLowerCase().includes(q) || s._area.toLowerCase().includes(q)));
+    const shown = latest.stations.filter((s) => (rosterFilter === "all" || s.status === rosterFilter) && (!q || s.name.toLowerCase().includes(q) || s._area.toLowerCase().includes(q) || tx(s._area).includes(q)));
     const html = AREAS.map((a) => {
       const list = shown.filter((s) => s._area === a).sort((x, y) => ORDER.indexOf(x.status) - ORDER.indexOf(y.status) || x.name.localeCompare(y.name));
-      return list.length ? `<section class="area"><h4>${a} <span class="count">${list.length}</span></h4><div class="chips">${list.map((s) => `<button type="button" data-open="${s.id}" aria-label="${esc(s.name)}: ${STATUS[s.status].label}">${icon(s.status, 12)}${esc(listName(s, latest.stations))}</button>`).join("")}</div></section>` : "";
+      return list.length ? `<section class="area"><h4>${tx(a)} <span class="count">${list.length}</span></h4><div class="chips">${list.map((s) => `<button type="button" data-open="${s.id}" aria-label="${esc(s.name)}: ${STATUS[s.status].label}">${icon(s.status, 12)}${esc(listName(s, latest.stations))}</button>`).join("")}</div></section>` : "";
     }).join("");
-    $("#areas").innerHTML = html || `<p class="footnote">No monitor matches. Try another name or area, or show all.</p>`;
+    $("#areas").innerHTML = html || `<p class="footnote">${tx("No monitor matches. Try another name or area, or show all.")}</p>`;
   }
 
   // ---------- search ----------
@@ -809,7 +810,7 @@
     const show = () => {
       const q = input.value.trim().toLowerCase();
       items = latest.stations.filter((s) => !q || s.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 8);
-      list.innerHTML = items.map((s, i) => `<li role="option" id="opt-${i}" data-id="${s.id}" aria-selected="${i === idx}">${esc(s.name)} ${pill(s.status)}</li>`).join("") || `<li aria-disabled="true">No station matches</li>`;
+      list.innerHTML = items.map((s, i) => `<li role="option" id="opt-${i}" data-id="${s.id}" aria-selected="${i === idx}">${esc(s.name)} ${pill(s.status)}</li>`).join("") || `<li aria-disabled="true">${tx("No station matches")}</li>`;
       list.hidden = false; box.setAttribute("aria-expanded", "true");
     };
     const pick = (id) => { close(); input.value = ""; $("#roster-q").value = ""; drawRoster(); select(id, { fly: true }); $("#live").scrollIntoView({ behavior: "smooth", block: "start" }); };
@@ -894,14 +895,11 @@
   }
 
   function setupLangToggle() {
+    window.GT_I18N.page();
     applyLang();
     $("#lang-toggle")?.addEventListener("click", () => {
-      lang = lang === "en" ? "hi" : "en";
-      try { localStorage.setItem("gt-lang", lang); } catch (_) {}
-      applyLang();
-      // Re-render dynamic content that reads STATUS / CHECK_LABEL
-      if (latest) { renderStats(); renderLegend(); drawFilters(); drawRoster(); }
-      if (selected != null) select(selected, { redraw: true });
+      try { localStorage.setItem("gt-lang", lang === "en" ? "hi" : "en"); } catch (_) { return; }
+      location.reload();
     });
   }
 
