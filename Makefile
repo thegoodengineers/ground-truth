@@ -40,8 +40,9 @@ stack:
 
 # Upload site/ without touching data/ (the Lambda owns it), then refresh CloudFront when there is one.
 site:
-	$(AWS) s3 sync site/ s3://$$($(call OUT,SiteBucketName))/ --delete --exclude "data/*" --cache-control "public, max-age=300"
-	$(AWS) s3 sync site/vendor/ s3://$$($(call OUT,SiteBucketName))/vendor/ --cache-control "public, max-age=604800"
+	$(AWS) s3 sync site/ s3://$$($(call OUT,SiteBucketName))/ --delete --exclude "data/*" --exclude "vendor/*" --exclude "geo/*" --cache-control "public, max-age=300"
+	$(AWS) s3 cp site/vendor/ s3://$$($(call OUT,SiteBucketName))/vendor/ --recursive --cache-control "public, max-age=604800"
+	$(AWS) s3 cp site/geo/ s3://$$($(call OUT,SiteBucketName))/geo/ --recursive --cache-control "public, max-age=86400"
 	@dist=$$($(call OUT,DistributionId)); if [ -n "$$dist" ]; then \
 		$(AWS) cloudfront create-invalidation --distribution-id $$dist --paths "/*" >/dev/null && echo "CloudFront invalidated"; fi
 	@echo "site uploaded to $$($(call OUT,SiteUrl))"

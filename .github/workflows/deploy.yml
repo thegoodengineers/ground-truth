@@ -59,11 +59,14 @@ jobs:
         run: |
           out() { aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
           bucket=$(out SiteBucketName)
-          aws s3 sync site/ "s3://$bucket/" --delete --exclude "data/*" --cache-control "public, max-age=300"
-          aws s3 sync site/vendor/ "s3://$bucket/vendor/" --cache-control "public, max-age=604800"
+          # vendor/ and geo/ change rarely and get longer caching. They go up with cp, not sync: sync skips files it
+          # thinks are unchanged, so a second sync never rewrote the 5-minute header the first one had set.
+          aws s3 sync site/ "s3://$bucket/" --delete --exclude "data/*" --exclude "vendor/*" --exclude "geo/*" --cache-control "public, max-age=300"
+          aws s3 cp site/vendor/ "s3://$bucket/vendor/" --recursive --cache-control "public, max-age=604800"
+          aws s3 cp site/geo/ "s3://$bucket/geo/" --recursive --cache-control "public, max-age=86400"
           dist=$(out DistributionId)
           if [ -n "$dist" ] && [ "$dist" != "None" ]; then
-            aws cloudfront create-invalidation --distribution-id "$dist" --paths "/index.html" "/app.js" "/theme.css" "/scene3d.js" "/spray3d.js" >/dev/null
+            aws cloudfront create-invalidation --distribution-id "$dist" --paths "/index.html" "/app.js" "/i18n.js" "/theme.css" "/scene3d.js" "/spray3d.js" >/dev/null
             echo "CloudFront invalidated"
           fi
           echo "live at $(out SiteUrl)"
