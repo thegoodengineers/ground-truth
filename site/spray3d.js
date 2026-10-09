@@ -253,8 +253,11 @@ function init(stage) {
     toggle.setAttribute("aria-pressed", String(!playing));
   });
   new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(stage);
-  if (!playing) { toggle.textContent = T("Play"); toggle.setAttribute("aria-pressed", "true"); seek(15); } else frame(0);
-  requestAnimationFrame(loop);
+  // shaders compile in the background (it held the page at the first draw), then the first frame and the loop
+  renderer.compileAsync(scene, camera).catch(() => {}).then(() => {
+    if (!playing) { toggle.textContent = T("Play"); toggle.setAttribute("aria-pressed", "true"); seek(15); } else frame(0);
+    requestAnimationFrame(loop);
+  });
   window.__spray = { seek, get t() { return t; } }; // for the capture scripts
 }
 
