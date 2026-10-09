@@ -71,7 +71,12 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmt = (v, d = 0) => (v == null ? "–" : Number(v).toFixed(d));
   const milestones = (window.__milestones = []);
-  const mark = (name) => { milestones.push({ t: performance.now() / 1000, name }); document.body.dataset.milestone = name; };
+  let mapIsReady;
+  const mapReady = new Promise((r) => { mapIsReady = r; });
+  const mark = (name) => {
+    milestones.push({ t: performance.now() / 1000, name }); document.body.dataset.milestone = name;
+    if (name === "map:ready") mapIsReady();
+  };
 
   // shape + colour per state, so state never rests on colour alone
   function icon(status, size = 14) {
@@ -532,8 +537,8 @@
     smokeDoc = doc;
     panel.innerHTML = panelHTML(s, doc);
     if (spot) spotCheck(spot);
-    drawChart(doc);
-    drawEvidence(doc, s);
+    // the camera flies for 1.5 s; building both charts meanwhile drops frames, so they wait for it to land
+    setTimeout(() => { if (selected === id) { drawChart(doc); drawEvidence(doc, s); } }, fly && view?.focus ? 1600 : 0);
     panel.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => select(Number(b.dataset.goto), { fly: true })));
     panel.querySelector("#param")?.addEventListener("change", (e) => { param = e.target.value; drawChart(doc); });
     panel.querySelector("#as-table")?.addEventListener("click", () => toggleTable(doc));
@@ -852,42 +857,73 @@
     window.__gt = { select, enterImmersive, exitImmersive, caption, mark, scrollTo: (sel) => $(sel)?.scrollIntoView({ behavior: "smooth", block: "start" }) };
   }
 
+  // the voice-over: one MP3 per step (site/audio/tour-<lang>-<n>.mp3, made by video/tour_voice.py). A step lasts as
+  // long as its line, so captions and voice stay together; without sound (no click yet, or no file) it keeps its
+  // own timing. Browsers only allow sound after a click, so the tour link starts the tour in place.
+  let voiced = false, touring = false;
+  function say(step, ms) {
+    if (!voiced) return wait(ms);
+    const a = new Audio(`audio/tour-${lang}-${step}.mp3`);
+    return new Promise((done) => {
+      const fallback = () => wait(ms).then(done);
+      a.addEventListener("ended", () => setTimeout(done, 500), { once: true });
+      a.addEventListener("error", fallback, { once: true });
+      a.play().catch(fallback);
+    });
+  }
+
   async function tour() {
+    if (touring) return;
+    touring = true;
     const pick = (pred, fallback) => (latest.stations.find(pred) || byId.get(fallback) || latest.stations[0]).id;
     const physics = pick((s) => s.checks.physics.status === "flag", 301);
     const history = pick((s) => s.id === 8235 && s.checks.history.status !== "nodata", 8235);
     const n = latest.stations.length;
     mark("tour:start");
     caption("Ground Truth", tr`${n} air-quality monitors across Delhi and NCR, checked every hour.`);
-    await wait(3500);
+    // the 3D city takes a few seconds to build and holds the page while it does: start moving once it's there
+    await Promise.race([mapReady, wait(20000)]);
+    await say(1, 3500);
     $("#live").scrollIntoView({ behavior: "smooth", block: "start" });
-    await wait(1500);
+    await wait(1200);
     enterImmersive();
     caption("Ground Truth", tx("Delhi in 3D. Each mast is a monitor; its column is as tall as its PM2.5 reading, and the smog is thicker where the air is worse."));
-    await wait(5000);
+    await say(2, 5000);
 
     mark("tour:physics");
     await select(physics, { fly: true, spot: "physics" });
     caption(tx("Physics"), tr`${esc(byId.get(physics).name.split(",")[0])} reports readings that can't be real. Its numbers don't add up.`);
-    await wait(6500);
+    await say(3, 6500);
 
     mark("tour:chart");
     await select(235, { fly: true, spot: "neighbours" });
     caption(tx("Neighbours"), tx("Anand Vihar, hour by hour, against the four stations around it. The shaded band is 11:00 to 17:00."));
-    await wait(7000);
+    await say(4, 7000);
 
     mark("tour:history");
     await select(history, { fly: true, spot: "history" });
     caption(tx("History"), tx("Jahangirpuri against its own last three weeks. Worth a look, not proof."));
-    await wait(6500);
+    await say(5, 6500);
 
     mark("tour:advice");
     caption(tx("What to do"), tx("When a station is in doubt, use what the stations around it read right now."));
     document.querySelector("#panel .now")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    await wait(5000);
+    await say(6, 5000);
     caption("Ground Truth", tx("A flag means the numbers don't add up. Not that anyone cheated."));
+    await say(7, 3500);
+    touring = false;
     mark("tour:end");
   }
+
+  // the tour links start the tour on this page: the click is what lets the browser play the voice
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href="?demo=1"]');
+    if (!a || !latest) return;
+    e.preventDefault();
+    voiced = true;
+    window.scrollTo({ top: 0 });
+    tour();
+  });
 
   function applyLang() {
     document.documentElement.lang = lang;

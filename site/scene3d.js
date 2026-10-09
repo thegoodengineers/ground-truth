@@ -297,8 +297,12 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
   Object.assign(sun.shadow.camera, { left: -380, right: 380, top: 380, bottom: -380, near: 10, far: 1200 });
   sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; scene.add(sun);
 
+  // built in slices with a breath between them, so the page stays responsive while the city goes up
+  const breathe = () => new Promise((r) => setTimeout(r));
   const ringXY = buildGround(scene, wards, boundary);
+  await breathe();
   buildCity(scene, ringXY, light ? 0.45 : 1);
+  await breathe();
   buildLandmarks(scene);
   const { tops, pickables, ids, face } = buildMonitors(scene, stations, reading);
   const vals = stations.map(reading).filter((v) => v != null).sort((a, b) => a - b);
@@ -372,6 +376,8 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
     }
     if (first) { first = false; window.dispatchEvent(new CustomEvent("gt3d:ready")); }
   };
+  // compiling every shader at the first draw held the page for about 2 s; compile them in the background first
+  await renderer.compileAsync(scene, camera).catch(() => {});
   loop();
 
   return {
