@@ -87,7 +87,7 @@ html[lang="hi"] { --sans: "Geist", "Noto Sans Devanagari", ui-sans-serif, system
 .btn.outline .arr { background: rgba(8, 9, 10, .07); }
 
 /* ---------- hero (fog) ---------- */
-.hero { position: relative; isolation: isolate; min-height: min(92vh, 860px); display: grid; align-content: start; padding-top: clamp(56px, 11vh, 120px); overflow: hidden; background: linear-gradient(180deg, #f6f6f7 0%, #ececee 55%, #dcdcdf 100%); }
+.hero { position: relative; isolation: isolate; min-height: min(92vh, 860px); display: grid; align-content: start; padding-top: clamp(56px, 11vh, 120px); padding-bottom: 150px; /* room for the example card pulled up into it */ overflow: hidden; background: linear-gradient(180deg, #f6f6f7 0%, #ececee 55%, #dcdcdf 100%); }
 .hero .scene { position: absolute; inset: auto 0 0 0; height: 62%; z-index: -1; pointer-events: none; }
 .scene svg { width: 100%; height: 100%; display: block; }
 .hero .copy { text-align: center; display: grid; justify-items: center; gap: 22px; }
