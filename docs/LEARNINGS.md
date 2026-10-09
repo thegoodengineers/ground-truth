@@ -87,3 +87,8 @@ What we already know, so nobody re-learns it this weekend. Dated entries, newest
 4. Every station should resolve to PM2.5 and PM10 sensors (`data/raw/sensors_v2.json`); list any that don't.
 5. Spot-check three stations' latest IST hour against the CPCB dashboard.
 6. Write the real numbers here, replacing this list.
+
+## 2026-10-09: retired sensors and a repeated hour (#81, #83)
+
+- **OpenAQ locations list retired sensors next to the reporting ones, for the same parameter.** Keeping the last one listed mapped 82 station-parameters to sensors that send nothing (Anand Vihar's PM2.5 to 384, while its readings come from 12235610). Take the sensor that reported last (`datetimeLast`), else the highest id. The saved map is versioned (`sensors_v2.json`) so a fix like this rebuilds it once. After the fix, the monitors reaching the newest hour went from 40 to 48.
+- **When the source stalls, the scored hour repeats run after run.** Any rule keyed on "the same hour as last run" must not freeze the answer: a repeated hour returned the saved status, so 10 monitors stayed "not enough data" with all three checks passing until #83. Live after the fix (19:26 IST): 37 ok, 7 worth a look, 4 doesn't add up, 4 not enough data (all four silent, each saying since when).
