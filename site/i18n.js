@@ -345,6 +345,15 @@
     "Play": "चलाएँ",
     "Pause": "रोकें",
     "Delhi": "दिल्ली",
+    // the ?demo=1 tour
+    "{0} air-quality monitors across Delhi and NCR, checked every hour.": "दिल्ली और NCR के {0} वायु-गुणवत्ता मॉनिटर, हर घंटे जाँचे जाते हैं।",
+    "Delhi in 3D. Each mast is a monitor; its column is as tall as its PM2.5 reading, and the smog is thicker where the air is worse.":
+      "3D में दिल्ली। हर खंभा एक मॉनिटर है; उसका स्तंभ उसकी PM2.5 रीडिंग जितना ऊँचा है, और जहाँ हवा ज़्यादा ख़राब है वहाँ धुंध घनी है।",
+    "{0} reports readings that can't be real. Its numbers don't add up.": "{0} ऐसी रीडिंग भेजता है जो असली हो ही नहीं सकतीं। इसके आँकड़े मेल नहीं खाते।",
+    "Anand Vihar, hour by hour, against the four stations around it. The shaded band is 11:00 to 17:00.": "आनंद विहार, घंटे-दर-घंटे, आस-पास के चार स्टेशनों के मुकाबले। रंगी हुई पट्टी 11:00 से 17:00 है।",
+    "Jahangirpuri against its own last three weeks. Worth a look, not proof.": "जहाँगीरपुरी, अपने पिछले तीन हफ़्तों के मुकाबले। देखने लायक, पर सबूत नहीं।",
+    "When a station is in doubt, use what the stations around it read right now.": "जब किसी स्टेशन पर शक हो, तो आस-पास के स्टेशनों की अभी की रीडिंग इस्तेमाल करें।",
+    "A flag means the numbers don't add up. Not that anyone cheated.": "फ़्लैग का मतलब है कि आँकड़े मेल नहीं खाते। यह नहीं कि किसी ने धोखा दिया।",
     // the October 2025 illustration (spray3d.js)
     "Before": "पहले",
     "The monitor and the monitors around it agree: about 310 µg/m³ PM2.5.": "मॉनिटर और उसके आस-पास के मॉनिटर एक जैसा बताते हैं: लगभग 310 µg/m³ PM2.5।",
