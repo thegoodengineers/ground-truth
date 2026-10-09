@@ -36,7 +36,46 @@ What we already know, so nobody re-learns it this weekend. Dated entries, newest
 - The organisers' warning: "a map mostly tells people something they can already sense." So each flagged station now carries what its 4 neighbours read right now (`neighbours_latest`): a number a person can act on, not just a red dot.
 - "Say plainly in your demo where your numbers come from and how fresh they are." The site shows `data_through` and the source on every page.
 
-## 2026-10-08: the 3D map
+## 2026-10-08: live data verification (issue #17)
+
+Run against the seeded cache (`make seed && make run`) using a real OpenAQ key.
+
+**overlap_ratio (API vs archive, hours both have)**
+
+| Parameter | Ratio |
+|---|---|
+| pm25 | ≈ 1.00 |
+| pm10 | ≈ 1.00 |
+| relativehumidity | ≈ 1.00 |
+| co | ≈ 1.00 |
+| no2 | ≈ 1.00 |
+
+All parameters within the expected 0.95–1.05 window — no unit mismatch.
+(If CO shows ≈ 1000 in a future run, the API switched to µg/m³. The ingest does not convert; log ratios cancel the offset, but `latest.json` values would read wrong. Fix: divide CO API values by 1000 in `ingest.py`.)
+
+**Sensor coverage**
+
+All 52 stations in `stations.tsv` resolve to at least PM2.5 and PM10 sensors.
+Relativehumidity is present on 34 of 52 stations; absent stations show `null` in `latest.json`.
+NO2 and CO sensor coverage is similar. Gaps are normal — DPCC stations don't all carry gas sensors.
+
+Two stations are consistently `nodata` after seeding: `New Delhi-8118` (id 8118) and `Lodhi Road, Delhi` (id 11607) — both stopped sending readings to the public feed before the 28-day window used for the history check.
+
+**IST hour alignment (spot-check, 3 stations)**
+
+| Station | Our IST hour | CPCB dashboard hour | Match |
+|---|---|---|---|
+| Anand Vihar (235) | 17:00 IST 4 Oct | 17:00 IST | ✓ |
+| Jahangirpuri (8235) | 17:00 IST 4 Oct | 17:00 IST | ✓ |
+| Punjabi Bagh (50) | 17:00 IST 4 Oct | 17:00 IST | ✓ |
+
+The ingest groups raw 15-min readings by IST hour; no UTC drift.
+
+**API call budget**
+
+One full run with `MAX_CALLS=300`: ~260 paced API calls (52 stations × 5 params = 260 sensor fetches at the 3-hour lookback window). The free-tier limit is 60 calls/min; the client paces at that rate so a run takes about 4–5 minutes. Stays well under the 2 000/hour quota.
+
+
 
 - First built with MapLibre on real map tiles; replaced the same day by our own three.js scene, so it looks the same everywhere (including where tile servers are blocked) and matches the fog theme.
 
