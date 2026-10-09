@@ -161,6 +161,13 @@
     el.textContent = tr`Readings through ${when} IST`;
     el.title = `Generated ${latest.generated_at}`;
     el.classList.toggle("stale", hours > 3);
+    // when the source itself is behind, say so: otherwise an old hour looks like our check stopped
+    const note = $("#feednote");
+    if (note) {
+      note.hidden = hours <= 3;
+      const behind = hours < 48 ? tr`${Math.round(hours)} hours` : tr`${Math.round(hours / 24)} days`;
+      note.textContent = tr`The public feed from the monitors (CPCB, through OpenAQ) is ${behind} behind right now. Every answer here is for the newest hour it has: ${when} IST.`;
+    }
     const live = $("#chrome-live");
     if (live) live.textContent = tr`Readings through ${when}`;
     renderPulse();
