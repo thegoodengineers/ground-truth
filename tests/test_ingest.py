@@ -332,3 +332,17 @@ def test_a_map_saved_before_the_fix_is_rebuilt():
     assert sum(path.startswith("/v3/locations/") for path, _ in fake.requests) == len(STATIONS)
     assert store.data[ingest.SENSORS_KEY]["1"]["pm10"] == 10
     assert not any("/sensors/999/" in path for path, _ in fake.requests)
+
+
+def test_a_repeated_hour_does_not_freeze_the_answer():
+    """9 Oct: OpenAQ stayed on one hour for many runs. A monitor silent on that hour's first run, then fixed (its
+    sensor remapped), stayed "nodata" on every later run because the repeated hour returned the saved answer."""
+    hist = {}
+    for raw in ("nodata", "ok"):
+        latest = _make_latest([raw])
+        ingest.apply_hysteresis(latest, hist, "2026-10-07T19")
+    assert latest["stations"][0]["status"] == "ok"
+    latest = _make_latest(["flag"])  # worse shows at once, even within the hour
+    ingest.apply_hysteresis(latest, hist, "2026-10-07T19")
+    assert latest["stations"][0]["status"] == "flag"
+    assert [e["hour"] for e in hist["0"]["history"]] == ["2026-10-07T19"]  # one history entry per hour
