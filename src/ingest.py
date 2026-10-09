@@ -50,9 +50,9 @@ def apply_hysteresis(latest_json, status_hist, now_key):
         h = status_hist.setdefault(sid, {"current": raw, "pending": raw, "count": 1, "since": now_key,
                                          "history": []})
         current = h["current"]
-        if h.get("hour") == now_key:  # a second run in the same hour doesn't count as another hour
-            s["status"], s["status_since"] = current, h["since"]
-            continue
+        # the scored hour stays the same across runs while the source is behind: such a run must not count as
+        # another hour towards calming an answer down, but it must not freeze the answer either
+        same_hour = h.get("hour") == now_key
         h["hour"] = now_key
         if "nodata" in (raw, current) and raw != current:
             # going quiet, or reporting again, shows at once: smoothing is for answers, not for silence
@@ -64,20 +64,20 @@ def apply_hysteresis(latest_json, status_hist, now_key):
             h["pending"] = raw
             h["count"] = 1
         elif RANK[raw] < RANK[current]:
-            # improving: need HYSTERESIS_DOWN hours in a row
-            if h.get("pending") == raw:
-                h["count"] += 1
-            else:
+            # improving: need HYSTERESIS_DOWN different hours in a row
+            if h.get("pending") != raw:
                 h["pending"] = raw
                 h["count"] = 1
+            elif not same_hour:
+                h["count"] += 1
             if h["count"] >= HYSTERESIS_DOWN:
                 h["current"] = raw
                 h["since"] = now_key
         else:
             h["pending"] = raw
             h["count"] = 1
-        # record hourly history strip (last HISTORY_DAYS days)
-        hist = h.setdefault("history", [])
+        # record hourly history strip (last HISTORY_DAYS days), one entry per hour
+        hist = [e for e in h.setdefault("history", []) if e["hour"] != now_key]
         hist.append({"hour": now_key, "status": h["current"]})
         h["history"] = [e for e in hist if e["hour"] >= cutoff]
         # write back smoothed status and since
