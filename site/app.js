@@ -851,34 +851,34 @@
     const history = pick((s) => s.id === 8235 && s.checks.history.status !== "nodata", 8235);
     const n = latest.stations.length;
     mark("tour:start");
-    caption("Ground Truth", `${n} air-quality monitors across Delhi and NCR, checked every hour.`);
+    caption("Ground Truth", tr`${n} air-quality monitors across Delhi and NCR, checked every hour.`);
     await wait(3500);
     $("#live").scrollIntoView({ behavior: "smooth", block: "start" });
     await wait(1500);
     enterImmersive();
-    caption("Ground Truth", `Delhi in 3D. Each mast is a monitor; its column is as tall as its PM2.5 reading, and the smog is thicker where the air is worse.`);
+    caption("Ground Truth", tx("Delhi in 3D. Each mast is a monitor; its column is as tall as its PM2.5 reading, and the smog is thicker where the air is worse."));
     await wait(5000);
 
     mark("tour:physics");
     await select(physics, { fly: true, spot: "physics" });
-    caption("Physics", `${esc(byId.get(physics).name.split(",")[0])} reports readings that can't be real. Its numbers don't add up.`);
+    caption(tx("Physics"), tr`${esc(byId.get(physics).name.split(",")[0])} reports readings that can't be real. Its numbers don't add up.`);
     await wait(6500);
 
     mark("tour:chart");
     await select(235, { fly: true, spot: "neighbours" });
-    caption("Neighbours", `Anand Vihar, hour by hour, against the four stations around it. The shaded band is 11:00 to 17:00.`);
+    caption(tx("Neighbours"), tx("Anand Vihar, hour by hour, against the four stations around it. The shaded band is 11:00 to 17:00."));
     await wait(7000);
 
     mark("tour:history");
     await select(history, { fly: true, spot: "history" });
-    caption("History", `Jahangirpuri against its own last three weeks. Worth a look, not proof.`);
+    caption(tx("History"), tx("Jahangirpuri against its own last three weeks. Worth a look, not proof."));
     await wait(6500);
 
     mark("tour:advice");
-    caption("What to do", `When a station is in doubt, use what the stations around it read right now.`);
+    caption(tx("What to do"), tx("When a station is in doubt, use what the stations around it read right now."));
     document.querySelector("#panel .now")?.scrollIntoView({ behavior: "smooth", block: "center" });
     await wait(5000);
-    caption("Ground Truth", `A flag means the numbers don't add up. Not that anyone cheated.`);
+    caption("Ground Truth", tx("A flag means the numbers don't add up. Not that anyone cheated."));
     mark("tour:end");
   }
 
