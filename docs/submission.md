@@ -53,7 +53,7 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 
 - **The live site** updates every hour; the header shows the hour the readings run through and when the last check ran.
 - **The planted test:** we lowered one quiet monitor's daytime PM10 by 40% in real data, one monitor at a time. It was caught 30 times out of 30, and wrongly flagged another monitor only 3 times across all 30 runs.
-- **80 automated tests** run on every change, plus browser smoke tests of the live site in CI.
+- **85 automated tests** run on every change, plus browser smoke tests of the live site in CI.
 - **Every day of October and November 2025, scored as the live site would have** (`docs/VALIDATION.md`): about 1 in 5 monitors flagged on a typical day, most by the physics check; a planted 30% daytime drop was flagged 29 times out of 30, a 40% drop every time.
 
 ## Challenges

@@ -58,7 +58,7 @@ The October 2025 water-tanker story is our motivation, not our claim. We tested 
 | `src/backfill.py` | Seeds the 28-day hourly cache from the archive |
 | `src/scorer.py` | The three checks; writes `latest.json` and `stations/<id>.json` (contract in [STACK.md](STACK.md)) |
 | `src/ingest.py` | The hourly Lambda: OpenAQ API → cache → scorer → S3 |
-| `tests/` | 80 tests, most on real November 2025 data, plus Playwright smoke tests in `tests/site/`, including the planted-anomaly test |
+| `tests/` | 85 tests, most on real November 2025 data, plus Playwright smoke tests in `tests/site/`, including the planted-anomaly test |
 | `template.yaml` | AWS SAM: S3 (private) + CloudFront + hourly EventBridge → Lambda, SSM key |
 | `site/` | The website: `index.html`, `app.js`, `theme.css`, `scene3d.js`, `spray3d.js` |
 | `sample/data/` | Real scorer output up to 4 Oct 2026, for running the site without AWS |
