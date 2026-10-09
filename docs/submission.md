@@ -47,13 +47,13 @@ The video shows the running stack in the AWS console.
 
 ## Design and usability
 
-Plain words instead of scores, and every state shown with a shape and a word, never colour alone. The answer comes first and the evidence one click later. The site works on a phone, explains itself before asking anything of the visitor, and has a self-playing tour.
+Plain words instead of scores, and every state shown with a shape and a word, never colour alone. The answer comes first and the evidence one click later. The site works on a phone, explains itself before asking anything of the visitor, has a self-playing tour, and reads in Hindi as well as English: one button switches the whole page, including each monitor's answer, its evidence and the advice.
 
 ## Does it work? (The execution)
 
 - **The live site** updates every hour; the header shows the hour the readings run through and when the last check ran.
 - **The planted test:** we lowered one quiet monitor's daytime PM10 by 40% in real data, one monitor at a time. It was caught 30 times out of 30, and wrongly flagged another monitor only 3 times across all 30 runs.
-- **69 automated tests** run on every change, plus browser smoke tests of the live site in CI.
+- **80 automated tests** run on every change, plus browser smoke tests of the live site in CI.
 - **Every day of October and November 2025, scored as the live site would have** (`docs/VALIDATION.md`): about 1 in 5 monitors flagged on a typical day, most by the physics check; a planted 30% daytime drop was flagged 29 times out of 30, a 40% drop every time.
 
 ## Challenges
@@ -64,7 +64,7 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 
 ## What's next
 
-Other Indian cities, a history page per monitor that reporters can cite, and Hindi copy.
+Other Indian cities (Mumbai is already set up as a trial region), a history page per monitor that reporters can cite, and the Hindi copy reviewed by native speakers.
 
 ## Team
 

@@ -147,8 +147,8 @@
       "हमने नवंबर 2025 का असली डेटा लिया और एक-एक करके हर ठीक मॉनिटर की दिन की धूल चुपचाप 40% घटा दी। Ground Truth ने हर एक को फ़्लैग किया, और सभी 30 बार में किसी दूसरे मॉनिटर को सिर्फ़ 3 बार ग़लती से फ़्लैग किया।",
     "We also scored every day of October and November 2025 as this site would have. Most flags were readings that can't be real, and smaller planted drops were caught less often (30%: 29 of 30, 20%: 10 of 30). Read the validation report":
       'हमने अक्टूबर और नवंबर 2025 के हर दिन को वैसे ही जाँचा जैसे यह साइट जाँचती। ज़्यादातर फ़्लैग ऐसी रीडिंग थे जो असली हो ही नहीं सकतीं, और छोटी गिरावटें कम बार पकड़ी गईं (30%: 30 में से 29, 20%: 30 में से 10)। <a href="https://github.com/thegoodengineers/ground-truth/blob/main/docs/VALIDATION.md">जाँच की रिपोर्ट पढ़ें</a>',
-    "This test, and 61 others, run automatically every time the code changes. See the tests":
-      'यह टेस्ट, और 61 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
+    "This test, and 79 others, run automatically every time the code changes. See the tests":
+      'यह टेस्ट, और 79 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
     "Built on AWS": "AWS पर बना",
     "Nobody presses a button.It checks itself every hour.": '<span class="dim">कोई बटन नहीं दबाता।</span>यह हर घंटे ख़ुद जाँच करता है।',
     "The whole system is one AWS SAM template, deployed in us-east-1 next to the public OpenAQ archive it reads from.":
