@@ -263,7 +263,10 @@ def test_resync_replaces_api_hour(monkeypatch):
     now = dt.datetime(2025, 11, 30, 0, 0, tzinfo=ingest.IST)
     store = DictStore()
     result = ingest.resync_archive(hourly, now, store)
-    assert result["resync_changed_hours"] > 0 or "resync_max_diff" in result
+    # 05:15Z and 05:30Z are 10:45 and 11:00 IST, which end two intervals of the 10:00 IST hour: mean 91.0
+    assert hourly["1"]["pm10"]["2025-11-26T10"] == 91.0
+    assert result["resync_changed_hours"] == 1
+    assert result["resync_max_diff"] == {"pm10": 9.0}
 
 
 def test_should_resync_only_once_per_day(monkeypatch):
