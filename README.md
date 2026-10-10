@@ -26,6 +26,14 @@ Each monitor then gets one answer: **agrees with neighbours**, **worth a look** 
 
 The site explains itself in ten seconds with one real monitor, and then lets you explore Delhi in 3D. Each monitor is a mast whose column is as tall as its PM2.5 reading, with smog that thickens where the air is worse.
 
+## Beyond the checks
+
+- **Find the monitor near me**: one click, the nearest monitor with a reading, its answer and the number to use.
+- **A month behind every answer**: every day of the last 28, scored as the live check scores it, as a strip in every panel (`#235/history`), a city-wide chart under the proof, and `data/changes.xml`, an Atom feed of every monitor that changed its answer.
+- **Share card and embed**: a picture of the answer for WhatsApp or a slide, and `embed.html?station=235`, a badge a newsroom or a school can frame.
+- **Context, not blame**: the wind and the mixing height (Open-Meteo), farm fires on the horizon (NASA FIRMS, with a key), and a panel note when a whole area rose together, which is what smoke does.
+- **The real ground**: the 3D city stands on a Sentinel-2 image of Delhi from the Registry of Open Data on AWS, lit by the real hour.
+
 ## What we found
 
 - **Impossible readings are common at a few monitors.** In Oct-Nov 2025, Vikas Sadan (Gurugram) reported more fine dust than total dust in 31% of hours.
