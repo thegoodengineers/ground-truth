@@ -297,6 +297,7 @@
     ", for example:": ", उदाहरण के लिए:",
     "Right now: {0} reports impossible values in {1}% of last week's hours.": "अभी: {0} पिछले हफ़्ते के {1}% घंटों में असंभव मान दिखाता है।",
     "Right now: {0}. {1}": "अभी: {0}। {1}",
+    "No monitor is raised by this check right now.": "अभी यह जाँच किसी मॉनिटर को नहीं उठा रही।",
     "PM10 (all dust)": "PM10 (कुल धूल)",
     "PM2.5 (fine dust)": "PM2.5 (बारीक धूल)",
     "NO2 (traffic gas)": "NO2 (ट्रैफ़िक गैस)",

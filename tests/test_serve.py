@@ -80,3 +80,28 @@ def test_headers_match_the_cloudfront_policy():
     assert serve.SECURITY_HEADERS["referrer-policy"] == "strict-origin-when-cross-origin"
     assert "FrameOption: DENY" in block and serve.SECURITY_HEADERS["x-frame-options"] == "DENY"
     assert re.search(r"Value: " + re.escape(serve.SECURITY_HEADERS["permissions-policy"]), block)
+
+
+def test_a_warm_copy_answers_from_memory_for_a_while():
+    """A page load asks for about 20 files; answering repeats from memory keeps each request to a few ms, which is
+    what lets a new account's 10 concurrent copies serve several visitors at once."""
+    calls, now = [], [0.0]
+
+    def s3(key):
+        calls.append(key)
+        if key == "gone.js":
+            return None
+        return b"x" * 4000, {"etag": f'"{key}-v1"', "content_type": "application/javascript", "cache_control": None}
+    cached = serve.Cached(s3, clock=lambda: now[0])
+    event = lambda path: {"rawPath": path, "requestContext": {"http": {"method": "GET"}}, "headers": {"accept-encoding": "gzip"}}  # noqa: E731
+    first, second = serve.serve(event("/app.js"), cached), serve.serve(event("/app.js"), cached)
+    assert calls == ["app.js"] and first == second and first["headers"]["content-encoding"] == "gzip"
+    serve.serve(event("/data/latest.json"), cached)
+    now[0] = 31  # data/ is kept 30 s, the rest 120 s
+    serve.serve(event("/data/latest.json"), cached), serve.serve(event("/app.js"), cached)
+    assert calls == ["app.js", "data/latest.json", "data/latest.json"]
+    now[0] = 121
+    serve.serve(event("/app.js"), cached)
+    assert calls[-1] == "app.js"
+    serve.serve(event("/gone.js"), cached), serve.serve(event("/gone.js"), cached)  # a miss is never kept
+    assert calls.count("gone.js") == 2

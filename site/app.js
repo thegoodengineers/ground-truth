@@ -34,7 +34,44 @@
   };
 
   // the language, the page dictionary and tr`...` live in i18n.js; choosing a language reloads the page in it
+  // i18n.js may not have arrived (a busy server can refuse a file): then the site simply stays in English
+  if (!window.GT_I18N) {
+    const english = (strings, ...vals) => strings.reduce((a, s, i) => a + (i ? vals[i - 1] : "") + s, "");
+    window.GT_I18N = { lang: "en", tr: english, t: (x) => x, detail: (x) => x, page: () => {}, band: (b) => b, bandTodo: (b, en) => en };
+  }
   const { lang, tr, t: tx, detail } = window.GT_I18N;
+
+  // A busy server answers some requests "429, try again". A script refused that way is asked for again, up to three
+  // times a little apart, under a new name so the browser doesn't reuse the failure.
+  const fetchedAgain = (src, module) => new Promise((ok, fail) => {
+    const el = document.createElement("script");
+    if (module) el.type = "module";
+    el.src = src; el.onload = ok; el.onerror = fail;
+    document.head.appendChild(el);
+  });
+  async function scriptAgain(src, ready, module = false) {
+    for (let i = 1; i <= 3 && !ready(); i++) {
+      await new Promise((r) => setTimeout(r, 1200 * i));
+      if (ready()) break;
+      try { await fetchedAgain(`${src}?again=${i}`, module); } catch (e) { /* the next try, or give up */ }
+      for (let w = 0; w < 10 && !ready(); w++) await new Promise((r) => setTimeout(r, 100)); // a module runs just after load
+    }
+    return ready();
+  }
+  // scripts that failed before this one ran, and any that fail later
+  const retried = new Set();
+  function retryScript(src) {
+    if (retried.has(src)) return;
+    retried.add(src);
+    if (src === "scene3d.js") scriptAgain(src, () => !!window.GT3D, true).then((ok) => { if (!ok && $("#map") && !view) { $("#map").innerHTML = ""; renderFlat(); } });
+    if (src === "spray3d.js") scriptAgain(src, () => !!window.__spray, true);
+    if (src === "vendor/chart.umd.js") scriptAgain(src, () => !!window.Chart).then((ok) => { if (ok && selected != null) select(selected); });
+  }
+  window.addEventListener("error", (e) => {
+    const src = e.target instanceof HTMLScriptElement && e.target.getAttribute("src");
+    if (src && !src.includes("?again=")) retryScript(src);
+  }, true);
+  if (!window.Chart && document.querySelector('script[src="vendor/chart.umd.js"]')) retryScript("vendor/chart.umd.js");
   const t = () => I18N[lang];
 
   const STATUS = new Proxy({}, { get: (_, k) => t().status[k] });
@@ -335,14 +372,19 @@
   }
 
   async function renderCheckExamples() {
-    const worst = (k, key) => latest.stations.filter((s) => s.checks[k].status === "flag" || s.checks[k].status === "watch")
-      .sort((a, b) => Math.abs(b.checks[k][key] ?? 0) - Math.abs(a.checks[k][key] ?? 0))[0];
+    // the monitor this check is most worried about; when it raises none, the one it measured the biggest change
+    // at, so the card still shows a real example (and says that nothing is raised)
+    const by = (k, key) => (a, b) => Math.abs(b.checks[k][key] ?? 0) - Math.abs(a.checks[k][key] ?? 0);
+    const raised = (k) => latest.stations.some((s) => s.checks[k].status === "flag" || s.checks[k].status === "watch");
+    const worst = (k, key) => latest.stations.filter((s) => (raised(k) ? ["flag", "watch"].includes(s.checks[k].status) : s.checks[k].status !== "nodata"))
+      .sort(by(k, key))[0];
+    const calm = (k) => (raised(k) ? "" : `${tx("No monitor is raised by this check right now.")} `);
     const link = (s) => `<button type="button" data-open="${s.id}" data-spot="${s._spot}">${esc(short(s.name))}</button>`;
 
     // physics: what an impossible reading looks like, and who does it now
     $("#ex-physics").innerHTML = `<svg viewBox="0 0 320 150" aria-hidden="true"><text x="96" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM10 (all dust)")}</text><text x="224" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM2.5 (fine dust)")}</text><rect x="66" y="58" width="60" height="66" rx="5" fill="#c9cace"/><rect x="194" y="22" width="60" height="102" rx="5" fill="#d03b3b" opacity=".85"/><path d="M60 58h200" stroke="#08090a" stroke-dasharray="4 4"/><text x="96" y="50" text-anchor="middle" font-family="Geist Mono" font-size="10.5" fill="#4f5156">${tx("the limit")}</text><text x="224" y="80" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#ffffff">${tx("impossible")}</text></svg>`;
     const p = worst("physics", "fail_pct");
-    if (p) { p._spot = "physics"; $("#ex-physics-case").innerHTML = tr`Right now: ${link(p)} reports impossible values in ${p.checks.physics.fail_pct}% of last week's hours.`; }
+    if (p) { p._spot = "physics"; $("#ex-physics-case").innerHTML = calm("physics") + tr`Right now: ${link(p)} reports impossible values in ${p.checks.physics.fail_pct}% of last week's hours.`; }
 
     const n = worst("neighbours", "z");
     if (n) {
@@ -352,7 +394,7 @@
         const pct = (doc.hour_profile_7d?.pm10 || []).map((g) => (g == null ? null : (Math.exp(g) - 1) * 100));
         $("#ex-neighbours").innerHTML = svgLine(pct, { band: [11, 16] });
       } catch (e) { /* the card still reads without the picture */ }
-      $("#ex-neighbours-case").innerHTML = tr`Right now: ${link(n)}. ${esc(detail(n.checks.neighbours.detail))}`;
+      $("#ex-neighbours-case").innerHTML = calm("neighbours") + tr`Right now: ${link(n)}. ${esc(detail(n.checks.neighbours.detail))}`;
     }
 
     const h = worst("history", "z");
@@ -363,7 +405,7 @@
         const key = `d_${h.checks.history.param}`;
         $("#ex-history").innerHTML = svgDaily(doc.daily.map((r) => r[key]));
       } catch (e) { /* the card still reads without the picture */ }
-      $("#ex-history-case").innerHTML = tr`Right now: ${link(h)}. ${esc(detail(h.checks.history.detail))}`;
+      $("#ex-history-case").innerHTML = calm("history") + tr`Right now: ${link(h)}. ${esc(detail(h.checks.history.detail))}`;
     }
     document.querySelectorAll(".c3-case [data-open]").forEach((b) => b.addEventListener("click", () => {
       if ($("#live")) openStation(Number(b.dataset.open), b.dataset.spot);
@@ -685,6 +727,7 @@
   };
 
   function drawChart(doc) {
+    if (!window.Chart) return; // vendor/chart.umd.js is being fetched again; the panel redraws when it arrives
     const canvas = $("#chart");
     if (chart) { chart.destroy(); chart = null; }
     if (!canvas || !doc) return;
@@ -723,6 +766,7 @@
 
   let evidenceChart = null;
   function drawEvidence(doc, station) {
+    if (!window.Chart) return;
     const canvas = $("#evidence-chart");
     if (evidenceChart) { evidenceChart.destroy(); evidenceChart = null; }
     if (!canvas || !doc?.recent_48h) return;
