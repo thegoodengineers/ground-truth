@@ -2,6 +2,19 @@
 
 The text for the Environmental Hacks form. Every number traces to `spike/RESULTS.md`, `docs/LEARNINGS.md`, `docs/VALIDATION.md`, a test, or the live data. The two [brackets] left (video, blog) get filled when those are published.
 
+## Pre-submission checklist (Sunday 11 Oct, submit early; the deadline hour isn't published)
+
+- [ ] Open the live site in a signed-out browser: it loads, the tour plays with its voice, and the Hindi toggle works
+- [ ] Read "Readings through …" on the live site; if the CPCB feed through OpenAQ is still behind, the note under the headline says so
+- [ ] Record the demo video (#10) and upload it to YouTube, unlisted: paste the URL into **Links**
+- [ ] Publish the Builder Center blog (#38): paste the URL into **Links**
+- [ ] Check the AWS cost in Cost Explorer (tag `project=ground-truth`) and add it to the README's Cost table
+- [ ] Decide how the write-up lists the coding tools used (the rules ask for it)
+- [ ] Check every link in this text, then submit
+- [ ] Post a screenshot of the submission confirmation to #11, and close #11
+
+---
+
 **Project name:** Ground Truth
 
 **Track:** Air
