@@ -209,7 +209,7 @@ function buildMonitors(scene, stations, reading) {
   const leds = inst(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial(), n);
   const glows = inst(quad, flat(radial("rgba(255,255,255,1)", "rgba(255,255,255,0)"), 0.5), n);
   const cols = inst(new THREE.CylinderGeometry(1.9, 1.9, 1, 28, 1, true), tint(0.55, THREE.DoubleSide), n);
-  const caps = inst(new THREE.CircleGeometry(1.9, 28).rotateX(-Math.PI / 2), tint(0.8), n);
+  const caps = inst(new THREE.CircleGeometry(1.9, 28).rotateX(-Math.PI / 2), tint(0.8, THREE.FrontSide), n);
   // smog: brown puffs, each with its own opacity (an instanced attribute, multiplied in after the texture)
   const smogGeo = quad.clone(), smogAlpha = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 1);
   smogGeo.setAttribute("alpha", smogAlpha);

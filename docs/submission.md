@@ -51,7 +51,7 @@ Each monitor gets one answer: agrees with neighbours, worth a look, or doesn't a
 - **AWS Systems Manager Parameter Store** holds the OpenAQ API key, encrypted.
 - **Amazon S3** keeps a 29-day history cache and the results.
 - **Amazon CloudFront** is in the template to serve the site and the data from a private bucket; this account is still waiting on AWS Support's verification for CloudFront, so a second small **Lambda function URL** serves the site over HTTPS with the same security headers (CSP, HSTS, nosniff) until then.
-- **Amazon CloudWatch** alarms (a failed run, a run that stopped early, data older than 3 hours) and an **AWS Budgets** alarm go to an **Amazon SNS** email, with a runbook in the repo. One **CloudWatch dashboard** shows data age, every hourly run, the site's traffic and throttles, and the alarms on one screen.
+- **Amazon CloudWatch** alarms (a failed run, a run that stopped early, data older than 3 hours) and an **AWS Budgets** alarm go to an **Amazon SNS** email, with a runbook in the repo. One **CloudWatch dashboard** shows data age, every hourly run, how many monitors got each answer every hour, the site's traffic and throttles, and the alarms on one screen.
 - **AWS SAM** deploys all of it from one template, and a merge to `main` deploys through **GitHub Actions with OIDC**, with no AWS keys stored anywhere. History is seeded from the public OpenAQ archive on the **Registry of Open Data on AWS**, in the same region.
 
 The video shows the running stack in the AWS console.

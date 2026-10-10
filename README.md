@@ -62,7 +62,7 @@ flowchart LR
 - **EventBridge** starts the check every hour.
 - **Lambda** (Python 3.11) reads new readings from OpenAQ, with the key in **SSM Parameter Store**, runs the three checks and writes JSON to **S3**.
 - **CloudFront** serves the site and the data from a private bucket, with a response headers policy (CSP, HSTS, nosniff). Until AWS Support verifies this account for CloudFront, a second small **Lambda function URL** serves the bucket over HTTPS with the same headers, and the bucket's **S3 website endpoint** is the HTTP fallback (`UseCloudFront` in the template flips it).
-- **CloudWatch** alarms (Lambda errors, a run that stopped early, data older than 3 hours) and a **Budgets** alarm ($5 a month) go to an **SNS** email, and one **CloudWatch dashboard** (`DashboardUrl` in the stack outputs) shows data age, every run, the site's traffic and throttles, and the alarms on one screen. What to do when one fires: [docs/RUNBOOK.md](docs/RUNBOOK.md).
+- **CloudWatch** alarms (Lambda errors, a run that stopped early, data older than 3 hours) and a **Budgets** alarm ($5 a month) go to an **SNS** email, and one **CloudWatch dashboard** (`DashboardUrl` in the stack outputs) shows data age, every run (with a table of the last 24), how many monitors got each answer every hour, the site's traffic and throttles, and the alarms on one screen. What to do when one fires: [docs/RUNBOOK.md](docs/RUNBOOK.md).
 - A merge to `main` deploys through **GitHub Actions with OIDC**: no AWS keys stored anywhere ([infra/github-oidc.yaml](infra/github-oidc.yaml), [.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
 - Everything is one **AWS SAM** template ([template.yaml](template.yaml)), in us-east-1 next to the public OpenAQ archive on Open Data on AWS.
 
