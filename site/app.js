@@ -189,6 +189,7 @@
     if (has("#ticks")) renderTicks();
     if (has("#filters")) renderRoster();
     if (has("#search")) setupSearch();
+    if (has("#near-btn")) setupNearMe();
     window.addEventListener("hashchange", fromHash);
     $("#close-cta")?.addEventListener("click", (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => $("#search").focus(), 500); });
     mark("loaded");
@@ -919,6 +920,34 @@
   }
 
   // ---------- search ----------
+  // "find the monitor near me": the browser's position (asked once, on a click), the nearest monitor with a
+  // reading, how far it is, and its answer; then the panel opens on it
+  const kmBetween = (a, b) => {
+    const p = Math.PI / 180, h = Math.sin((b[0] - a[0]) * p / 2) ** 2 + Math.cos(a[0] * p) * Math.cos(b[0] * p) * Math.sin((b[1] - a[1]) * p / 2) ** 2;
+    return 12742 * Math.asin(Math.sqrt(h));
+  };
+  function setupNearMe() {
+    const btn = $("#near-btn"), line = $("#near-line");
+    if (!navigator.geolocation) { btn.hidden = true; return; }
+    const say = (html) => { line.innerHTML = html; line.hidden = false; };
+    btn.addEventListener("click", () => {
+      say(tx("Asking your browser where you are…"));
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const here = [pos.coords.latitude, pos.coords.longitude];
+        const ranked = latest.stations.map((s) => ({ s, km: kmBetween(here, [s.lat, s.lon]) })).sort((a, b) => a.km - b.km);
+        if (!ranked.length || ranked[0].km > 150) { say(tx("You seem to be outside Delhi and the NCR; the nearest monitor here is") + ` <b>${esc(short(ranked[0].s.name))}</b>, ${Math.round(ranked[0].km)} km.`); return; }
+        const near = ranked.find((r) => r.s.status !== "nodata") || ranked[0];
+        const alt = ranked[0].s.id !== near.s.id ? ` (${esc(short(ranked[0].s.name))}, ${ranked[0].km.toFixed(1)} km, ${tx("has no reading right now")}.)` : "";
+        const todo = near.s.status === "ok" ? tx("Its reading is a fair guide for your area.") : near.s.status === "nodata" ? tx("It has no reading right now.")
+          : tr`Use what the 4 monitors around it read instead: ${fmt(near.s.neighbours_latest?.pm25)} µg/m³ PM2.5.`;
+        say(`${tx("Nearest monitor")}: <b>${esc(short(near.s.name))}</b>, ${near.km.toFixed(1)} km ${tx("away")}, ${STATUS[near.s.status].label.toLowerCase()}. ${todo}${alt}`);
+        openStation(near.s.id, null);
+      }, (err) => {
+        say(err.code === 1 ? tx("Location not shared. Search for your station by name instead.") : tx("Couldn't get a position. Search for your station by name instead."));
+      }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+    });
+  }
+
   function setupSearch() {
     const input = $("#search"), list = $("#search-list"), box = input.closest(".search");
     let items = [], idx = -1;

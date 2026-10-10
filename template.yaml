@@ -129,7 +129,7 @@ Resources:
           Items:
             - Header: Permissions-Policy
               Override: true
-              Value: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+              Value: camera=(), microphone=(), geolocation=(self), payment=(), usb=()
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
