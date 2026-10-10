@@ -6,7 +6,7 @@ Environmental Hacks 2026 · Air track · team thegoodengineers
 
 ![Ground Truth: the fog hero, the ten-second explainer, the 3D Delhi and a flagged monitor's panel](docs/img/demo.gif)
 
-**Live site:** [zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws](https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/) · **Demo video:** _YouTube link on submission_ · **Writeup:** [docs/submission.md](docs/submission.md)
+**Live site:** [zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws](https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/) · **Demo video:** [video/final.mp4](video/final.mp4) (2:45; YouTube link on submission) · **Writeup:** [docs/submission.md](docs/submission.md)
 
 ## The problem
 
@@ -110,7 +110,7 @@ Open `http://localhost:8000/?demo=1` for the self-playing tour.
 | [spike/](spike/) | The data analysis the checks are built on |
 | [docs/](docs/) | Plan, stack and data contract, tasks, learnings, submission |
 | [sample/](sample/) | Real scorer output to 4 Oct 2026 |
-| [video/](video/) | Demo video script and narration |
+| [video/](video/) | The demo video (`final.mp4`), and the code that makes it: script, narration, scenes, capture, cut |
 
 ## Data and credits
 
