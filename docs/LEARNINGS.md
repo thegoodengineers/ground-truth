@@ -78,15 +78,21 @@ What we already know, so nobody re-learns it this weekend. Dated entries, newest
 - `New Delhi-8118` (8118) and `Lodhi Road, Delhi` (11607) still have no reading in 4 weeks. 11607 did report in Oct-Nov 2025; 8118 has no PM2.5 or PM10 in the archive at all.
 - From the code: a full run fetches 52 stations x up to 5 sensors, about 260 calls, paced at 1.1 s (`OpenAQ.pace`), so about 5 minutes and under 60 a minute.
 
-**Still to record from one run's log line** (`make run`, or `out.json` from `aws lambda invoke`): `overlap_ratio` for `pm25` and `pm10` (0.95-1.05 means the API and the archive agree on units and IST hours), `api_calls`, `skipped`, and `published`.
+**One run's log line** (Abhijeet, `aws lambda invoke` on `ground-truth-IngestFunction`, 9 Oct, after the real key went into SSM as version 2):
 
-**The check, once the key is in SSM** (`/ground-truth/openaq-key`)
-1. Run the Lambda once (`make run`) and read its JSON log line.
-2. `overlap_ratio` for `pm25` and `pm10` should be 0.95-1.05; that means the API and the archive agree on units and on IST hour labels. About 1000 for `co` would mean the API serves µg/m³ where the archive has mg/m³.
-3. `data_through` should be within 2 hours of the newest hour OpenAQ's Explorer shows for these monitors (not necessarily of now: see above), and `published` should be `true`.
-4. Every station should resolve to PM2.5 and PM10 sensors (`data/raw/sensors_v2.json`); list any that don't.
-5. Spot-check three stations' latest IST hour against the CPCB dashboard.
-6. Write the real numbers here, replacing this list.
+| Field | Value |
+|---|---|
+| `published` | true |
+| `overlap_ratio` | pm25 1.0, pm10 1.0, no2 1.0, co 1.0, relativehumidity 1.0 |
+| `data_through` | 2026-10-07T19 IST |
+| `api_calls` | 294 (10 retries) |
+| `skipped` | 3 |
+| `new_hours` | 5,879 |
+| `error` | none |
+
+- **Units and hours agree:** every overlap ratio is exactly 1.0, so the API serves the same units as the archive (CO included, in mg/m³) and our IST grouping lines up with the archive's hours.
+- **`data_through` is OpenAQ's, not ours:** 38 of 52 stations had their newest reading at exactly 7 Oct 19:00 and none later, matching OpenAQ's Explorer ("Updated 2 days ago").
+- The 10 stations still at 5 Oct 23:00 in that run were the retired-sensor mapping (#81), not the call budget: the first run after #81 brought them to 7 Oct 19:00 with the rest.
 
 ## 2026-10-09: retired sensors and a repeated hour (#81, #83)
 
