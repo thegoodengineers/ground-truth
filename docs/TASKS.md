@@ -28,8 +28,8 @@ Owners: **Abhijeet** (thegoodengineer) = AWS · **Chirag** (Chirag6722) = backen
 
 ## Nice
 
-- [ ] **Station history page** journalists can link to (`#235/history`).
-- [ ] **NASA FIRMS fire layer** for stubble-burning days.
+- [x] **Station history page** journalists can link to (`#235/history`): the month strip in every panel, the city-wide month chart, and the Atom feed of changes (#98, #101).
+- [x] **NASA FIRMS fire layer** for stubble-burning days (#73; needs a FIRMS key in SSM to light up).
 - [ ] **Hindi copy** for the statuses and the limits section.
 
 ## Ayush (once he's a collaborator)

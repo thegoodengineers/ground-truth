@@ -75,9 +75,17 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 - The API averages over UTC hours, which are half an hour off Indian hours. We group the raw readings into IST hours ourselves, so live data matches the archive.
 - Daytime air mixing makes any hotspot look cleaner by day. We nearly mistook that for a spraying signal.
 
+## What's new since the first build
+
+- **The real ground.** The 3D city stands on a cloud-free Sentinel-2 image of Delhi from 5 Oct 2026, read from the Cloud-Optimised GeoTIFFs on the Registry of Open Data on AWS, and the sun follows the real hour in Delhi.
+- **A month behind every answer.** Every day of the last 28 is scored as the live check scores it; each panel shows the month as a strip, `#235/history` links to it, the proof section charts the whole month city-wide, and `data/changes.xml` is an Atom feed of every monitor that changed its answer, to subscribe to.
+- **Find the monitor near me**, a share card (a picture of the answer for WhatsApp or a slide), and an embeddable badge (`embed.html?station=235`) a newsroom or a school can frame.
+- **Context for city-wide changes**: the wind and mixing height from Open-Meteo (the dust in 3D drifts with the real wind), and NASA FIRMS farm fires on the horizon when a key is configured.
+- **Other cities as a setting**: `src/regions/<city>.json`; Mumbai scored from the archive, not shipped because its feed is thinner (`docs/LEARNINGS.md`).
+
 ## What's next
 
-Other Indian cities (Mumbai is already set up as a trial region), a history page per monitor that reporters can cite, and the Hindi copy reviewed by native speakers.
+Other Indian cities on the site once their feeds are complete enough (Mumbai is set up as a trial region), alerts by email when your monitor's answer changes, the CPCB portal as a second source for the hours OpenAQ's relay runs behind, and the Hindi copy reviewed by native speakers.
 
 ## Team
 
