@@ -343,6 +343,31 @@ footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .mapcol::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 90px; pointer-events: none; background: linear-gradient(180deg, rgba(233, 232, 229, .9), rgba(233, 232, 229, 0)); z-index: 1; }
 .enter3d { position: absolute; left: 16px; top: 16px; z-index: 3; display: inline-flex; align-items: center; gap: 10px; height: 42px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--ink); background: rgba(255, 255, 255, .88); backdrop-filter: blur(10px); font-weight: 500; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
 .enter3d:hover { background: #fff; }
+/* map or list: one frame, the two buttons float at its top left (the list view's own markup had no styles) */
+.map-toolbar { display: contents; } /* #map and #list-view stay the column's first row, so the map fills it again */
+#map[hidden] { display: none !important; }
+.map-view-btns { position: absolute; left: 16px; top: 16px; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; }
+.map-view-btns .enter3d { position: static; }
+.list-toggle { height: 42px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .88); backdrop-filter: blur(10px); font: 500 14px var(--sans); color: var(--ink); cursor: pointer; box-shadow: var(--shadow); }
+.list-toggle:hover, .list-toggle[aria-pressed="true"] { background: #fff; border-color: var(--ink); }
+.window.immersive .list-toggle { display: none; }
+.mapcol.listing::after { display: none; }
+#list-view { margin-top: 72px; max-height: 688px; overflow: auto; border-top: 1px solid var(--line); }
+.monitor-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.monitor-table th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); border-bottom: 1px solid var(--line-2); text-align: left; padding: 0; }
+.sort-btn { display: block; width: 100%; padding: 10px 12px; border: 0; background: none; text-align: left; font: 500 12px var(--mono); letter-spacing: .02em; color: var(--ink-3); cursor: pointer; white-space: nowrap; }
+.sort-btn small { font-size: 11px; }
+.sort-btn:hover, .sort-btn[aria-sort="ascending"], .sort-btn[aria-sort="descending"] { color: var(--ink); }
+.monitor-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.monitor-table td.mono { font-variant-numeric: tabular-nums; }
+.monitor-table tbody tr:hover { background: var(--surface-2); }
+.list-open { padding: 0; border: 0; background: none; font: 500 14px var(--sans); color: var(--ink); text-align: left; cursor: pointer; }
+.list-open:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* the panel's copy-link button, in the site's pill style */
+.share-btn { margin-left: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font: 500 12.5px var(--sans); color: var(--ink-2); cursor: pointer; vertical-align: middle; }
+.share-btn:hover { color: var(--ink); border-color: var(--ink); }
+/* the panel title takes focus when a monitor is opened (for screen readers); no box drawn around it */
+.panel h2:focus { outline: none; }
 .enter3d span { font-family: var(--mono); }
 .exit3d { white-space: nowrap; margin-left: 8px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font: 500 13px var(--sans); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .exit3d:hover { border-color: var(--ink); }
