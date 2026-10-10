@@ -239,7 +239,7 @@ def resync_archive(hourly, now, store):
 
 
 def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key", resync=False, region=None,
-        history_budget_s=history.BUDGET_S):
+        history_budget_s=history.BUDGET_S, site_url=None):
     hourly = store.get_json(RAW_KEY) or {}
     sensors = store.get_json(SENSORS_KEY) or {}
     log = {"new_hours": 0, "skipped": 0, "overlap_ratio": {}}
@@ -310,7 +310,7 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     store.put_text("data/latest.csv", scorer.to_csv(latest), content_type="text/csv; charset=utf-8", max_age=300)
     log["published"] = True
     try:  # the month of daily answers behind every monitor; never a reason for the run to fail
-        log["history"] = history.update(store, hourly, stations, last, region=region, budget_s=history_budget_s)
+        log["history"] = history.update(store, hourly, stations, last, region=region, budget_s=history_budget_s, site_url=site_url)
     except Exception as e:
         log["history"] = f"{type(e).__name__}: {e}"
     return log
@@ -375,7 +375,7 @@ def handler(event, context):
     now = dt.datetime.now(UTC)
     cfg = backfill.region(os.environ.get("REGION", "delhi"))
     log = run(store, OpenAQ(key), backfill.stations(region_name=cfg["id"]), now, int(os.environ.get("MAX_CALLS", "300")),
-              param, resync=True, region=cfg)
+              param, resync=True, region=cfg, site_url=os.environ.get("SITE_URL"))
     w = weather.publish(store, cfg, now=now)
     log["weather"] = w if isinstance(w, str) else {"wind_kmh": w["wind_kmh"], "wind_from": w["wind_from"],
                                                    "boundary_layer_m": w["boundary_layer_m"]}

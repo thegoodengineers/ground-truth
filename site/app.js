@@ -248,6 +248,7 @@
   async function loadHistory() {
     try { histDoc = await getJSON("data/history.json"); } catch (e) { return; }
     renderChanges();
+    renderMonthChart();
     if (selected != null && byId.has(selected)) { const box = $("#history-box"); if (box) box.outerHTML = historyHTML(byId.get(selected)); }
     if (location.hash.endsWith("/history")) $("#history-box")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -262,6 +263,31 @@
     el.innerHTML = `${tr`${histDoc.changes.length} monitors changed their answer by ${when}`}: ${items}${more}`;
     el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openStation(Number(b.dataset.open), null)));
     el.hidden = false;
+  }
+  // the month, city-wide: one stacked bar a day, the four answers in the site's shapes' colours
+  let monthChart = null;
+  function renderMonthChart() {
+    const box = $("#month-box"), canvas = $("#month-chart");
+    if (!box || !canvas || !histDoc || !histDoc.totals || !histDoc.totals.length || !window.Chart) return;
+    const css = getComputedStyle(document.documentElement);
+    const colour = (v) => css.getPropertyValue(v).trim();
+    const t = histDoc.totals;
+    const labels = t.map((d) => new Date(d.d + "T12:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
+    const ds = (key, label, c) => ({ label, data: t.map((d) => d[key]), backgroundColor: c, borderWidth: 0, stack: "day" });
+    if (monthChart) monthChart.destroy();
+    monthChart = new Chart(canvas, {
+      type: "bar",
+      data: { labels, datasets: [ds("flag", STATUS.flag.label, colour("--flag")), ds("watch", STATUS.watch.label, colour("--watch")), ds("ok", STATUS.ok.label, colour("--ok")), ds("nodata", STATUS.nodata.label, colour("--nodata"))] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { family: css.getPropertyValue("--mono").trim(), size: 11 } } },
+          tooltip: { callbacks: { title: (items) => items[0].label, label: (item) => ` ${item.dataset.label}: ${item.raw}` } } },
+        scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { family: css.getPropertyValue("--mono").trim(), size: 10 }, maxTicksLimit: 10 } },
+                  y: { stacked: true, title: { display: true, text: tx("monitors") }, grid: { color: colour("--line") }, ticks: { font: { family: css.getPropertyValue("--mono").trim(), size: 10 } } } } },
+    });
+    const last = t[t.length - 1], flagged = t.reduce((a, d) => a + d.flag, 0) / t.length;
+    const sub = $("#month-sub");
+    if (sub) sub.textContent = tr`Every day scored at 17:00 IST, the way the live check scores it. On an average day this month ${flagged.toFixed(1)} monitors didn't add up; on ${labels[labels.length - 1]}, ${last.flag} did and ${last.watch} were worth a look.`;
+    box.hidden = false;
   }
   const CHECK_LETTER = { o: "ok", w: "watch", f: "flag", n: "nodata" };
   function historyHTML(s) {
