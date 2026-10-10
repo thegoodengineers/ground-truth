@@ -27,6 +27,7 @@ SECURITY_HEADERS = {
     "permissions-policy": "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
 }
 TEXT_TYPES = ("application/json", "application/javascript", "text/javascript", "image/svg+xml", "application/xml")
+FRAMEABLE = ("embed.html",)  # the badge a newsroom frames; it gets the same CSP but with frame-ancestors open
 CACHE = {"vendor/": "public, max-age=604800", "geo/": "public, max-age=86400", "data/": "public, max-age=300"}
 DEFAULT_CACHE = "public, max-age=300"
 MIN_GZIP = 1024
@@ -89,8 +90,17 @@ class Cached:
         return self.gz[etag]
 
 
-def response(status, body=b"", headers=None, ctype="text/plain; charset=utf-8", gzip_ok=False, compress=None):
-    h = {**SECURITY_HEADERS, "content-type": ctype, **(headers or {})}
+def headers_for(key):
+    """The security headers for one object: the badge page may be framed, nothing else may."""
+    if key in FRAMEABLE:
+        h = {k: v for k, v in SECURITY_HEADERS.items() if k != "x-frame-options"}
+        h["content-security-policy"] = CSP.replace("frame-ancestors 'none'", "frame-ancestors *")
+        return h
+    return SECURITY_HEADERS
+
+
+def response(status, body=b"", headers=None, ctype="text/plain; charset=utf-8", gzip_ok=False, compress=None, key=None):
+    h = {**headers_for(key), "content-type": ctype, **(headers or {})}
     is_text = ctype.startswith("text/") or any(ctype.startswith(t) for t in TEXT_TYPES)
     if gzip_ok and is_text and len(body) >= MIN_GZIP:
         body = compress(body) if compress else gzip.compress(body, 6)
@@ -123,7 +133,7 @@ def serve(event, get_object):
     ctype = content_type(key, meta.get("content_type"))
     gzip_ok = "gzip" in req_headers.get("accept-encoding", "")
     compress = (lambda b: get_object.gzipped(etag, b)) if isinstance(get_object, Cached) else None
-    return response(200, b"" if method == "HEAD" else body, headers, ctype, gzip_ok, compress)
+    return response(200, b"" if method == "HEAD" else body, headers, ctype, gzip_ok, compress, key=key)
 
 
 _cached = None  # one per warm copy of the function

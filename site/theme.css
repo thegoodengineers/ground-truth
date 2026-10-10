@@ -79,6 +79,10 @@ button, input, select { font: inherit; }
 .hero .near-line { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin: 6px 0 0; }
 .hero .near-line b { color: var(--ink); font-weight: 500; }
 
+/* the copy box: the link or the embed code in a textarea when the clipboard is not allowed */
+.copybox { margin: 8px 0 4px; } .copybox .label { display: block; margin-bottom: 4px; }
+.copybox textarea { width: 100%; font: 12px/1.4 var(--mono); color: var(--ink); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 8px; resize: vertical; }
+
 /* ---------- nav ---------- */
 .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1500; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: color-mix(in srgb, var(--bg) 75%, transparent); border-bottom: 1px solid transparent; }
 .nav .wrap { display: flex; align-items: center; gap: 18px; height: 68px; }
