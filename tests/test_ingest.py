@@ -306,6 +306,8 @@ def test_metrics_report_data_age_and_run_errors():
     assert m["IngestErrors"] == (1.0, "Count")
     assert m["DataAgeHours"] == (1.0, "None")  # falls back to the published hour
     assert ingest.metrics({}, now) == [("IngestErrors", 0.0, "Count")]  # nothing scored yet: no age point
+    m = dict((n, v) for n, v, u in ingest.metrics({"published": True, "new_hours": 40, "statuses": {"ok": 30, "flag": 2}}, now))
+    assert (m["Monitors_ok"], m["Monitors_watch"], m["Monitors_flag"], m["Monitors_nodata"], m["NewHours"]) == (30, 0, 2, 0, 40)
 
 
 def _location(*sensors):

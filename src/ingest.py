@@ -334,6 +334,9 @@ def metrics(log, now, published=None, stack="ground-truth"):
     age = data_age_hours(log, now, published)
     if age is not None:
         out.append(("DataAgeHours", age, "None"))
+    if log.get("published"):  # how many monitors got each answer this hour, for the dashboard
+        out += [(f"Monitors_{s}", float(log.get("statuses", {}).get(s, 0)), "Count") for s in ("ok", "watch", "flag", "nodata")]
+        out.append(("NewHours", float(log.get("new_hours", 0)), "Count"))
     return out
 
 

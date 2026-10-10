@@ -209,7 +209,7 @@ function buildMonitors(scene, stations, reading) {
   const leds = inst(new THREE.SphereGeometry(0.34, 12, 8), new THREE.MeshBasicMaterial(), n);
   const glows = inst(quad, flat(radial("rgba(255,255,255,1)", "rgba(255,255,255,0)"), 0.5), n);
   const cols = inst(new THREE.CylinderGeometry(1.9, 1.9, 1, 28, 1, true), tint(0.55, THREE.DoubleSide), n);
-  const caps = inst(new THREE.CircleGeometry(1.9, 28).rotateX(-Math.PI / 2), tint(0.8), n);
+  const caps = inst(new THREE.CircleGeometry(1.9, 28).rotateX(-Math.PI / 2), tint(0.8, THREE.FrontSide), n);
   // smog: brown puffs, each with its own opacity (an instanced attribute, multiplied in after the texture)
   const smogGeo = quad.clone(), smogAlpha = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 1);
   smogGeo.setAttribute("alpha", smogAlpha);
@@ -368,7 +368,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
   };
 
   // HTML markers (the site's own status icons), kept above each monitor
-  const layer = document.createElement("div"); layer.className = "gt3d-markers"; container.appendChild(layer);
+  const layer = document.createElement("div"); layer.className = "gt3d-markers"; layer.style.visibility = "hidden"; container.appendChild(layer);  // shown once the first frame places them
   const marks = new Map();
   for (const s of stations) { const el = makeMarker(s); layer.appendChild(el); marks.set(s.id, el); }
 
@@ -417,7 +417,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
       el.style.opacity = behind ? 0 : String(Math.max(0.25, Math.min(1, 1.6 - camera.position.distanceTo(tops.get(id)) / 700)));
       el.style.pointerEvents = behind ? "none" : "auto";
     }
-    if (first) { first = false; window.dispatchEvent(new CustomEvent("gt3d:ready")); }
+    if (first) { first = false; layer.style.visibility = ""; window.dispatchEvent(new CustomEvent("gt3d:ready")); }
   };
   // compiling every shader at the first draw held the page for about 2 s; compile them in the background first
   await renderer.compileAsync(scene, camera).catch(() => {});

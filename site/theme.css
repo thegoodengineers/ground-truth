@@ -73,6 +73,7 @@ button, input, select { font: inherit; }
 .sec .changes button { font: inherit; background: var(--surface); border: 1px solid var(--line-2); border-radius: 999px; padding: 1px 9px; margin: 0 4px 2px 0; cursor: pointer; }
 .sec .changes button:hover { background: var(--surface-3); }
 .sec .changes .arrow { color: var(--ink-3); }
+.sec .changes button .ico { width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; }
 
 /* "find the monitor near me": the hero asks the browser for a position, once, on a click */
 .hero .near-btn { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
@@ -146,6 +147,7 @@ html[lang="hi"] { --sans: "Geist", "Noto Sans Devanagari", ui-sans-serif, system
 /* example card, overlapping the bottom of the hero */
 .example { position: relative; z-index: 2; margin: -110px auto 0; width: min(560px, calc(100% - 32px)); background: rgba(255, 255, 255, .82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, .95); border-radius: var(--r); padding: 18px 20px; box-shadow: var(--shadow-lg); display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; }
 .example .label { grid-column: 1 / -1; }
+.example .todo { grid-column: 1 / -1; margin: 0; }
 .example h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; font-weight: 600; }
 .example .nums { font: 500 15px var(--mono); color: var(--ink-2); grid-column: 1 / -1; }
 .example .nums b { color: var(--ink); font-weight: 600; }
@@ -401,7 +403,8 @@ footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .list-open { padding: 0; border: 0; background: none; font: 500 14px var(--sans); color: var(--ink); text-align: left; cursor: pointer; }
 .list-open:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* the panel's copy-link button, in the site's pill style */
-.share-btn { margin-left: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font: 500 12.5px var(--sans); color: var(--ink-2); cursor: pointer; vertical-align: middle; }
+.meta:has(.share-btn) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.share-btn { height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); font: 500 12.5px var(--sans); color: var(--ink-2); cursor: pointer; vertical-align: middle; }
 .share-btn:hover { color: var(--ink); border-color: var(--ink); }
 /* the panel title takes focus when a monitor is opened (for screen readers); no box drawn around it */
 .panel h2:focus { outline: none; }
@@ -566,7 +569,7 @@ html.lock, html.lock body { overflow: hidden; }
 @media (max-width: 640px) { .morning ol { grid-template-columns: 1fr; } }
 
 /* ---------- every monitor, by area ---------- */
-.roster { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px clamp(16px, 2.4vw, 26px) 24px; display: grid; gap: 16px; }
+.roster { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px clamp(16px, 2.4vw, 26px) 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .roster-head { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; }
 .roster-head h3 { margin: 0; font-size: 18px; letter-spacing: -.02em; font-weight: 600; }
 .roster-search { position: relative; width: 340px; max-width: 100%; }
@@ -612,6 +615,7 @@ html.lock, html.lock body { overflow: hidden; }
 .sp-tag.me.low b { color: #2f6fa8; }
 .sp-flag { margin-top: 5px; }
 .spray-stage.nogl .sp-tag { display: none; }
+@media (max-width: 600px) { .sp-tag { padding: 6px 9px 7px; } .sp-tag .who { font-size: 10px; } .sp-tag b { font-size: 21px; } }
 .sp-toggle { margin-left: auto; font: 12px var(--mono); color: var(--ink-2); background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
 .sp-toggle:hover { border-color: var(--ink-3); color: var(--ink); }
 .sp-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid var(--line); background: var(--surface); }
@@ -629,6 +633,7 @@ html.lock, html.lock body { overflow: hidden; }
 table.field-table td { text-align: left; font-family: var(--sans); font-size: 14px; padding: 8px 10px; }
 table.field-table td:first-child { font-family: var(--mono); white-space: nowrap; color: var(--ink); }
 table.field-table th { text-align: left; padding: 8px 10px; }
+@media (max-width: 600px) { table.field-table td, table.field-table th { padding: 7px 6px; } }
 .data-licence { max-width: 72ch; color: var(--ink-2); font-size: 14.5px; margin-top: 24px; }
 
 /* the nav also carries the language button: drop the Live pill, then the text links, before anything overflows */

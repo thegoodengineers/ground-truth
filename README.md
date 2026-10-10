@@ -33,6 +33,10 @@ The site explains itself in ten seconds with one real monitor, and then lets you
 - **Share card and embed**: a picture of the answer for WhatsApp or a slide, and `embed.html?station=235`, a badge a newsroom or a school can frame.
 - **Context, not blame**: the wind and the mixing height (Open-Meteo), farm fires on the horizon (NASA FIRMS, with a key), and a panel note when a whole area rose together, which is what smoke does.
 - **The real ground**: the 3D city stands on a Sentinel-2 image of Delhi from the Registry of Open Data on AWS, lit by the real hour.
+- **In Hindi too**: one button switches the whole site, including each monitor's answer, its evidence and the advice.
+- **A 60-second tour that plays itself**, with a voice-over (ElevenLabs), for anyone who would rather watch than read.
+- **Open data**: `data/latest.csv` and `data/latest.json` every hour, with every column described on the method page.
+- **Usable by everyone**: every answer is a shape and a word as well as a colour, it works by keyboard and on a phone, honours reduced motion, and an axe audit of both pages, in both languages, reports no violations.
 
 ## What we found
 
@@ -62,7 +66,7 @@ flowchart LR
 - **EventBridge** starts the check every hour.
 - **Lambda** (Python 3.11) reads new readings from OpenAQ, with the key in **SSM Parameter Store**, runs the three checks and writes JSON to **S3**.
 - **CloudFront** serves the site and the data from a private bucket, with a response headers policy (CSP, HSTS, nosniff). Until AWS Support verifies this account for CloudFront, a second small **Lambda function URL** serves the bucket over HTTPS with the same headers, and the bucket's **S3 website endpoint** is the HTTP fallback (`UseCloudFront` in the template flips it).
-- **CloudWatch** alarms (Lambda errors, a run that stopped early, data older than 3 hours) and a **Budgets** alarm ($5 a month) go to an **SNS** email, and one **CloudWatch dashboard** (`DashboardUrl` in the stack outputs) shows data age, every run, the site's traffic and throttles, and the alarms on one screen. What to do when one fires: [docs/RUNBOOK.md](docs/RUNBOOK.md).
+- **CloudWatch** alarms (Lambda errors, a run that stopped early, data older than 3 hours) and a **Budgets** alarm ($5 a month) go to an **SNS** email, and one **CloudWatch dashboard** (`DashboardUrl` in the stack outputs) shows data age, every run (with a table of the last 24), how many monitors got each answer every hour, the site's traffic and throttles, and the alarms on one screen. What to do when one fires: [docs/RUNBOOK.md](docs/RUNBOOK.md).
 - A merge to `main` deploys through **GitHub Actions with OIDC**: no AWS keys stored anywhere ([infra/github-oidc.yaml](infra/github-oidc.yaml), [.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
 - Everything is one **AWS SAM** template ([template.yaml](template.yaml)), in us-east-1 next to the public OpenAQ archive on Open Data on AWS.
 
