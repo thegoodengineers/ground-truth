@@ -72,6 +72,12 @@
     if (src && !src.includes("?again=")) retryScript(src);
   }, true);
   if (!window.Chart && document.querySelector('script[src="vendor/chart.umd.js"]')) retryScript("vendor/chart.umd.js");
+  // a refusal that happened before this file ran (it may itself have been fetched again) wasn't seen above: if a
+  // module still hasn't arrived after 8 s, ask for it again anyway
+  setTimeout(() => {
+    if (document.getElementById("map") && !window.GT3D) retryScript("scene3d.js");
+    if (document.getElementById("spray-stage") && !window.__spray && !document.getElementById("spray-stage").classList.contains("nogl")) retryScript("spray3d.js");
+  }, 8000);
   const t = () => I18N[lang];
 
   const STATUS = new Proxy({}, { get: (_, k) => t().status[k] });
