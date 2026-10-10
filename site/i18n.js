@@ -209,6 +209,7 @@
     "CPCB / DPCC monitors via OpenAQ": 'CPCB / DPCC मॉनिटर, <a href="https://openaq.org">OpenAQ</a> के ज़रिए',
     "Wind and mixing height: Open-Meteo (CC BY 4.0)": 'हवा और मिश्रण की ऊँचाई: <a href="https://open-meteo.com">Open-Meteo</a> (CC BY 4.0)',
     "Farm fires: NASA FIRMS, VIIRS (Suomi NPP)": 'खेतों की आग: <a href="https://firms.modaps.eosdis.nasa.gov/">NASA FIRMS</a>, VIIRS (Suomi NPP)',
+    "Voice of the tour: ElevenLabs": 'टूर की आवाज़: <a href="https://elevenlabs.io">ElevenLabs</a>',
     "3D scene drawn with three.js": '3D दृश्य <a href="https://threejs.org">three.js</a> से बना',
     "Wards: DataMeet (CC BY-SA 2.5 IN)": 'वार्ड: <a href="https://github.com/datameet/Municipal_Spatial_Data">DataMeet</a> (CC BY-SA 2.5 IN)',
     "Project": "प्रोजेक्ट",

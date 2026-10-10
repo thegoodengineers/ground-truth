@@ -860,15 +860,17 @@
   // the voice-over: one MP3 per step (site/audio/tour-<lang>-<n>.mp3, made by video/tour_voice.py). A step lasts as
   // long as its line, so captions and voice stay together; without sound (no click yet, or no file) it keeps its
   // own timing. Browsers only allow sound after a click, so the tour link starts the tour in place.
-  let voiced = false, touring = false;
+  // One audio element for the whole tour, first played inside the click: Safari and strict autoplay settings let
+  // an element that a click has started play again later, but refuse a new one.
+  let voice = null, touring = false;
   function say(step, ms) {
-    if (!voiced) return wait(ms);
-    const a = new Audio(`audio/tour-${lang}-${step}.mp3`);
+    if (!voice) return wait(ms);
     return new Promise((done) => {
       const fallback = () => wait(ms).then(done);
-      a.addEventListener("ended", () => setTimeout(done, 500), { once: true });
-      a.addEventListener("error", fallback, { once: true });
-      a.play().catch(fallback);
+      voice.onended = () => setTimeout(done, 500);
+      voice.onerror = fallback;
+      voice.src = `audio/tour-${lang}-${step}.mp3`;
+      voice.play().catch(fallback);
     });
   }
 
@@ -881,9 +883,9 @@
     const n = latest.stations.length;
     mark("tour:start");
     caption("Ground Truth", tr`${n} air-quality monitors across Delhi and NCR, checked every hour.`);
-    // the 3D city takes a few seconds to build and holds the page while it does: start moving once it's there
-    await Promise.race([mapReady, wait(20000)]);
-    await say(1, 3500);
+    // the first line starts at once, still inside the click; the 3D city takes a few seconds to build and holds the
+    // page while it does, so the tour starts moving once both the line and the map are done
+    await Promise.all([say(1, 3500), Promise.race([mapReady, wait(20000)])]);
     $("#live").scrollIntoView({ behavior: "smooth", block: "start" });
     await wait(1200);
     enterImmersive();
@@ -920,7 +922,7 @@
     const a = e.target.closest('a[href="?demo=1"]');
     if (!a || !latest) return;
     e.preventDefault();
-    voiced = true;
+    if (!touring) voice = new Audio();
     window.scrollTo({ top: 0 });
     tour();
   });
