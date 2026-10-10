@@ -40,6 +40,7 @@
     window.GT_I18N = { lang: "en", tr: english, t: (x) => x, detail: (x) => x, page: () => {}, band: (b) => b, bandTodo: (b, en) => en };
   }
   const { lang, tr, t: tx, detail } = window.GT_I18N;
+  const LOCALE = lang === "hi" ? "hi-IN" : "en-IN"; // dates in the reader's language (4 अक्तू॰, 17:00)
 
   // A busy server answers some requests "429, try again". A script refused that way is asked for again, up to three
   // times a little apart, under a new name so the browser doesn't reuse the failure.
@@ -218,7 +219,7 @@
     const el = $("#fresh");
     const t = new Date(latest.data_through);
     const hours = (Date.now() - t.getTime()) / 36e5;
-    const when = t.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    const when = t.toLocaleString(LOCALE, { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
     el.textContent = tr`Readings through ${when} IST`;
     el.title = `Generated ${latest.generated_at}`;
     el.classList.toggle("stale", hours > 3);
@@ -262,7 +263,7 @@
     const el = $("#changes");
     if (!el || !histDoc || !histDoc.changes) return;
     const day = histDoc.days[histDoc.days.length - 1];
-    const when = new Date(day + "T17:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    const when = new Date(day + "T17:00:00+05:30").toLocaleDateString(LOCALE, { day: "numeric", month: "short" });
     if (!histDoc.changes.length) { el.innerHTML = `${tx("Since the day before")} (${when}): ${tx("no monitor changed its answer.")}`; el.hidden = false; return; }
     const items = histDoc.changes.slice(0, 8).map((c) => `<button type="button" data-open="${c.id}" data-spot="">${icon(c.to, 11)}${esc(short(c.name))} <span class="arrow">${STATUS[c.from].short} → ${STATUS[c.to].short}</span></button>`).join("");
     const more = histDoc.changes.length > 8 ? ` +${histDoc.changes.length - 8}` : "";
@@ -278,7 +279,7 @@
     const css = getComputedStyle(document.documentElement);
     const colour = (v) => css.getPropertyValue(v).trim();
     const t = histDoc.totals;
-    const labels = t.map((d) => new Date(d.d + "T12:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
+    const labels = t.map((d) => new Date(d.d + "T12:00:00+05:30").toLocaleDateString(LOCALE, { day: "numeric", month: "short" }));
     const ds = (key, label, c) => ({ label, data: t.map((d) => d[key]), backgroundColor: c, borderWidth: 0, stack: "day" });
     box.hidden = false; // before the chart is made: a hidden box gives Chart.js a zero-height canvas
     if (monthChart) monthChart.destroy();
@@ -301,12 +302,12 @@
     if (!rows || !rows.length) return `<div class="hist" id="history-box"></div>`;
     const days = histDoc.days, byDay = Object.fromEntries(rows.map((r) => [r.d, r]));
     const count = (st) => rows.filter((r) => r.s === st).length;
-    const fmtDay = (d) => new Date(d + "T12:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    const fmtDay = (d) => new Date(d + "T12:00:00+05:30").toLocaleDateString(LOCALE, { day: "numeric", month: "short" });
     const cells = days.map((d, i) => {
       const r = byDay[d];
       const st = r ? r.s : "nodata";
       const why = r ? ["Physics", "Neighbours", "History"].map((k, j) => `${k} ${STATUS[CHECK_LETTER[r.c[j]]].short}`).join(", ") : tx("not scored");
-      return `<i class="${st}${i === days.length - 1 ? " today" : ""}" title="${fmtDay(d)}: ${STATUS[st].label} (${why})" aria-label="${fmtDay(d)}: ${STATUS[st].label}"></i>`;
+      return `<i class="${st}${i === days.length - 1 ? " today" : ""}" title="${fmtDay(d)}: ${STATUS[st].label} (${why})"></i>`; // the strip's own label speaks for the days
     }).join("");
     return `<div class="hist" id="history-box"><h3>${tr`The last ${days.length} days, one answer a day`}</h3><p class="csub">${tx("Each day scored at 17:00 IST, the way the live check scores it. Hover a day for the three checks.")}</p>
       <div class="hstrip" role="img" aria-label="${tr`${count("flag")} days doesn't add up, ${count("watch")} worth a look, ${count("ok")} agrees, ${count("nodata")} not enough data`}">${cells}</div>
@@ -371,7 +372,7 @@
     const c = CHECKS.map(([k, name]) => [name, s.checks[k]]).find(([, v]) => v.status === s.status) || ["", { detail: "" }];
     el.innerHTML = `
       <span class="label">${tx("Right now, for example")}</span>
-      <h3>${esc(short(s.name))}</h3>
+      <h2>${esc(short(s.name))}</h2>
       ${pill(s.status)}
       ${todo(s.status)}
       <div class="nums">${tr`This station <b>${fmt(s.latest?.pm25)}</b> µg/m³ PM2.5 · the 4 stations around it <b>${fmt(s.neighbours_latest?.pm25)}</b>`}</div>
@@ -432,8 +433,8 @@
     const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.15 || 1;
     const X = (i) => 16 + (i / (values.length - 1)) * (w - 32), Y = (v) => h - 18 - ((v - (lo - pad)) / (hi - lo + 2 * pad)) * (h - 36);
     const d = pts.map(([i, v], k) => `${k ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join("");
-    const b = band ? `<rect x="${X(band[0] - .5)}" y="10" width="${X(band[1] + .5) - X(band[0] - .5)}" height="${h - 28}" fill="rgba(242,166,12,.12)"/><text x="${(X(band[0]) + X(band[1])) / 2}" y="${h - 4}" text-anchor="middle" font-family="Geist Mono" font-size="10" fill="#8b8d93">11:00-17:00</text>` : "";
-    const z = zero ? `<path d="M16 ${Y(0)}H${w - 16}" stroke="#b4b5ba" stroke-dasharray="3 3"/><text x="${w - 16}" y="${Y(0) - 5}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#8b8d93">${tx("same as neighbours")}</text>` : "";
+    const b = band ? `<rect x="${X(band[0] - .5)}" y="10" width="${X(band[1] + .5) - X(band[0] - .5)}" height="${h - 28}" fill="rgba(242,166,12,.12)"/><text x="${(X(band[0]) + X(band[1])) / 2}" y="${h - 4}" text-anchor="middle" font-family="Geist Mono" font-size="10" fill="#686a70">11:00-17:00</text>` : "";
+    const z = zero ? `<path d="M16 ${Y(0)}H${w - 16}" stroke="#b4b5ba" stroke-dasharray="3 3"/><text x="${w - 16}" y="${Y(0) - 5}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#686a70">${tx("same as neighbours")}</text>` : "";
     return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${b}${z}<path d="${d}" fill="none" stroke="#08090a" stroke-width="2" stroke-linejoin="round"/></svg>`;
   }
 
@@ -448,7 +449,7 @@
       const y0 = Y(0), y1 = Y(v), r = i >= vals.length - recent;
       return `<rect x="${(16 + i * bw + 1).toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${Math.max(1, Math.abs(y1 - y0)).toFixed(1)}" rx="1.5" fill="${r ? "#08090a" : "#c9cace"}"/>`;
     }).join("");
-    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="M16 ${Y(0)}H${w - 16}" stroke="#d6d6d9"/>${bars}<text x="16" y="${h - 6}" font-family="Geist Mono" font-size="10" fill="#8b8d93">${tx("3 weeks before")}</text><text x="${w - 16}" y="${h - 6}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#08090a">${tx("last 7 days")}</text></svg>`;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="M16 ${Y(0)}H${w - 16}" stroke="#d6d6d9"/>${bars}<text x="16" y="${h - 6}" font-family="Geist Mono" font-size="10" fill="#686a70">${tx("3 weeks before")}</text><text x="${w - 16}" y="${h - 6}" text-anchor="end" font-family="Geist Mono" font-size="10" fill="#08090a">${tx("last 7 days")}</text></svg>`;
   }
 
   async function renderCheckExamples() {
@@ -556,7 +557,8 @@
         if (listSortCol === col) { listSortAsc = !listSortAsc; }
         else { listSortCol = col; listSortAsc = true; }
         document.querySelectorAll(".sort-btn").forEach((b) => {
-          b.setAttribute("aria-sort", b.dataset.col === listSortCol ? (listSortAsc ? "ascending" : "descending") : "none");
+          // aria-sort belongs on the column header, not on the button inside it
+          b.closest("th").setAttribute("aria-sort", b.dataset.col === listSortCol ? (listSortAsc ? "ascending" : "descending") : "none");
         });
         renderListView();
       });
@@ -716,7 +718,7 @@
     g.fillStyle = "#f3f3f4"; g.fillRect(0, 0, W, H);
     g.fillStyle = "#ffffff"; g.beginPath(); g.roundRect(48, 48, W - 96, H - 96, 28); g.fill();
     g.fillStyle = col; g.fillRect(48, 48, 14, H - 96); // the answer's colour down the left edge
-    g.fillStyle = "#8b8d93"; g.font = `500 22px ${MONO}`;
+    g.fillStyle = "#686a70"; g.font = `500 22px ${MONO}`;
     g.fillText(`${(s.region || "Delhi").toUpperCase()} · AIR-QUALITY MONITOR · OPENAQ ${s.id}`, 100, 118);
     g.fillStyle = "#08090a"; g.font = `600 64px ${SANS}`;
     const name = short(s.name); g.fillText(name.length > 26 ? name.slice(0, 25) + "…" : name, 96, 196);
@@ -737,10 +739,10 @@
     num(560, fmt(s.neighbours_latest?.pm25), tx("THE 4 MONITORS AROUND IT"));
     g.fillStyle = "#08090a"; g.font = `500 26px ${SANS}`;
     const todo = STATUS[s.status].todo; g.fillText(todo.length > 70 ? todo.slice(0, 69) + "…" : todo, 96, 500);
-    const when = new Date(latest.data_through).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
-    g.fillStyle = "#8b8d93"; g.font = `500 22px ${MONO}`;
+    const when = new Date(latest.data_through).toLocaleString(LOCALE, { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    g.fillStyle = "#686a70"; g.font = `500 22px ${MONO}`;
     g.fillText(`${tx("Readings through")} ${when} IST · CPCB/DPCC via OpenAQ · ${location.host}/#${s.id}`, 96, 556);
-    g.fillStyle = "#08090a"; g.font = `600 28px ${SANS}`; g.fillText("ground", W - 300, 556); g.fillStyle = "#8b8d93"; g.font = `500 28px ${MONO}`; g.fillText("truth", W - 300 + g.measureText("ground").width + 2, 556);
+    g.fillStyle = "#08090a"; g.font = `600 28px ${SANS}`; g.fillText("ground", W - 300, 556); g.fillStyle = "#686a70"; g.font = `500 28px ${MONO}`; g.fillText("truth", W - 300 + g.measureText("ground").width + 2, 556);
     const blob = await new Promise((r) => c.toBlob(r, "image/png"));
     const file = `ground-truth-${s.id}-${latest.data_through.slice(0, 13).replace("T", "-")}.png`;
     let copied = false;
@@ -806,7 +808,7 @@
   function lastHTML(s) {
     if (!s.last_reading) return `<div class="last off">${tx("No reading in the last 4 weeks.")}</div>`;
     const t = new Date(s.last_reading);
-    const when = t.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    const when = t.toLocaleString(LOCALE, { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
     return `<div class="last${silent(s) ? " off" : ""}">${tr`Last reading ${when} IST, ${ago((Date.now() - t.getTime()) / 6e4)}`}</div>`;
   }
 
@@ -899,8 +901,8 @@
           },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { family: "Geist Mono", size: 11 }, color: "#8b8d93", callback: (v) => (v % 3 === 0 ? `${String(v).padStart(2, "0")}h` : "") }, border: { color: "#d6d6d9" } },
-          y: { grid: { color: "#efeff0" }, border: { display: false }, ticks: { font: { family: "Geist Mono", size: 11 }, color: "#8b8d93", callback: (v) => `${v > 0 ? "+" : ""}${v}${unit === "%" ? "%" : ""}` } },
+          x: { grid: { display: false }, ticks: { font: { family: "Geist Mono", size: 11 }, color: "#686a70", callback: (v) => (v % 3 === 0 ? `${String(v).padStart(2, "0")}h` : "") }, border: { color: "#d6d6d9" } },
+          y: { grid: { color: "#efeff0" }, border: { display: false }, ticks: { font: { family: "Geist Mono", size: 11 }, color: "#686a70", callback: (v) => `${v > 0 ? "+" : ""}${v}${unit === "%" ? "%" : ""}` } },
         },
       },
       plugins: [bandPlugin],
