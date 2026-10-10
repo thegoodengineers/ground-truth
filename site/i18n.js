@@ -481,3 +481,22 @@
 
   window.GT_I18N = { lang, tr, t, detail, page, band: (b) => (lang === "hi" && BANDS[b]) || b, bandTodo: (b, en) => (lang === "hi" && BAND_TODO[b]) || en, PAGE };
 })();
+
+// A busy server can refuse a file (HTTP 429: a new AWS account runs at most 10 copies of the site's function at
+// once). This file loads just before app.js, so it watches for the two refusals app.js can't recover from itself:
+// app.js, and the stylesheet. Each is asked for again, up to three times, under a new name.
+(() => {
+  const again = (make, i = 1) => setTimeout(() => { const el = make(i); el.onerror = () => i < 3 && again(make, i + 1); document.head.appendChild(el); }, 1000 * i);
+  const sheet = document.querySelector('link[rel="stylesheet"][href="theme.css"]');
+  const restyle = (i) => Object.assign(document.createElement("link"), { rel: "stylesheet", href: `theme.css?again=${i}` });
+  // a refused stylesheet still gets a sheet object, an empty one: count its rules
+  const styled = () => { try { return !!sheet.sheet && sheet.sheet.cssRules.length > 0; } catch (e) { return true; } };
+  if (sheet) {
+    if (document.readyState === "complete") styled() || again(restyle); else window.addEventListener("load", () => styled() || again(restyle), { once: true });
+  }
+  window.addEventListener("error", (e) => {
+    if (e.target instanceof HTMLScriptElement && e.target.getAttribute("src") === "app.js") {
+      again((i) => Object.assign(document.createElement("script"), { src: `app.js?again=${i}` }));
+    }
+  }, true);
+})();
