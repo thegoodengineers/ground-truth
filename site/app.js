@@ -144,10 +144,15 @@
   let latest = null, byId = new Map(), chart = null, selected = null, param = "pm10";
 
   // ---------- data ----------
+  // data asks again when the server is busy (429) or hiccups (5xx, network), a little later each time; a 404 is final
   async function getJSON(url) {
-    const r = await fetch(url, { cache: "no-cache" });
-    if (!r.ok) throw new Error(`${url}: ${r.status}`);
-    return r.json();
+    for (let i = 0; ; i++) {
+      let r = null;
+      try { r = await fetch(url, { cache: "no-cache" }); } catch (e) { if (i >= 3) throw e; }
+      if (r && r.ok) return r.json();
+      if (r && (r.status < 500 && r.status !== 429) || i >= 3) throw new Error(`${url}: ${r ? r.status : "network"}`);
+      await new Promise((ok) => setTimeout(ok, 800 * (i + 1)));
+    }
   }
 
   async function boot() {
