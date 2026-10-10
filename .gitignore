@@ -6,4 +6,5 @@ video/vo/
 video/renders/
 video/build/
 video/*.mp4
+!video/final.mp4
 .aws-sam/
