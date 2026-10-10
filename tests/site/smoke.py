@@ -121,3 +121,21 @@ def test_tour(site_url, playwright):
     finally:
         ctx.close()
         browser.close()
+
+
+def test_method_page(site_url, playwright):
+    """method.html: the three checks with live examples, the validation numbers, open data and the FAQ, no errors."""
+    browser = playwright.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
+    page = browser.new_context().new_page()
+    _no_web_fonts(page)
+    errors = []
+    page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
+    try:
+        page.goto(f"{site_url}/method.html", wait_until="load", timeout=60_000)
+        page.wait_for_function("(window.__milestones || []).some(m => m.name === 'loaded')", timeout=60_000)
+        for sid in ("how", "validation", "opendata", "faq"):
+            assert page.locator(f"#{sid}").count() == 1, sid
+        assert page.locator("#ex-physics-case").text_content(timeout=5_000).strip()
+        assert not errors, f"console errors: {errors}"
+    finally:
+        browser.close()

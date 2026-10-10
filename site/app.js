@@ -120,10 +120,12 @@
     } catch (e) {
       $("#fresh").textContent = tx("Data unavailable");
       $("#fresh").classList.add("stale");
-      $("#panel").innerHTML = `<div class="empty"><h2>${tx("Data is updating")}</h2><p>${tx("We couldn't load the latest readings. Try again in a minute.")}</p><button class="btn ghost" data-reload>${tx("Try again")}</button></div>`;
-      $("#panel").querySelector("[data-reload]").addEventListener("click", () => location.reload());
-      $("#stats").querySelectorAll(".skel").forEach((el) => { el.classList.remove("skel"); el.textContent = "–"; });
-      $("#chrome-live").textContent = tx("Offline");
+      if ($("#panel")) {
+        $("#panel").innerHTML = `<div class="empty"><h2>${tx("Data is updating")}</h2><p>${tx("We couldn't load the latest readings. Try again in a minute.")}</p><button class="btn ghost" data-reload>${tx("Try again")}</button></div>`;
+        $("#panel").querySelector("[data-reload]").addEventListener("click", () => location.reload());
+      }
+      $("#stats")?.querySelectorAll(".skel").forEach((el) => { el.classList.remove("skel"); el.textContent = "–"; });
+      if ($("#chrome-live")) $("#chrome-live").textContent = tx("Offline");
       mark("error");
       return;
     }
@@ -132,20 +134,22 @@
     loadWeather();
     loadFires();
     setInterval(renderPulse, 30000);
-    renderStats();
-    renderMap();
-    renderLegend();
-    const example = pickExample();
-    renderExample(example);
-    renderStory(example);
-    renderMeanings();
-    renderCheckExamples();
-    renderTicks();
-    renderRoster();
-    setupSearch();
+    // two pages share this file: the home page (story, map, answers) and method.html (the checks in full); each part
+    // is drawn only where its section is
+    const has = (sel) => !!$(sel);
+    if (has("#stats")) renderStats();
+    if (has("#map")) { renderMap(); renderLegend(); }
+    const example = has("#example") ? pickExample() : null;
+    if (example) { renderExample(example); renderStory(example); }
+    if (has("#meanings")) renderMeanings();
+    if (has("#ex-physics")) renderCheckExamples();
+    if (has("#ticks")) renderTicks();
+    if (has("#filters")) renderRoster();
+    if (has("#search")) setupSearch();
     window.addEventListener("hashchange", fromHash);
     $("#close-cta")?.addEventListener("click", (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => $("#search").focus(), 500); });
     mark("loaded");
+    if (!has("#map")) return;
     if (new URLSearchParams(location.search).get("demo") === "1" || location.hash === "#tour") tour();
     else if (byId.has(Number(location.hash.slice(1)))) fromHash();
     else if (example) select(example.id, { quiet: true, spot: spotFor(example) }); // the map never opens empty
@@ -361,7 +365,10 @@
       } catch (e) { /* the card still reads without the picture */ }
       $("#ex-history-case").innerHTML = tr`Right now: ${link(h)}. ${esc(detail(h.checks.history.detail))}`;
     }
-    document.querySelectorAll(".c3-case [data-open]").forEach((b) => b.addEventListener("click", () => openStation(Number(b.dataset.open), b.dataset.spot)));
+    document.querySelectorAll(".c3-case [data-open]").forEach((b) => b.addEventListener("click", () => {
+      if ($("#live")) openStation(Number(b.dataset.open), b.dataset.spot);
+      else location.href = `./#${b.dataset.open}`; // method.html: the map is on the home page
+    }));
   }
 
   function renderTicks() {

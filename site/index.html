@@ -88,7 +88,7 @@
       <a href="#story">How it works</a>
       <a href="#live">Live map</a>
       <a href="#proof">Proof</a>
-      <a href="#faq">FAQ</a>
+      <a href="method.html">Method</a>
       <span class="fresh" id="fresh">Loading data…</span>
       <span class="pulse" id="pulse" hidden></span>
       <button class="lang-toggle" id="lang-toggle" type="button" aria-label="Switch to Hindi">हिं</button>
@@ -298,76 +298,14 @@
       </div>
     </section>
 
-    <section class="sec alt" id="how" aria-labelledby="how-title">
-      <div class="wrap">
-        <div class="sec-head">
-          <div>
-            <span class="label">The three checks</span>
-            <h2 class="h2" id="how-title"><span class="dim">Three questions, asked every hour.</span>Each one, with a real example.</h2>
-          </div>
+    <section class="sec alt" id="method" aria-labelledby="method-title">
+      <div class="wrap method-teaser">
+        <div>
+          <span class="label">The method</span>
+          <h2 class="h2" id="method-title"><span class="dim">Three checks, every hour.</span>Every formula, in the open.</h2>
+          <p class="sub">Physics, neighbours and history: what each check asks, its exact formula and thresholds, how they combine into one answer, and how they did on two months of real data.</p>
         </div>
-        <div class="checks3">
-          <article class="c3">
-            <div class="c3-art" id="ex-physics"></div>
-            <span class="label">Physics</span>
-            <h3>Can this reading even be real?</h3>
-            <p>Fine dust (PM2.5) is part of all dust (PM10), so it can never be bigger. A monitor that says otherwise, or repeats the same number for hours, is broken.</p>
-            <p class="c3-case" id="ex-physics-case"></p>
-            <details class="spec">
-              <summary>Formula and thresholds</summary>
-              <p>Each hour <b>fails</b> if any of these is true:</p>
-              <ul>
-                <li>PM2.5 &gt; 1.05 × PM10 (5% allowed for instrument noise)</li>
-                <li>PM10 outside 1–2000 µg/m³, or PM2.5 outside 1–1500 µg/m³</li>
-                <li>Stuck: the same PM2.5, PM10, NO2 or CO value for 3 or more hours in a row</li>
-              </ul>
-              <p>Over the last 7 days (at least 24 hours with PM data): <b>worth a look</b> if more than 1% of hours fail, <b>doesn't add up</b> if more than 5% fail.</p>
-              <p class="spec-why">Uses PM2.5 and PM10.</p>
-            </details>
-          </article>
-          <article class="c3">
-            <div class="c3-art" id="ex-neighbours"></div>
-            <span class="label">Neighbours</span>
-            <h3>Does it agree with the monitors around it?</h3>
-            <p>Hour by hour, against the four nearest. Daytime air mixes, so some difference is normal; we only flag a monitor that drifts far more than the rest of the city.</p>
-            <p class="c3-case" id="ex-neighbours-case"></p>
-            <details class="spec">
-              <summary>Formula and thresholds</summary>
-              <ul>
-                <li><b>Neighbours:</b> the 4 nearest monitors with data within 12 km (great-circle distance). Monitors closer than 0.5 km are skipped, because they are twins on the same site.</li>
-                <li><b>Hourly gap:</b> g = ln(PM10 ÷ median PM10 of the neighbours), when at least 2 neighbours report that hour.</li>
-                <li><b>Daily contrast:</b> d = median g over 11:00–16:59, minus median g over 22:00–05:59 (at least 4 hours each). Its weekly value is the median d over the last 7 days.</li>
-                <li><b>Mixing correction:</b> by day, air mixes higher, so a monitor that reads high at night drifts towards its neighbours. We fit one Theil–Sen line of d against the night gap across the city, and score each monitor's distance from that line.</li>
-                <li><b>Score:</b> robust z = (residual − median) ÷ (1.4826 × MAD) across all monitors. <b>Worth a look</b> at |z| ≥ 2, <b>doesn't add up</b> at |z| ≥ 3.</li>
-                <li><b>Two passes:</b> monitors flagged in the first pass are taken out of everyone's reference and out of the city line in the second.</li>
-              </ul>
-              <p class="spec-why">Uses PM10. Medians and MAD, not means and standard deviations, so one bad hour or one bad monitor can't move the reference.</p>
-            </details>
-          </article>
-          <article class="c3">
-            <div class="c3-art" id="ex-history"></div>
-            <span class="label">History</span>
-            <h3>Has it suddenly changed?</h3>
-            <p>We compare the last 7 days with the 3 weeks before. A sudden jump against its own past means something changed at that monitor.</p>
-            <p class="c3-case" id="ex-history-case"></p>
-            <details class="spec">
-              <summary>Formula and thresholds</summary>
-              <ul>
-                <li>The same daily contrast d as Neighbours, for PM10 (log ratio) and for humidity (percentage points).</li>
-                <li><b>Shift:</b> median d over the last 7 days, minus median d over the 21 days before. This needs at least 4 recent days and 10 earlier days.</li>
-                <li><b>Score:</b> z = shift ÷ robust SD of the earlier 21 days, where robust SD = 1.4826 × MAD. Its floor is 0.02 for PM10 and 1 point for humidity, so a very steady monitor isn't flagged for a tiny change. The larger |z| of the two measures counts.</li>
-                <li><b>Worth a look</b> at |z| ≥ 2, <b>doesn't add up</b> at |z| ≥ 3.</li>
-              </ul>
-              <p class="spec-why">Uses PM10 and humidity. A sudden humidity shift against the neighbours usually means something changed at the monitor itself, such as its inlet, its dryer or where it stands.</p>
-            </details>
-          </article>
-        </div>
-        <div class="combine">
-          <h3>How the three checks become one answer</h3>
-          <p>A monitor's answer is the <b>most serious</b> of its three checks. So a single check can flag a monitor, even one about humidity, and the monitor's card always names the check and the measure that raised it. Physics uses PM2.5 and PM10; Neighbours uses PM10; History uses PM10 and humidity.</p>
-          <p>The number you act on is PM2.5, the fine dust that health advice is based on. The checks lean on PM10 because the coarse dust it measures is what dust control and water spraying change the most.</p>
-          <p>When fewer than 2 neighbours, or too few days of data, are available, a check answers <b>not enough data</b> instead of guessing. A monitor gets that answer only if none of its checks can run.</p>
-        </div>
+        <a class="btn dark" href="method.html">Read the method <span class="arr">→</span></a>
       </div>
     </section>
 
@@ -431,58 +369,7 @@
       </div>
     </section>
 
-    <section class="sec alt" id="faq" aria-labelledby="faq-title">
-      <div class="wrap">
-        <div class="sec-head"><div><span class="label">Questions</span><h2 class="h2" id="faq-title"><span class="dim">Still wondering?</span>Plain answers.</h2></div></div>
-        <div class="faq">
-          <details><summary>Does a red answer mean someone tampered with the monitor?</summary><p>No. It means the monitor's numbers don't add up against physics, its neighbours or its own past. Sensors drift, break and get moved. We tested whether the monitors named in the news in October 2025 show a spraying pattern, and with our method they don't stand out.</p></details>
-          <details><summary>Which number should I use if my monitor is flagged?</summary><p>Use what the four nearest monitors read right now. The panel shows it next to your monitor's own reading. It is the middle value of real monitors, not an official reading.</p></details>
-          <details><summary>How fresh is the data?</summary><p>The check runs every hour on new readings from the CPCB and DPCC monitors, via OpenAQ. The time of the latest reading is at the top of the page.</p></details>
-          <details><summary>Why does a polluted area look cleaner in the afternoon?</summary><p>By day the air mixes higher, so pollution near busy roads spreads out and a hotspot reads closer to its neighbours. We correct for this so it isn't mistaken for a problem.</p></details>
-          <details><summary>Is the code open?</summary><p>Yes. Everything, including the data analysis behind these checks, is on GitHub.</p></details>
-        </div>
-      </div>
-    </section>
 
-  <section class="sec alt" id="opendata" aria-labelledby="opendata-title">
-    <div class="wrap">
-      <div class="sec-head">
-        <div>
-          <span class="label">Open data</span>
-          <h2 class="h2" id="opendata-title"><span class="dim">The numbers are public.</span>Download today's answers.</h2>
-        </div>
-        <p class="sub">Every monitor's status and latest readings, updated every hour. Use them freely; cite the source.</p>
-      </div>
-      <div class="data-downloads">
-        <a class="btn dark" href="data/latest.csv" download="ground-truth-latest.csv">Download CSV</a>
-        <a class="btn outline" href="data/latest.json" target="_blank" rel="noopener">View JSON</a>
-      </div>
-      <div class="data-fields">
-        <h3 class="h3">CSV columns</h3>
-        <table class="data field-table">
-          <thead><tr><th>Column</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>id</code></td><td>OpenAQ location ID</td></tr>
-            <tr><td><code>name</code></td><td>Station name</td></tr>
-            <tr><td><code>operator</code></td><td>Agency (CPCB, DPCC, HSPCB, UPPCB, IMD, IITM)</td></tr>
-            <tr><td><code>lat</code> / <code>lon</code></td><td>Coordinates (WGS84)</td></tr>
-            <tr><td><code>status</code></td><td>Overall verdict: <code>ok</code>, <code>watch</code>, <code>flag</code> or <code>nodata</code></td></tr>
-            <tr><td><code>physics_status</code></td><td>Physics check result</td></tr>
-            <tr><td><code>neighbours_status</code></td><td>Neighbour-comparison check result</td></tr>
-            <tr><td><code>history_status</code></td><td>History check result</td></tr>
-            <tr><td><code>pm25</code> / <code>pm10</code></td><td>Latest hourly reading in µg/m³ (may be blank)</td></tr>
-            <tr><td><code>no2</code> / <code>co</code></td><td>Latest NO₂ (µg/m³) and CO (mg/m³)</td></tr>
-            <tr><td><code>relativehumidity</code></td><td>Latest relative humidity (%)</td></tr>
-            <tr><td><code>neighbours_pm25</code> / <code>neighbours_pm10</code></td><td>Median of the four nearest monitors' latest readings</td></tr>
-            <tr><td><code>last_reading</code></td><td>IST hour of the monitor's newest PM reading; with none in the last 3 hours, <code>status</code> is <code>nodata</code></td></tr>
-            <tr><td><code>band</code> / <code>neighbours_band</code></td><td>CPCB AQI band of the 24-hour average, for this monitor and for its four neighbours</td></tr>
-            <tr><td><code>data_through</code></td><td>IST timestamp of the latest scored hour</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="data-licence">Our results (status, checks, this CSV) are released under <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>. Underlying PM readings are from OpenAQ and subject to their terms. Suggested citation: <em>Ground Truth, thegoodengineers, <span id="cite-date"></span>, https://github.com/thegoodengineers/ground-truth</em>.</p>
-    </div>
-  </section>
 
   <section class="closing" aria-labelledby="close-title">
     <div class="wrap">
@@ -506,7 +393,7 @@
     </div>
     <div>
       <h4>Project</h4>
-      <ul><li><a href="https://github.com/thegoodengineers/ground-truth">GitHub</a></li><li><a href="?demo=1">60-second tour</a></li><li><a href="#why">Why</a></li><li><a href="#story">How it works</a></li></ul>
+      <ul><li><a href="https://github.com/thegoodengineers/ground-truth">GitHub</a></li><li><a href="?demo=1">60-second tour</a></li><li><a href="method.html">Method</a></li><li><a href="#why">Why</a></li><li><a href="#story">How it works</a></li></ul>
     </div>
   </div>
 </footer>

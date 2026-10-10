@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Method · Ground Truth</title>
+<meta name="description" content="How Ground Truth checks every air-quality monitor in Delhi and NCR: the three checks, their formulas and thresholds, how they combine, and how they did on October and November 2025.">
+<meta name="theme-color" content="#f3f3f4">
+<meta property="og:title" content="Ground Truth">
+<meta property="og:description" content="The air is already being measured. That's not the same as true.">
+<meta property="og:image" content="og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%2308090a'/%3E%3Cpath d='M9 21h14M16 21V9' stroke='%23f5f5f2' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='9' r='3' fill='%2369d39a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body id="top">
+
+<!-- the fog scene, drawn once and used in the hero and the closing -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.15" result="a"/>
+      <feComposite in="SourceGraphic" in2="a" operator="in"/>
+    </filter>
+    <filter id="haze" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="1.2"/></filter>
+    <linearGradient id="hill1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#55575b"/><stop offset="1" stop-color="#1c1d1f"/></linearGradient>
+    <linearGradient id="hill2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3c3f"/><stop offset="1" stop-color="#121314"/></linearGradient>
+    <linearGradient id="fogband" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4f5" stop-opacity="0"/><stop offset=".5" stop-color="#f4f4f5" stop-opacity=".95"/><stop offset="1" stop-color="#f4f4f5" stop-opacity="0"/></linearGradient>
+    <symbol id="scene-art" viewBox="0 0 1440 520" preserveAspectRatio="xMidYMax slice">
+      <g fill="#c4c5c8" filter="url(#soft)">
+        <path d="M0 432h40v-26h22v-14h30v40h26v-22h34v22h20v-34h28v34h36v-18h40v18h30v-28h24v28h18v-40h26v40H0z"/>
+        <path d="M520 432v-20h24v-16h34v36h30v-24h26v24h40v-30h22v30h20v-14h38v14h26v-36h28v36h34v-20h24v20h40v-26h30v26h22v-40h26v40h36v-16h40v16h28v-28h34v28h32v-22h28v22h30v-34h30v34h36v-18h40v18h24v-26h22v26h28v-12H520z"/>
+      </g>
+      <!-- Qutub Minar -->
+      <g fill="#a9aaae">
+        <path d="M402 434 409 250h16l7 184z"/>
+        <path d="M406 258h22v4h-22zM404 312h26v4h-26zM403 366h28v4h-28zM402 410h30v4h-30z" fill="#9b9ca0"/>
+        <path d="M411 250h12l-2-14h-8z"/><circle cx="417" cy="233" r="4"/>
+      </g>
+      <!-- Lotus Temple -->
+      <g fill="#b3b4b8">
+        <path d="M640 434c6-26 22-44 38-52-10 16-14 34-12 52z"/>
+        <path d="M768 434c-6-26-22-44-38-52 10 16 14 34 12 52z"/>
+        <path d="M664 434c2-34 18-58 40-72 22 14 38 38 40 72z" fill="#a6a7ab"/>
+        <path d="M684 434c0-28 8-50 20-64 12 14 20 36 20 64z" fill="#9c9da1"/>
+        <path d="M626 434h156v6H626z"/>
+      </g>
+      <!-- India Gate -->
+      <g fill="#a3a4a8">
+        <path d="M932 436v-98h96v98h-30v-46a18 18 0 0 0-36 0v46z"/>
+        <path d="M940 322h80v16h-80zM948 312h64v10h-64z"/>
+        <path d="M966 312a14 10 0 0 1 28 0z"/>
+      </g>
+      <rect class="drift" x="-120" y="372" width="1680" height="96" fill="url(#fogband)" filter="url(#haze)"/>
+      <path d="M0 520V452c160-30 320-6 470 4 170 12 300-28 470-26 190 2 330 24 500 10V520z" fill="url(#hill1)"/>
+      <path d="M0 520V452c160-30 320-6 470 4 170 12 300-28 470-26 190 2 330 24 500 10V520z" fill="#8a8b8f" filter="url(#grain)" opacity=".55"/>
+      <!-- the monitor: a mast with a sensor box -->
+      <g transform="translate(1198 0)">
+        <path d="M30 448V318" stroke="#2b2c2f" stroke-width="3"/>
+        <path d="M30 448 14 470M30 448l16 22" stroke="#2b2c2f" stroke-width="2.2"/>
+        <rect x="12" y="320" width="36" height="28" rx="3" fill="#3a3b3e"/>
+        <path d="M16 330h28M16 336h28M16 342h28" stroke="#55575b" stroke-width="1.6"/>
+        <path d="M34 314l26-12" stroke="#2b2c2f" stroke-width="2"/><path d="M50 296l22-8 4 10-22 8z" fill="#3a3b3e"/>
+        <circle cx="30" cy="312" r="3.2" fill="#69d39a"/><circle cx="30" cy="312" r="7" fill="#69d39a" opacity=".22"/>
+      </g>
+      <path d="M0 520V488c140-22 260-30 380-20 120 10 190 34 330 32V520z" fill="url(#hill2)"/>
+      <path d="M760 520c120-34 280-62 420-74 110-10 190-4 260 4V520z" fill="url(#hill2)"/>
+      <path d="M0 520V488c140-22 260-30 380-20 120 10 190 34 330 32V520zM760 520c120-34 280-62 420-74 110-10 190-4 260 4V520z" fill="#6b6c70" filter="url(#grain)" opacity=".5"/>
+      <g fill="#1d1e20">
+        <circle cx="70" cy="478" r="22"/><circle cx="98" cy="470" r="28"/><circle cx="128" cy="480" r="20"/><circle cx="52" cy="486" r="16"/>
+        <circle cx="1352" cy="436" r="18"/><circle cx="1376" cy="428" r="24"/><circle cx="1402" cy="438" r="17"/>
+      </g>
+      <rect class="drift slow" x="-160" y="452" width="1760" height="70" fill="url(#fogband)" filter="url(#haze)" opacity=".85"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="wordmark" href="./" aria-label="Ground Truth home">ground<b>truth</b></a>
+    <nav aria-label="Sections">
+      <a href="./#why">Why</a>
+      <a href="./#story">How it works</a>
+      <a href="./#live">Live map</a>
+      <a href="./#proof">Proof</a>
+      <a href="method.html" aria-current="page">Method</a>
+      <span class="fresh" id="fresh">Loading data…</span>
+      <span class="pulse" id="pulse" hidden></span>
+      <button class="lang-toggle" id="lang-toggle" type="button" aria-label="Switch to Hindi">हिं</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec method-intro" aria-labelledby="method-page-title">
+    <div class="wrap">
+      <span class="label">The method</span>
+      <h1 class="h2" id="method-page-title"><span class="dim">How every monitor is checked,</span>in full.</h1>
+      <p class="sub">Each hour, every monitor in Delhi and the NCR goes through three checks. Here is what each one asks, its exact formula and thresholds, how they combine into one answer, how they did on two months of real data, and where to get the numbers yourself.</p>
+      <p class="method-back"><a href="./#live">← Back to the live map</a></p>
+    </div>
+  </section>
+
+    <section class="sec alt" id="how" aria-labelledby="how-title">
+      <div class="wrap">
+        <div class="sec-head">
+          <div>
+            <span class="label">The three checks</span>
+            <h2 class="h2" id="how-title"><span class="dim">Three questions, asked every hour.</span>Each one, with a real example.</h2>
+          </div>
+        </div>
+        <div class="checks3">
+          <article class="c3">
+            <div class="c3-art" id="ex-physics"></div>
+            <span class="label">Physics</span>
+            <h3>Can this reading even be real?</h3>
+            <p>Fine dust (PM2.5) is part of all dust (PM10), so it can never be bigger. A monitor that says otherwise, or repeats the same number for hours, is broken.</p>
+            <p class="c3-case" id="ex-physics-case"></p>
+            <details class="spec">
+              <summary>Formula and thresholds</summary>
+              <p>Each hour <b>fails</b> if any of these is true:</p>
+              <ul>
+                <li>PM2.5 &gt; 1.05 × PM10 (5% allowed for instrument noise)</li>
+                <li>PM10 outside 1–2000 µg/m³, or PM2.5 outside 1–1500 µg/m³</li>
+                <li>Stuck: the same PM2.5, PM10, NO2 or CO value for 3 or more hours in a row</li>
+              </ul>
+              <p>Over the last 7 days (at least 24 hours with PM data): <b>worth a look</b> if more than 1% of hours fail, <b>doesn't add up</b> if more than 5% fail.</p>
+              <p class="spec-why">Uses PM2.5 and PM10.</p>
+            </details>
+          </article>
+          <article class="c3">
+            <div class="c3-art" id="ex-neighbours"></div>
+            <span class="label">Neighbours</span>
+            <h3>Does it agree with the monitors around it?</h3>
+            <p>Hour by hour, against the four nearest. Daytime air mixes, so some difference is normal; we only flag a monitor that drifts far more than the rest of the city.</p>
+            <p class="c3-case" id="ex-neighbours-case"></p>
+            <details class="spec">
+              <summary>Formula and thresholds</summary>
+              <ul>
+                <li><b>Neighbours:</b> the 4 nearest monitors with data within 12 km (great-circle distance). Monitors closer than 0.5 km are skipped, because they are twins on the same site.</li>
+                <li><b>Hourly gap:</b> g = ln(PM10 ÷ median PM10 of the neighbours), when at least 2 neighbours report that hour.</li>
+                <li><b>Daily contrast:</b> d = median g over 11:00–16:59, minus median g over 22:00–05:59 (at least 4 hours each). Its weekly value is the median d over the last 7 days.</li>
+                <li><b>Mixing correction:</b> by day, air mixes higher, so a monitor that reads high at night drifts towards its neighbours. We fit one Theil–Sen line of d against the night gap across the city, and score each monitor's distance from that line.</li>
+                <li><b>Score:</b> robust z = (residual − median) ÷ (1.4826 × MAD) across all monitors. <b>Worth a look</b> at |z| ≥ 2, <b>doesn't add up</b> at |z| ≥ 3.</li>
+                <li><b>Two passes:</b> monitors flagged in the first pass are taken out of everyone's reference and out of the city line in the second.</li>
+              </ul>
+              <p class="spec-why">Uses PM10. Medians and MAD, not means and standard deviations, so one bad hour or one bad monitor can't move the reference.</p>
+            </details>
+          </article>
+          <article class="c3">
+            <div class="c3-art" id="ex-history"></div>
+            <span class="label">History</span>
+            <h3>Has it suddenly changed?</h3>
+            <p>We compare the last 7 days with the 3 weeks before. A sudden jump against its own past means something changed at that monitor.</p>
+            <p class="c3-case" id="ex-history-case"></p>
+            <details class="spec">
+              <summary>Formula and thresholds</summary>
+              <ul>
+                <li>The same daily contrast d as Neighbours, for PM10 (log ratio) and for humidity (percentage points).</li>
+                <li><b>Shift:</b> median d over the last 7 days, minus median d over the 21 days before. This needs at least 4 recent days and 10 earlier days.</li>
+                <li><b>Score:</b> z = shift ÷ robust SD of the earlier 21 days, where robust SD = 1.4826 × MAD. Its floor is 0.02 for PM10 and 1 point for humidity, so a very steady monitor isn't flagged for a tiny change. The larger |z| of the two measures counts.</li>
+                <li><b>Worth a look</b> at |z| ≥ 2, <b>doesn't add up</b> at |z| ≥ 3.</li>
+              </ul>
+              <p class="spec-why">Uses PM10 and humidity. A sudden humidity shift against the neighbours usually means something changed at the monitor itself, such as its inlet, its dryer or where it stands.</p>
+            </details>
+          </article>
+        </div>
+        <div class="combine">
+          <h3>How the three checks become one answer</h3>
+          <p>A monitor's answer is the <b>most serious</b> of its three checks. So a single check can flag a monitor, even one about humidity, and the monitor's card always names the check and the measure that raised it. Physics uses PM2.5 and PM10; Neighbours uses PM10; History uses PM10 and humidity.</p>
+          <p>The number you act on is PM2.5, the fine dust that health advice is based on. The checks lean on PM10 because the coarse dust it measures is what dust control and water spraying change the most.</p>
+          <p>When fewer than 2 neighbours, or too few days of data, are available, a check answers <b>not enough data</b> instead of guessing. A monitor gets that answer only if none of its checks can run.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="validation" aria-labelledby="validation-title">
+      <div class="wrap">
+        <div class="sec-head">
+          <div>
+            <span class="label">Tested on real data</span>
+            <h2 class="h2" id="validation-title"><span class="dim">Two months, every day, scored as this site would.</span>Here is how often it raises a monitor.</h2>
+          </div>
+          <p class="sub">Every day from 1 October to 30 November 2025 was scored at 17:00 IST from the public OpenAQ archive, with the same thresholds as the live site.</p>
+        </div>
+        <div class="val-grid">
+          <div class="val-card">
+            <h3>On an ordinary day</h3>
+            <table class="data val-table">
+              <tbody>
+                <tr><td>Doesn't add up</td><td>20.8% of monitors</td></tr>
+                <tr><td>Worth a look</td><td>26.6%</td></tr>
+                <tr><td>Agrees with neighbours</td><td>52.6%</td></tr>
+                <tr><td>Flags from the physics check</td><td>7.6 a day</td></tr>
+                <tr><td>Flags from neighbours and history</td><td>2.9 a day</td></tr>
+              </tbody>
+            </table>
+            <p class="val-note">Most flags are readings that can't be real, such as PM2.5 above PM10 or a sensor stuck on one value: a fault whatever the air is doing.</p>
+          </div>
+          <div class="val-card">
+            <h3>Catching a planted drop</h3>
+            <table class="data val-table">
+              <thead><tr><th>Daytime PM10 cut</th><th>Flagged</th></tr></thead>
+              <tbody>
+                <tr><td>20%</td><td>10 of 30</td></tr>
+                <tr><td>30%</td><td>29 of 30</td></tr>
+                <tr><td>40%</td><td>30 of 30</td></tr>
+                <tr><td>60%</td><td>30 of 30</td></tr>
+              </tbody>
+            </table>
+            <p class="val-note">Each quiet monitor in turn had its daytime PM10 lowered for a week, and the whole city was scored again.</p>
+          </div>
+        </div>
+        <p class="footnote">Every number here comes from <code>src/validate.py</code>; the full report is <a href="https://github.com/thegoodengineers/ground-truth/blob/main/docs/VALIDATION.md">docs/VALIDATION.md</a>.</p>
+      </div>
+    </section>
+
+  <section class="sec alt" id="opendata" aria-labelledby="opendata-title">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <span class="label">Open data</span>
+          <h2 class="h2" id="opendata-title"><span class="dim">The numbers are public.</span>Download today's answers.</h2>
+        </div>
+        <p class="sub">Every monitor's status and latest readings, updated every hour. Use them freely; cite the source.</p>
+      </div>
+      <div class="data-downloads">
+        <a class="btn dark" href="data/latest.csv" download="ground-truth-latest.csv">Download CSV</a>
+        <a class="btn outline" href="data/latest.json" target="_blank" rel="noopener">View JSON</a>
+      </div>
+      <div class="data-fields">
+        <h3 class="h3">CSV columns</h3>
+        <table class="data field-table">
+          <thead><tr><th>Column</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>id</code></td><td>OpenAQ location ID</td></tr>
+            <tr><td><code>name</code></td><td>Station name</td></tr>
+            <tr><td><code>operator</code></td><td>Agency (CPCB, DPCC, HSPCB, UPPCB, IMD, IITM)</td></tr>
+            <tr><td><code>lat</code> / <code>lon</code></td><td>Coordinates (WGS84)</td></tr>
+            <tr><td><code>status</code></td><td>Overall verdict: <code>ok</code>, <code>watch</code>, <code>flag</code> or <code>nodata</code></td></tr>
+            <tr><td><code>physics_status</code></td><td>Physics check result</td></tr>
+            <tr><td><code>neighbours_status</code></td><td>Neighbour-comparison check result</td></tr>
+            <tr><td><code>history_status</code></td><td>History check result</td></tr>
+            <tr><td><code>pm25</code> / <code>pm10</code></td><td>Latest hourly reading in µg/m³ (may be blank)</td></tr>
+            <tr><td><code>no2</code> / <code>co</code></td><td>Latest NO₂ (µg/m³) and CO (mg/m³)</td></tr>
+            <tr><td><code>relativehumidity</code></td><td>Latest relative humidity (%)</td></tr>
+            <tr><td><code>neighbours_pm25</code> / <code>neighbours_pm10</code></td><td>Median of the four nearest monitors' latest readings</td></tr>
+            <tr><td><code>last_reading</code></td><td>IST hour of the monitor's newest PM reading; with none in the last 3 hours, <code>status</code> is <code>nodata</code></td></tr>
+            <tr><td><code>band</code> / <code>neighbours_band</code></td><td>CPCB AQI band of the 24-hour average, for this monitor and for its four neighbours</td></tr>
+            <tr><td><code>data_through</code></td><td>IST timestamp of the latest scored hour</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="data-licence">Our results (status, checks, this CSV) are released under <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>. Underlying PM readings are from OpenAQ and subject to their terms. Suggested citation: <em>Ground Truth, thegoodengineers, <span id="cite-date"></span>, https://github.com/thegoodengineers/ground-truth</em>.</p>
+    </div>
+  </section>
+
+    <section class="sec alt" id="faq" aria-labelledby="faq-title">
+      <div class="wrap">
+        <div class="sec-head"><div><span class="label">Questions</span><h2 class="h2" id="faq-title"><span class="dim">Still wondering?</span>Plain answers.</h2></div></div>
+        <div class="faq">
+          <details><summary>Does a red answer mean someone tampered with the monitor?</summary><p>No. It means the monitor's numbers don't add up against physics, its neighbours or its own past. Sensors drift, break and get moved. We tested whether the monitors named in the news in October 2025 show a spraying pattern, and with our method they don't stand out.</p></details>
+          <details><summary>Which number should I use if my monitor is flagged?</summary><p>Use what the four nearest monitors read right now. The panel shows it next to your monitor's own reading. It is the middle value of real monitors, not an official reading.</p></details>
+          <details><summary>How fresh is the data?</summary><p>The check runs every hour on new readings from the CPCB and DPCC monitors, via OpenAQ. The time of the latest reading is at the top of the page.</p></details>
+          <details><summary>Why does a polluted area look cleaner in the afternoon?</summary><p>By day the air mixes higher, so pollution near busy roads spreads out and a hotspot reads closer to its neighbours. We correct for this so it isn't mistaken for a problem.</p></details>
+          <details><summary>Is the code open?</summary><p>Yes. Everything, including the data analysis behind these checks, is on GitHub.</p></details>
+        </div>
+      </div>
+    </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p class="big">groundtruth</p>
+      <p>Which of Delhi's air-quality numbers can you trust? Environmental Hacks 2026, Air track.</p>
+    </div>
+    <div>
+      <h4>Data</h4>
+      <ul><li>CPCB / DPCC monitors via <a href="https://openaq.org">OpenAQ</a></li><li>Wind and mixing height: <a href="https://open-meteo.com">Open-Meteo</a> (CC BY 4.0)</li><li>Farm fires: <a href="https://firms.modaps.eosdis.nasa.gov/">NASA FIRMS</a>, VIIRS (Suomi NPP)</li><li>3D scene drawn with <a href="https://threejs.org">three.js</a></li><li>Voice of the tour: <a href="https://elevenlabs.io">ElevenLabs</a></li><li>Wards: <a href="https://github.com/datameet/Municipal_Spatial_Data">DataMeet</a> (CC BY-SA 2.5 IN)</li></ul>
+    </div>
+    <div>
+      <h4>Project</h4>
+      <ul><li><a href="https://github.com/thegoodengineers/ground-truth">GitHub</a></li><li><a href="./?demo=1">60-second tour</a></li><li><a href="method.html">Method</a></li><li><a href="./#why">Why</a></li><li><a href="./#story">How it works</a></li></ul>
+    </div>
+  </div>
+</footer>
+
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

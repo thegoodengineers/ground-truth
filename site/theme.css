@@ -597,3 +597,19 @@ table.field-table th { text-align: left; padding: 8px 10px; }
 /* the nav also carries the language button: drop the Live pill, then the text links, before anything overflows */
 @media (max-width: 1300px) { .pulse { display: none; } }
 @media (max-width: 900px) { .nav nav a { display: none; } }
+
+/* the method: a card on the home page, and method.html */
+.method-teaser { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px 48px; }
+.method-teaser > div { max-width: 720px; }
+.method-intro { padding-top: clamp(48px, 8vh, 96px); padding-bottom: 8px; }
+.method-intro .sub { max-width: 70ch; margin-top: 16px; }
+.method-back { margin: 20px 0 0; font-size: 14.5px; }
+.method-back a { color: var(--ink-2); text-underline-offset: 4px; }
+.nav nav a[aria-current="page"] { color: var(--ink); background: rgba(8, 9, 10, .06); }
+.val-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 28px; }
+.val-card { border: 1px solid var(--line-2); border-radius: var(--r); background: var(--surface); padding: 22px 24px; }
+.val-card h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.01em; }
+.val-table td, .val-table th { font-size: 13.5px; padding: 8px 6px; }
+.val-table td:first-child { font-family: var(--sans); color: var(--ink); }
+.val-note { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
+@media (max-width: 760px) { .val-grid { grid-template-columns: 1fr; } }
