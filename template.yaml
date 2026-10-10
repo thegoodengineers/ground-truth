@@ -163,7 +163,7 @@ Resources:
       Handler: serve.handler
       Runtime: python3.11
       Architectures: [arm64]
-      MemorySize: 256
+      MemorySize: 512  # more CPU too: gzip and S3 reads finish sooner, so fewer copies run at once
       Timeout: 10
       Environment:
         Variables:

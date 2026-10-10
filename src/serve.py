@@ -5,9 +5,13 @@ until AWS Support verifies it. Until then this function is the HTTPS origin: GET
 bucket (`/` and `/dir/` read index.html), answers 304 to a matching If-None-Match, gzips text when asked, and sends
 the same headers as the CloudFront response headers policy (tests/test_serve.py checks they stay identical).
 
+Each warm copy keeps what it served in memory for a short while (`Cached`), gzipped once. A new account can run only
+10 copies of a function at once, and a page load asks for about 20 files: answering from memory in a few ms instead
+of waiting on S3 is what lets those 10 copies serve several visitors at the same moment.
+
 Environment: SITE_BUCKET (required).
 """
-import base64, gzip, mimetypes, os
+import base64, gzip, mimetypes, os, time
 
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; "
@@ -56,11 +60,40 @@ def cache_control(key, stored=None):
     return DEFAULT_CACHE
 
 
-def response(status, body=b"", headers=None, ctype="text/plain; charset=utf-8", gzip_ok=False):
+class Cached:
+    """`get_object` with a short memory: data/ for 30 s (it changes hourly), the rest for 2 min (it changes on deploy).
+    Missing keys aren't kept, so a file uploaded a moment ago is found at once."""
+
+    TTL = {"data/": 30}
+    DEFAULT_TTL = 120
+
+    def __init__(self, get_object, clock=time.monotonic):
+        self.get, self.clock, self.items, self.gz = get_object, clock, {}, {}
+
+    def __call__(self, key):
+        hit = self.items.get(key)
+        if hit and hit[0] > self.clock():
+            return hit[1]
+        found = self.get(key)
+        if found is not None:
+            ttl = next((v for p, v in self.TTL.items() if key.startswith(p)), self.DEFAULT_TTL)
+            self.items[key] = (self.clock() + ttl, found)
+        return found
+
+    def gzipped(self, etag, body):
+        if etag is None:
+            return gzip.compress(body, 6)
+        if etag not in self.gz:
+            self.gz = {k: v for k, v in self.gz.items() if k in {m[1][1].get("etag") for m in self.items.values()}}
+            self.gz[etag] = gzip.compress(body, 6)
+        return self.gz[etag]
+
+
+def response(status, body=b"", headers=None, ctype="text/plain; charset=utf-8", gzip_ok=False, compress=None):
     h = {**SECURITY_HEADERS, "content-type": ctype, **(headers or {})}
     is_text = ctype.startswith("text/") or any(ctype.startswith(t) for t in TEXT_TYPES)
     if gzip_ok and is_text and len(body) >= MIN_GZIP:
-        body = gzip.compress(body, 6)
+        body = compress(body) if compress else gzip.compress(body, 6)
         h["content-encoding"] = "gzip"
         h["vary"] = "Accept-Encoding"
     if is_text and "content-encoding" not in h:
@@ -89,12 +122,23 @@ def serve(event, get_object):
             return {"statusCode": 304, "headers": {**SECURITY_HEADERS, **headers}, "body": ""}
     ctype = content_type(key, meta.get("content_type"))
     gzip_ok = "gzip" in req_headers.get("accept-encoding", "")
-    return response(200, b"" if method == "HEAD" else body, headers, ctype, gzip_ok)
+    compress = (lambda b: get_object.gzipped(etag, b)) if isinstance(get_object, Cached) else None
+    return response(200, b"" if method == "HEAD" else body, headers, ctype, gzip_ok, compress)
+
+
+_cached = None  # one per warm copy of the function
 
 
 def handler(event, context):
+    global _cached
+    if _cached is None:
+        _cached = Cached(s3_reader(os.environ["SITE_BUCKET"]))
+    return serve(event, _cached)
+
+
+def s3_reader(bucket):
     import boto3  # in the Lambda runtime; not needed for tests
-    s3, bucket = boto3.client("s3"), os.environ["SITE_BUCKET"]
+    s3 = boto3.client("s3")
 
     def get_object(key):
         try:
@@ -103,4 +147,4 @@ def handler(event, context):
             return None
         return obj["Body"].read(), {"etag": obj.get("ETag"), "content_type": obj.get("ContentType"),
                                     "cache_control": obj.get("CacheControl")}
-    return serve(event, get_object)
+    return get_object
