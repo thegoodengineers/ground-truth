@@ -368,7 +368,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
   };
 
   // HTML markers (the site's own status icons), kept above each monitor
-  const layer = document.createElement("div"); layer.className = "gt3d-markers"; container.appendChild(layer);
+  const layer = document.createElement("div"); layer.className = "gt3d-markers"; layer.style.visibility = "hidden"; container.appendChild(layer);  // shown once the first frame places them
   const marks = new Map();
   for (const s of stations) { const el = makeMarker(s); layer.appendChild(el); marks.set(s.id, el); }
 
@@ -417,7 +417,7 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
       el.style.opacity = behind ? 0 : String(Math.max(0.25, Math.min(1, 1.6 - camera.position.distanceTo(tops.get(id)) / 700)));
       el.style.pointerEvents = behind ? "none" : "auto";
     }
-    if (first) { first = false; window.dispatchEvent(new CustomEvent("gt3d:ready")); }
+    if (first) { first = false; layer.style.visibility = ""; window.dispatchEvent(new CustomEvent("gt3d:ready")); }
   };
   // compiling every shader at the first draw held the page for about 2 s; compile them in the background first
   await renderer.compileAsync(scene, camera).catch(() => {});
