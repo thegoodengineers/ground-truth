@@ -175,6 +175,7 @@
     renderFresh();
     loadWeather();
     loadFires();
+    loadHistory();
     setInterval(renderPulse, 30000);
     // two pages share this file: the home page (story, map, answers) and method.html (the checks in full); each part
     // is drawn only where its section is
@@ -193,13 +194,15 @@
     mark("loaded");
     if (!has("#map")) return;
     if (new URLSearchParams(location.search).get("demo") === "1" || location.hash === "#tour") tour();
-    else if (byId.has(Number(location.hash.slice(1)))) fromHash();
+    else if (byId.has(Number(location.hash.slice(1).split("/")[0]))) fromHash();
     else if (example) select(example.id, { quiet: true, spot: spotFor(example) }); // the map never opens empty
   }
 
   function fromHash() {
-    const id = Number(location.hash.slice(1));
-    if (byId.has(id)) select(id, { fly: true });
+    const [idPart, view] = location.hash.slice(1).split("/");
+    const id = Number(idPart);
+    if (!byId.has(id)) return;
+    select(id, { fly: true, quiet: view === "history" }); // the panel scrolls to the month once it has rendered
   }
 
   const ago = (min) => (min < 1 ? tx("just now") : min < 60 ? tr`${Math.round(min)} min ago` : min < 48 * 60 ? tr`${Math.round(min / 60)} h ago` : tr`${Math.round(min / 1440)} days ago`);
@@ -237,6 +240,45 @@
     if (weather.wind_from_deg != null) el.style.setProperty("--wind", `${(weather.wind_from_deg + 180) % 360}deg`);
     el.hidden = false;
     view?.setWind?.(weather.wind_from_deg, weather.wind_kmh);
+  }
+
+  // the month of daily answers (data/history.json, kept by the Lambda): a strip in every panel, and what changed since yesterday
+  let histDoc = null;
+  async function loadHistory() {
+    try { histDoc = await getJSON("data/history.json"); } catch (e) { return; }
+    renderChanges();
+    if (selected != null && byId.has(selected)) { const box = $("#history-box"); if (box) box.outerHTML = historyHTML(byId.get(selected)); }
+    if (location.hash.endsWith("/history")) $("#history-box")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  function renderChanges() {
+    const el = $("#changes");
+    if (!el || !histDoc || !histDoc.changes) return;
+    const day = histDoc.days[histDoc.days.length - 1];
+    const when = new Date(day + "T17:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    if (!histDoc.changes.length) { el.innerHTML = `${tx("Since the day before")} (${when}): ${tx("no monitor changed its answer.")}`; el.hidden = false; return; }
+    const items = histDoc.changes.slice(0, 8).map((c) => `<button type="button" data-open="${c.id}" data-spot="">${icon(c.to, 11)}${esc(short(c.name))} <span class="arrow">${STATUS[c.from].short} → ${STATUS[c.to].short}</span></button>`).join("");
+    const more = histDoc.changes.length > 8 ? ` +${histDoc.changes.length - 8}` : "";
+    el.innerHTML = `${tr`${histDoc.changes.length} monitors changed their answer by ${when}`}: ${items}${more}`;
+    el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => openStation(Number(b.dataset.open), null)));
+    el.hidden = false;
+  }
+  const CHECK_LETTER = { o: "ok", w: "watch", f: "flag", n: "nodata" };
+  function historyHTML(s) {
+    const rows = histDoc?.stations?.[String(s.id)];
+    if (!rows || !rows.length) return `<div class="hist" id="history-box"></div>`;
+    const days = histDoc.days, byDay = Object.fromEntries(rows.map((r) => [r.d, r]));
+    const count = (st) => rows.filter((r) => r.s === st).length;
+    const fmtDay = (d) => new Date(d + "T12:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    const cells = days.map((d, i) => {
+      const r = byDay[d];
+      const st = r ? r.s : "nodata";
+      const why = r ? ["Physics", "Neighbours", "History"].map((k, j) => `${k} ${STATUS[CHECK_LETTER[r.c[j]]].short}`).join(", ") : tx("not scored");
+      return `<i class="${st}${i === days.length - 1 ? " today" : ""}" title="${fmtDay(d)}: ${STATUS[st].label} (${why})" aria-label="${fmtDay(d)}: ${STATUS[st].label}"></i>`;
+    }).join("");
+    return `<div class="hist" id="history-box"><h3>${tr`The last ${days.length} days, one answer a day`}</h3><p class="csub">${tx("Each day scored at 17:00 IST, the way the live check scores it. Hover a day for the three checks.")}</p>
+      <div class="hstrip" role="img" aria-label="${tr`${count("flag")} days doesn't add up, ${count("watch")} worth a look, ${count("ok")} agrees, ${count("nodata")} not enough data`}">${cells}</div>
+      <div class="hdates"><span>${fmtDay(days[0])}</span><span>${fmtDay(days[days.length - 1])}</span></div>
+      <p class="hsum">${tr`Doesn't add up on ${count("flag")} of ${days.length} days · worth a look on ${count("watch")} · agrees on ${count("ok")}`}${count("nodata") ? ` · ${tr`no data on ${count("nodata")}`}` : ""}</p></div>`;
   }
 
   // farm fires (data/fires.json, NASA FIRMS via the Lambda, only when a FIRMS key is configured): a line in the
@@ -594,6 +636,7 @@
     if (selected !== id) return;
     smokeDoc = doc;
     panel.innerHTML = panelHTML(s, doc);
+    if (location.hash === `#${id}/history`) $("#history-box")?.scrollIntoView({ behavior: "smooth", block: "center" });
     if (spot) spotCheck(spot);
     // the camera flies for 1.5 s; building both charts meanwhile drops frames, so they wait for it to land
     setTimeout(() => { if (selected === id) { drawChart(doc); drawEvidence(doc, s); } }, fly && view?.focus ? 1600 : 0);
@@ -694,6 +737,7 @@
       ${lastHTML(s)}
       <div class="std">${tr`India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.`}</div>
       ${adviceHTML(s)}
+      ${historyHTML(s)}
       <ul class="checks">${checks}</ul>
       <div class="chartbox">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap">

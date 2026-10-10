@@ -20,7 +20,7 @@ hours between `data_through` and now, and IngestErrors, 1 when the run stopped e
 """
 import datetime as dt, json, os, statistics, time, urllib.error, urllib.parse, urllib.request
 
-import backfill, fires, scorer, weather
+import backfill, fires, history, scorer, weather
 
 API = "https://api.openaq.org/v3"
 # v2: maps saved before sensors() chose the current sensor can point at retired ones, so they are rebuilt once
@@ -238,7 +238,8 @@ def resync_archive(hourly, now, store):
             "resync_stations": f"{done} of {len(hourly)}"}
 
 
-def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key", resync=False, region=None):
+def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/openaq-key", resync=False, region=None,
+        history_budget_s=history.BUDGET_S):
     hourly = store.get_json(RAW_KEY) or {}
     sensors = store.get_json(SENSORS_KEY) or {}
     log = {"new_hours": 0, "skipped": 0, "overlap_ratio": {}}
@@ -308,6 +309,10 @@ def run(store, api, stations, now, max_calls=300, key_param="/ground-truth/opena
     store.put_json("data/latest.json", latest, max_age=300)
     store.put_text("data/latest.csv", scorer.to_csv(latest), content_type="text/csv; charset=utf-8", max_age=300)
     log["published"] = True
+    try:  # the month of daily answers behind every monitor; never a reason for the run to fail
+        log["history"] = history.update(store, hourly, stations, last, region=region, budget_s=history_budget_s)
+    except Exception as e:
+        log["history"] = f"{type(e).__name__}: {e}"
     return log
 
 
