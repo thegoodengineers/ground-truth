@@ -45,7 +45,7 @@ The full analysis is in [spike/RESULTS.md](spike/RESULTS.md).
 
 - **We tried to fool it 30 times. It caught all 30.** In real November 2025 data, we lowered one quiet monitor's daytime PM10 by 40%, one monitor at a time. Every one was flagged, and only 3 other monitors were wrongly flagged across all 30 runs.
 - **Every day of October and November 2025, scored as the live site would have** ([docs/VALIDATION.md](docs/VALIDATION.md), made by `src/validate.py`). About 1 in 5 monitors was flagged on a typical day, most of them by the physics check: readings that can't be real. The neighbour and history checks flagged about 3 monitors a day between them. A planted daytime drop of 30% was flagged 29 times out of 30, a drop of 40% every time, and a drop of 20% 10 times out of 30.
-- **85 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, the hourly ingest against a fake API, including OpenAQ failures, the HTTPS front with its security headers, and the Hindi page staying in step with the English one.
+- **93 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, the hourly ingest against a fake API, including OpenAQ failures, the HTTPS front with its security headers, and the Hindi page staying in step with the English one.
 
 ## Built on AWS
 
@@ -56,13 +56,13 @@ flowchart LR
   API[OpenAQ API] --> L
   ARCH[(OpenAQ archive<br/>Open Data on AWS)] -. history .-> S3
   L <--> S3[(S3<br/>29-day cache + results)]
-  S3 --> CF[CloudFront] --> U[The site]
+  S3 --> FN[Lambda function URL<br/>HTTPS] --> U[The site]
 ```
 
 - **EventBridge** starts the check every hour.
 - **Lambda** (Python 3.11) reads new readings from OpenAQ, with the key in **SSM Parameter Store**, runs the three checks and writes JSON to **S3**.
 - **CloudFront** serves the site and the data from a private bucket, with a response headers policy (CSP, HSTS, nosniff). Until AWS Support verifies this account for CloudFront, a second small **Lambda function URL** serves the bucket over HTTPS with the same headers, and the bucket's **S3 website endpoint** is the HTTP fallback (`UseCloudFront` in the template flips it).
-- **CloudWatch** alarms (Lambda errors, a run that stopped early, data older than 3 hours) and a **Budgets** alarm ($5 a month) go to an **SNS** email. What to do when one fires: [docs/RUNBOOK.md](docs/RUNBOOK.md).
+- **CloudWatch** alarms (Lambda errors, a run that stopped early, data older than 3 hours) and a **Budgets** alarm ($5 a month) go to an **SNS** email, and one **CloudWatch dashboard** (`DashboardUrl` in the stack outputs) shows data age, every run, the site's traffic and throttles, and the alarms on one screen. What to do when one fires: [docs/RUNBOOK.md](docs/RUNBOOK.md).
 - A merge to `main` deploys through **GitHub Actions with OIDC**: no AWS keys stored anywhere ([infra/github-oidc.yaml](infra/github-oidc.yaml), [.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
 - Everything is one **AWS SAM** template ([template.yaml](template.yaml)), in us-east-1 next to the public OpenAQ archive on Open Data on AWS.
 
