@@ -51,7 +51,7 @@ Each monitor gets one answer: agrees with neighbours, worth a look, or doesn't a
 - **AWS Systems Manager Parameter Store** holds the OpenAQ API key, encrypted.
 - **Amazon S3** keeps a 29-day history cache and the results.
 - **Amazon CloudFront** is in the template to serve the site and the data from a private bucket; this account is still waiting on AWS Support's verification for CloudFront, so a second small **Lambda function URL** serves the site over HTTPS with the same security headers (CSP, HSTS, nosniff) until then.
-- **Amazon CloudWatch** alarms (a failed run, a run that stopped early, data older than 3 hours) and an **AWS Budgets** alarm go to an **Amazon SNS** email, with a runbook in the repo.
+- **Amazon CloudWatch** alarms (a failed run, a run that stopped early, data older than 3 hours) and an **AWS Budgets** alarm go to an **Amazon SNS** email, with a runbook in the repo. One **CloudWatch dashboard** shows data age, every hourly run, the site's traffic and throttles, and the alarms on one screen.
 - **AWS SAM** deploys all of it from one template, and a merge to `main` deploys through **GitHub Actions with OIDC**, with no AWS keys stored anywhere. History is seeded from the public OpenAQ archive on the **Registry of Open Data on AWS**, in the same region.
 
 The video shows the running stack in the AWS console.
@@ -66,7 +66,7 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 
 - **The live site** updates every hour; the header shows the hour the readings run through and when the last check ran.
 - **The planted test:** we lowered one quiet monitor's daytime PM10 by 40% in real data, one monitor at a time. It was caught 30 times out of 30, and wrongly flagged another monitor only 3 times across all 30 runs.
-- **85 automated tests** run on every change, plus browser smoke tests of the live site in CI.
+- **93 automated tests** run on every change, plus browser smoke tests of the live site in CI.
 - **Every day of October and November 2025, scored as the live site would have** (`docs/VALIDATION.md`): about 1 in 5 monitors flagged on a typical day, most by the physics check; a planted 30% daytime drop was flagged 29 times out of 30, a 40% drop every time.
 
 ## Challenges

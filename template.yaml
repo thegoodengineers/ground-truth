@@ -338,6 +338,39 @@ Resources:
       AlarmActions: [!Ref AlertTopic]
       OKActions: [!Ref AlertTopic]
 
+  # One screen for the whole system: how fresh the data is, whether the hourly run is healthy, how busy the site's
+  # HTTPS function is (and whether it is being throttled), and the three alarms.
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}"
+      DashboardBody: !Sub |
+        {"widgets": [
+          {"type": "text", "x": 0, "y": 0, "width": 24, "height": 2, "properties": {"markdown": "# Ground Truth, live · Every hour EventBridge runs the ingest Lambda: OpenAQ readings, three checks, data/*.json in S3, served over HTTPS by a second Lambda. Alarms email through SNS."}},
+          {"type": "metric", "x": 0, "y": 2, "width": 8, "height": 6, "properties": {"title": "Hours since the newest scored hour",
+            "region": "${AWS::Region}", "view": "timeSeries", "stat": "Maximum", "period": 3600,
+            "metrics": [["GroundTruth", "DataAgeHours", "Stack", "${AWS::StackName}"]]}},
+          {"type": "metric", "x": 8, "y": 2, "width": 8, "height": 6, "properties": {"title": "Hourly run: invocations and errors",
+            "region": "${AWS::Region}", "view": "timeSeries", "stat": "Sum", "period": 3600,
+            "metrics": [["AWS/Lambda", "Invocations", "FunctionName", "${IngestFunction}"],
+                        [".", "Errors", ".", "."],
+                        ["GroundTruth", "IngestErrors", "Stack", "${AWS::StackName}", {"label": "Runs stopped early"}]]}},
+          {"type": "metric", "x": 16, "y": 2, "width": 8, "height": 6, "properties": {"title": "Hourly run: duration (ms)",
+            "region": "${AWS::Region}", "view": "timeSeries", "stat": "Maximum", "period": 3600,
+            "metrics": [["AWS/Lambda", "Duration", "FunctionName", "${IngestFunction}"]]}},
+          {"type": "metric", "x": 0, "y": 8, "width": 12, "height": 6, "properties": {"title": "Site (HTTPS function): requests, throttles, errors",
+            "region": "${AWS::Region}", "view": "timeSeries", "stat": "Sum", "period": 300,
+            "metrics": [["AWS/Lambda", "Invocations", "FunctionName", "${ServeFunction}"],
+                        [".", "Throttles", ".", "."],
+                        [".", "Errors", ".", "."]]}},
+          {"type": "metric", "x": 12, "y": 8, "width": 12, "height": 6, "properties": {"title": "Site: concurrent copies, and duration p90 (ms)",
+            "region": "${AWS::Region}", "view": "timeSeries", "period": 300,
+            "metrics": [["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "${ServeFunction}", {"stat": "Maximum"}],
+                        [".", "Duration", ".", ".", {"stat": "p90", "yAxis": "right"}]]}},
+          {"type": "alarm", "x": 0, "y": 14, "width": 24, "height": 3, "properties": {"title": "Alarms",
+            "alarms": ["${IngestErrorsAlarm.Arn}", "${IngestRunErrorAlarm.Arn}", "${StaleDataAlarm.Arn}"]}}
+        ]}
+
   # What it costs to run (issue 36): $5 a month, an email at 80%, scoped to the project tag.
   MonthlyBudget:
     Type: AWS::Budgets::Budget
@@ -364,6 +397,9 @@ Resources:
               Address: !Ref AlertEmail
 
 Outputs:
+  DashboardUrl:
+    Description: The CloudWatch dashboard for the whole system
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards/dashboard/${AWS::StackName}"
   AlertTopicArn:
     Value: !Ref AlertTopic
   SiteUrl:

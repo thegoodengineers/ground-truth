@@ -146,8 +146,8 @@
       "हमने नवंबर 2025 का असली डेटा लिया और एक-एक करके हर ठीक मॉनिटर की दिन की धूल चुपचाप 40% घटा दी। Ground Truth ने हर एक को फ़्लैग किया, और सभी 30 बार में किसी दूसरे मॉनिटर को सिर्फ़ 3 बार ग़लती से फ़्लैग किया।",
     "We also scored every day of October and November 2025 as this site would have. Most flags were readings that can't be real, and smaller planted drops were caught less often (30%: 29 of 30, 20%: 10 of 30). Read the validation report":
       'हमने अक्टूबर और नवंबर 2025 के हर दिन को वैसे ही जाँचा जैसे यह साइट जाँचती। ज़्यादातर फ़्लैग ऐसी रीडिंग थे जो असली हो ही नहीं सकतीं, और छोटी गिरावटें कम बार पकड़ी गईं (30%: 30 में से 29, 20%: 30 में से 10)। <a href="https://github.com/thegoodengineers/ground-truth/blob/main/docs/VALIDATION.md">जाँच की रिपोर्ट पढ़ें</a>',
-    "This test, and 84 others, run automatically every time the code changes. See the tests":
-      'यह टेस्ट, और 84 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
+    "This test, and 92 others, run automatically every time the code changes. See the tests":
+      'यह टेस्ट, और 92 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
     "Built on AWS": "AWS पर बना",
     "Nobody presses a button.It checks itself every hour.": '<span class="dim">कोई बटन नहीं दबाता।</span>यह हर घंटे ख़ुद जाँच करता है।',
     "The whole system is one AWS SAM template, deployed in us-east-1 next to the public OpenAQ archive it reads from.":
@@ -156,7 +156,9 @@
     "Fetch + checkAWS Lambdareads new readings from OpenAQ, with the key from Parameter Store, and runs the three checks":
       '<span class="pipe-k">लाना + जाँचना</span><b>AWS Lambda</b><span>Parameter Store की key से OpenAQ की नई रीडिंग पढ़ता है, और तीनों जाँचें चलाता है</span>',
     "StoreAmazon S3keeps 29 days of history and the results": '<span class="pipe-k">रखना</span><b>Amazon S3</b><span>29 दिन का इतिहास और नतीजे रखता है</span>',
-    "ServeAmazon CloudFrontdelivers this page and the data": '<span class="pipe-k">पहुँचाना</span><b>Amazon CloudFront</b><span>यह पेज और डेटा पहुँचाता है</span>',
+    "ServeLambda function URLdelivers this page and the data over HTTPS": '<span class="pipe-k">पहुँचाना</span><b>Lambda function URL</b><span>यह पेज और डेटा HTTPS पर पहुँचाता है</span>',
+    "Watching it: Amazon CloudWatch tracks how old the data is and every failed run, Amazon SNS emails us when an alarm fires, and AWS Budgets caps the bill at $5 a month. GitHub Actions deploys each change through OIDC, with no stored AWS keys.":
+      'निगरानी: <b>Amazon CloudWatch</b> देखता है कि डेटा कितना पुराना है और कौन-सा रन फ़ेल हुआ, alarm बजने पर <b>Amazon SNS</b> हमें ईमेल करता है, और <b>AWS Budgets</b> बिल को $5 महीना पर रोकता है। <b>GitHub Actions</b> हर बदलाव OIDC से deploy करता है, कोई AWS key कहीं रखी नहीं।',
     "ReadYousee every monitor's answer": '<span class="pipe-k">पढ़ना</span><b>आप</b><span>हर मॉनिटर का जवाब देखते हैं</span>',
     "Questions": "सवाल",
     "Still wondering?Plain answers.": '<span class="dim">अब भी कोई सवाल?</span>सीधे जवाब।',
