@@ -33,6 +33,10 @@ The site explains itself in ten seconds with one real monitor, and then lets you
 - **Share card and embed**: a picture of the answer for WhatsApp or a slide, and `embed.html?station=235`, a badge a newsroom or a school can frame.
 - **Context, not blame**: the wind and the mixing height (Open-Meteo), farm fires on the horizon (NASA FIRMS, with a key), and a panel note when a whole area rose together, which is what smoke does.
 - **The real ground**: the 3D city stands on a Sentinel-2 image of Delhi from the Registry of Open Data on AWS, lit by the real hour.
+- **In Hindi too**: one button switches the whole site, including each monitor's answer, its evidence and the advice.
+- **A 60-second tour that plays itself**, with a voice-over (ElevenLabs), for anyone who would rather watch than read.
+- **Open data**: `data/latest.csv` and `data/latest.json` every hour, with every column described on the method page.
+- **Usable by everyone**: every answer is a shape and a word as well as a colour, it works by keyboard and on a phone, honours reduced motion, and an axe audit of both pages, in both languages, reports no violations.
 
 ## What we found
 
