@@ -70,9 +70,10 @@ button, input, select { font: inherit; }
 .hist .hdates { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 4px; }
 /* since yesterday, under the live map's intro */
 .sec .changes { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin: 10px 0 0; line-height: 1.7; }
-.sec .changes button { font: inherit; background: var(--surface); border: 1px solid var(--line-2); border-radius: 999px; padding: 1px 9px; margin: 0 4px 2px 0; cursor: pointer; }
+.sec .changes button { font: inherit; background: var(--surface); border: 1px solid var(--line-2); border-radius: 999px; padding: 1px 9px; margin: 0 4px 2px 0; cursor: pointer; display: inline-block; max-width: 100%; text-align: left; }
 .sec .changes button:hover { background: var(--surface-3); }
 .sec .changes .arrow { color: var(--ink-3); }
+@media (max-width: 600px) { .sec .changes { font-size: 12px; } }
 .sec .changes button .ico { width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; }
 
 /* "find the monitor near me": the hero asks the browser for a position, once, on a click */
@@ -165,10 +166,13 @@ html[lang="hi"] { --sans: "Geist", "Noto Sans Devanagari", ui-sans-serif, system
 .sec { padding: clamp(64px, 9vw, 112px) 0; }
 .sec.alt { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .h2 { margin: 0 0 14px; font-weight: 600; letter-spacing: -.04em; line-height: 1.02; font-size: clamp(30px, 4vw, 52px); }
+.h2, .h2 .dim { text-wrap: balance; }
 .h2 .dim { display: block; color: #7f8187; font-weight: 500; } /* 3.5:1, above the 3:1 large text needs */
 .sub { color: var(--ink-2); max-width: 56ch; margin: 0; font-size: 16.5px; }
 .sec-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-bottom: 36px; }
 .sec-head .sub { max-width: 46ch; }
+.sec-head.wide { grid-template-columns: 1fr; }
+.sec-head.wide .h2 { max-width: 24ch; }
 
 /* product window */
 .window { border-radius: 22px; background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow-lg); overflow: hidden; }
