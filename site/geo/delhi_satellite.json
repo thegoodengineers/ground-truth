@@ -1,0 +1,42 @@
+{
+ "bounds": {
+  "lat": [
+   28.270000000000003,
+   29.029999999999998
+  ],
+  "lon": [
+   76.72,
+   77.53
+  ]
+ },
+ "width": 1929,
+ "height": 2048,
+ "scenes": [
+  {
+   "tile": "MGRS-43RFM",
+   "date": "2026-10-05",
+   "cloud": 1.7e-05,
+   "id": "S2B_43RFM_20261005_0_L2A"
+  },
+  {
+   "tile": "MGRS-43RFN",
+   "date": "2026-10-05",
+   "cloud": 0.001311,
+   "id": "S2B_43RFN_20261005_0_L2A"
+  },
+  {
+   "tile": "MGRS-43RGM",
+   "date": "2026-10-05",
+   "cloud": 5.6e-05,
+   "id": "S2B_43RGM_20261005_0_L2A"
+  },
+  {
+   "tile": "MGRS-43RGN",
+   "date": "2026-10-05",
+   "cloud": 3.04221,
+   "id": "S2B_43RGN_20261005_0_L2A"
+  }
+ ],
+ "credit": "Contains modified Copernicus Sentinel data 2026, processed by Element 84 and Sinergise, via the Registry of Open Data on AWS",
+ "licence": "Copernicus Sentinel data: free, full and open access; the credit line is required"
+}

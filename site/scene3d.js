@@ -1,5 +1,6 @@
-/* Ground Truth 3D: Delhi in fog, drawn from our own data. No tile server.
-   The ground is Delhi's wards; landmarks and monitor masts stand at their real coordinates;
+/* Ground Truth 3D: Delhi in haze, on the real ground. No tile server.
+   The ground is a Sentinel-2 image of Delhi (geo/delhi_satellite.jpg, from the Registry of Open Data on AWS, see
+   geo/make_satellite.py) with the ward lines drawn over it; landmarks and monitor masts stand at their real coordinates;
    each monitor carries a column as tall as its PM2.5 reading and a cloud of smog; dust drifts
    through the air, thicker on dirtier days. app.js talks to this module through window.GT3D. */
 import * as THREE from "./vendor/three/three.module.min.js";
@@ -48,40 +49,42 @@ function pointInRing(x, y, ring) {
 
 async function getJSON(u) { const r = await fetch(u); if (!r.ok) throw new Error(u); return r.json(); }
 
-function buildGround(scene, wards, boundary) {
-  // the land beyond Delhi, fading into fog
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshLambertMaterial({ color: 0xe2e1de }));
-  plane.rotation.x = -Math.PI / 2; plane.receiveShadow = true; scene.add(plane);
+function buildGround(scene, wards, boundary, satellite, renderer) {
+  // the land beyond the image, fading into haze
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshLambertMaterial({ color: 0xcfc9b8 }));
+  plane.rotation.x = -Math.PI / 2; plane.position.y = -0.2; plane.receiveShadow = true; scene.add(plane);
 
-  const mats = [0xf4f4f2, 0xf1f1ee, 0xeeeeeb].map((c) => new THREE.MeshLambertMaterial({ color: c }));
-  const edge = [], merged = mats.map(() => ({ pos: [], nor: [] })); // one mesh per shade, not one per ward: 3 draw calls, not 290
-  wards.features.forEach((f, i) => {
+  // the real ground: a Sentinel-2 true-colour image draped on the lat/lon grid the scene uses
+  if (satellite) {
+    const { texture, bounds } = satellite;
+    const [x0, y0] = xy(bounds.lon[0], bounds.lat[0]), [x1, y1] = xy(bounds.lon[1], bounds.lat[1]);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy()); // sharp at the low angles the camera sits at
+    texture.generateMipmaps = true; texture.minFilter = THREE.LinearMipmapLinearFilter;
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0),
+      new THREE.MeshLambertMaterial({ map: texture, color: 0xf2efe8 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set((x0 + x1) / 2, 0.3, -(y0 + y1) / 2); ground.receiveShadow = true;
+    scene.add(ground);
+  }
+
+  // the ward lines, faint, so the city's shape still reads over the image
+  const edge = [];
+  wards.features.forEach((f) => {
     const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
     for (const p of polys) {
-      const shape = shapeFromRing(p[0]);
-      p.slice(1).forEach((hole) => shape.holes.push(shapeFromRing(hole)));
-      const g = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: false });
-      g.rotateX(-Math.PI / 2);
-      merged[i % 3].pos.push(...g.attributes.position.array); merged[i % 3].nor.push(...g.attributes.normal.array);
-      g.dispose();
       p[0].forEach(([lon, lat], k) => {
         if (!k) return;
         const [x0, y0] = xy(...p[0][k - 1]), [x1, y1] = xy(lon, lat);
-        edge.push(x0, 0.52, -y0, x1, 0.52, -y1);
+        edge.push(x0, 0.45, -y0, x1, 0.45, -y1);
       });
     }
   });
-  merged.forEach(({ pos, nor }, k) => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-    const m = new THREE.Mesh(g, mats[k]); m.receiveShadow = true; scene.add(m);
-  });
   const eg = new THREE.BufferGeometry(); eg.setAttribute("position", new THREE.Float32BufferAttribute(edge, 3));
-  scene.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: 0xd2d2ce })));
+  scene.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 })));
 
   const ring = boundary.features[0].geometry.type === "Polygon" ? boundary.features[0].geometry.coordinates[0] : boundary.features[0].geometry.coordinates[0][0];
   const pts = ring.map(([lon, lat]) => { const [x, y] = xy(lon, lat); return new THREE.Vector3(x, 0.7, -y); });
-  const bl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0x8f9095, dashSize: 3, gapSize: 2 }));
+  const bl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xfafafa, dashSize: 3, gapSize: 2, transparent: true, opacity: 0.8 }));
   bl.computeLineDistances(); scene.add(bl);
   return ring.map(([lon, lat]) => xy(lon, lat));
 }
@@ -117,6 +120,26 @@ function buildCity(scene, ringXY, share = 1) {
     trees.setMatrixAt(n++, m);
   }
   trees.count = n; trees.castShadow = true; scene.add(trees);
+}
+
+// Where the sun is over Delhi at this IST hour: azimuth east to west, height a sine over the day, colour warm when low.
+// The capture (video) uses a fixed mid-afternoon so every render looks the same.
+function sunFor(date = new Date()) {
+  const ist = new Date(date.getTime() + (330 + date.getTimezoneOffset()) * 60000);
+  const h = capture ? 15 : ist.getHours() + ist.getMinutes() / 60;
+  const day = h >= 6 && h <= 18.5, t = Math.max(0, Math.min(1, (h - 6) / 12.5)); // 0 at sunrise, 1 at sunset
+  const elev = day ? Math.sin(t * Math.PI) : 0, az = (0.5 - t) * Math.PI; // + east, - west (x east, z south)
+  const low = day ? 1 - Math.min(1, elev * 2.2) : 1;
+  return {
+    position: new THREE.Vector3(Math.sin(az) * 360, 60 + elev * 380, 120 + low * 120),
+    color: new THREE.Color().lerpColors(new THREE.Color(0xffffff), new THREE.Color(0xffb46e), low * 0.8),
+    intensity: day ? 0.9 + elev * 0.9 : 0.25,
+    sky: day ? new THREE.Color().lerpColors(new THREE.Color(0xf7f7f8), new THREE.Color(0xf6d9b8), low * 0.5) : new THREE.Color(0xb6bcc8),
+    ground: day ? 0xd6cfbf : 0x8d8f99,
+    hemi: day ? 1.25 : 0.7,
+    fog: day ? new THREE.Color().lerpColors(new THREE.Color(FOG), new THREE.Color(0xe9dccb), low * 0.6) : new THREE.Color(0xc9ccd3),
+    night: !day,
+  };
 }
 
 function buildLandmarks(scene) {
@@ -270,7 +293,11 @@ function buildDust(scene, median, cap) {
 }
 
 async function init(container, { stations, reading, makeMarker, onPick, onBackgroundClick }) {
-  const [wards, boundary] = await Promise.all([getJSON("geo/delhi_wards.json"), getJSON("geo/delhi_boundary.json")]);
+  const [wards, boundary, satMeta] = await Promise.all([getJSON("geo/delhi_wards.json"), getJSON("geo/delhi_boundary.json"),
+    getJSON("geo/delhi_satellite.json").catch(() => null)]);
+  // the real ground is optional: without the image the scene still draws, on the plain plane
+  const satellite = satMeta ? await new THREE.TextureLoader().loadAsync("geo/delhi_satellite.jpg")
+    .then((texture) => ({ texture, bounds: satMeta.bounds })).catch(() => null) : null;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(FOG);
   scene.fog = new THREE.Fog(FOG, 180, 820);
@@ -291,17 +318,19 @@ async function init(container, { stations, reading, makeMarker, onPick, onBackgr
   controls.minDistance = 60; controls.maxDistance = 900; controls.minPolarAngle = 0.25; controls.maxPolarAngle = 1.36;
   controls.enableZoom = false; controls.autoRotateSpeed = 0.35; controls.update();
 
-  scene.add(new THREE.HemisphereLight(0xf7f7f8, 0xcfcfca, 1.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-  sun.position.set(-220, 320, 160); sun.castShadow = shadows;
+  const when = sunFor();
+  scene.background = when.fog; scene.fog.color = when.fog;
+  scene.add(new THREE.HemisphereLight(when.sky, when.ground, when.hemi));
+  const sun = new THREE.DirectionalLight(when.color, when.intensity);
+  sun.position.copy(when.position); sun.castShadow = shadows;
   Object.assign(sun.shadow.camera, { left: -380, right: 380, top: 380, bottom: -380, near: 10, far: 1200 });
   sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; scene.add(sun);
 
   // built in slices with a breath between them, so the page stays responsive while the city goes up
   const breathe = () => new Promise((r) => setTimeout(r));
-  const ringXY = buildGround(scene, wards, boundary);
+  const ringXY = buildGround(scene, wards, boundary, satellite, renderer);
   await breathe();
-  buildCity(scene, ringXY, light ? 0.45 : 1);
+  if (!satellite) buildCity(scene, ringXY, light ? 0.45 : 1); // the drawn city only stands in when there is no image
   await breathe();
   buildLandmarks(scene);
   const { tops, pickables, ids, face } = buildMonitors(scene, stations, reading);
