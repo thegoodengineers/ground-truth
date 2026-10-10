@@ -12,7 +12,7 @@
   --surface-2: #fafafa; /* inset panels */
   --surface-3: #f0f0f1; /* hover */
   --line: #e6e6e8; --line-2: #d6d6d9;
-  --ink: #08090a; --ink-2: #4f5156; --ink-3: #8b8d93;
+  --ink: #08090a; --ink-2: #4f5156; --ink-3: #686a70; /* 4.9:1 on the page, 5.4:1 on white: readable small text */
   --live: #1f9d5c;
 
   /* station state (dataviz reference status palette); icon + word always */
@@ -128,7 +128,7 @@ html[lang="hi"] { --sans: "Geist", "Noto Sans Devanagari", ui-sans-serif, system
 .scene svg { width: 100%; height: 100%; display: block; }
 .hero .copy { text-align: center; display: grid; justify-items: center; gap: 22px; }
 .hero h1 { margin: 0; font-weight: 600; letter-spacing: -.045em; line-height: .98; font-size: clamp(36px, 5.6vw, 78px); max-width: 21ch; text-wrap: balance; }
-.hero h1 .dim { display: block; color: #8a8c91; font-weight: 500; font-size: .74em; letter-spacing: -.04em; margin-bottom: 6px; }
+.hero h1 .dim { display: block; color: #7f8187; font-weight: 500; font-size: .74em; letter-spacing: -.04em; margin-bottom: 6px; }
 .hero .lede { margin: 0; font-size: clamp(16px, 1.5vw, 18.5px); color: var(--ink-2); max-width: 54ch; }
 .hero .cta { display: flex; flex-direction: column; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 6px; width: 100%; }
 
@@ -146,7 +146,7 @@ html[lang="hi"] { --sans: "Geist", "Noto Sans Devanagari", ui-sans-serif, system
 /* example card, overlapping the bottom of the hero */
 .example { position: relative; z-index: 2; margin: -110px auto 0; width: min(560px, calc(100% - 32px)); background: rgba(255, 255, 255, .82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, .95); border-radius: var(--r); padding: 18px 20px; box-shadow: var(--shadow-lg); display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; }
 .example .label { grid-column: 1 / -1; }
-.example h3 { margin: 0; font-size: 20px; letter-spacing: -.02em; font-weight: 600; }
+.example h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; font-weight: 600; }
 .example .nums { font: 500 15px var(--mono); color: var(--ink-2); grid-column: 1 / -1; }
 .example .nums b { color: var(--ink); font-weight: 600; }
 .example button { grid-column: 1 / -1; justify-self: start; margin-top: 6px; height: 40px; border-radius: 12px; font-size: 14px; }
@@ -163,7 +163,7 @@ html[lang="hi"] { --sans: "Geist", "Noto Sans Devanagari", ui-sans-serif, system
 .sec { padding: clamp(64px, 9vw, 112px) 0; }
 .sec.alt { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .h2 { margin: 0 0 14px; font-weight: 600; letter-spacing: -.04em; line-height: 1.02; font-size: clamp(30px, 4vw, 52px); }
-.h2 .dim { display: block; color: #9a9ca1; font-weight: 500; }
+.h2 .dim { display: block; color: #7f8187; font-weight: 500; } /* 3.5:1, above the 3:1 large text needs */
 .sub { color: var(--ink-2); max-width: 56ch; margin: 0; font-size: 16.5px; }
 .sec-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-bottom: 36px; }
 .sec-head .sub { max-width: 46ch; }
@@ -284,13 +284,13 @@ table.data th:first-child, table.data td:first-child { text-align: left; }
 /* closing fog + footer */
 .closing { position: relative; isolation: isolate; text-align: center; padding: clamp(80px, 11vw, 140px) 0 0; background: linear-gradient(180deg, var(--bg) 0%, #ececee 55%, #dcdcdf 100%); overflow: hidden; border-top: 1px solid var(--line); }
 .closing h2 { margin: 0 auto 14px; font-size: clamp(32px, 5vw, 64px); letter-spacing: -.045em; line-height: 1; font-weight: 600; max-width: 18ch; }
-.closing h2 .dim { display: block; color: #8a8c91; font-weight: 500; }
+.closing h2 .dim { display: block; color: #7f8187; font-weight: 500; }
 .closing p { color: var(--ink-2); margin: 0 auto 26px; }
 .closing .scene { height: 260px; margin-top: 40px; }
 footer { background: #dcdcdf; color: var(--ink-2); font-size: 13.5px; }
 footer .wrap { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 24px; padding-top: 40px; padding-bottom: 48px; }
 footer .big { font: 500 clamp(40px, 7vw, 88px)/.9 var(--mono); letter-spacing: -.06em; color: var(--ink); margin: 0 0 10px; }
-footer h4 { font: 500 12px var(--mono); color: var(--ink-3); margin: 6px 0 10px; letter-spacing: .04em; }
+footer h2 { font: 500 12px var(--mono); color: var(--ink-2); margin: 6px 0 10px; letter-spacing: .04em; }
 footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 
 /* ---------- story: the 10-second explainer ---------- */
@@ -392,7 +392,7 @@ footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .monitor-table th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); border-bottom: 1px solid var(--line-2); text-align: left; padding: 0; }
 .sort-btn { display: block; width: 100%; padding: 10px 12px; border: 0; background: none; text-align: left; font: 500 12px var(--mono); letter-spacing: .02em; color: var(--ink-3); cursor: pointer; white-space: nowrap; }
 .sort-btn small { font-size: 11px; }
-.sort-btn:hover, .sort-btn[aria-sort="ascending"], .sort-btn[aria-sort="descending"] { color: var(--ink); }
+.sort-btn:hover, th[aria-sort="ascending"] .sort-btn, th[aria-sort="descending"] .sort-btn { color: var(--ink); }
 .monitor-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .monitor-table td.mono { font-variant-numeric: tabular-nums; }
 .monitor-table tbody tr:hover { background: var(--surface-2); }
