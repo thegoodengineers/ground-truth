@@ -439,6 +439,9 @@
     if (show === undefined) show = listEl?.hidden;
     if (listEl) listEl.hidden = !show;
     if (mapEl) mapEl.hidden = show;
+    // the list replaces the map in the same frame: no 3D button over it, and no fog over its header
+    $("#enter3d").hidden = show;
+    mapEl?.closest(".mapcol")?.classList.toggle("listing", show);
     if (btn) {
       btn.setAttribute("aria-pressed", String(show));
       btn.textContent = tx(show ? "Map view" : "List view");
@@ -499,6 +502,7 @@
 
   function enterImmersive() {
     if (immersive) return;
+    if (!$("#list-view")?.hidden) toggleListView(false); // full screen is the 3D map, not the list
     immersive = true;
     mapWindow().classList.add("immersive");
     document.documentElement.classList.add("lock");
