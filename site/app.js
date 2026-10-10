@@ -1008,11 +1008,21 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => { setupLangToggle(); boot(); });
+  // app.js may arrive late (fetched again after a refusal), after the page has finished parsing
+  const start = () => {
+    setupLangToggle();
+    const cite = document.getElementById("cite-date"); // the suggested citation's date, after the Hindi swap
+    if (cite) cite.textContent = new Date().toISOString().slice(0, 10);
+    boot();
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  // and the stylesheet, if i18n.js (which watches it too) didn't arrive either
+  const sheet = document.querySelector('link[rel="stylesheet"][href="theme.css"]');
+  window.addEventListener("load", () => {
+    const styled = () => { try { return !!sheet.sheet && sheet.sheet.cssRules.length > 0; } catch (e) { return true; } };
+    if (sheet && !styled() && !document.querySelector('link[href^="theme.css?again"]')) {
+      document.head.appendChild(Object.assign(document.createElement("link"), { rel: "stylesheet", href: "theme.css?again=9" }));
+    }
+  }, { once: true });
 
-  // Fill the suggested citation date
-  document.addEventListener("DOMContentLoaded", () => {
-    const el = document.getElementById("cite-date");
-    if (el) el.textContent = new Date().toISOString().slice(0, 10);
-  });
 })();
