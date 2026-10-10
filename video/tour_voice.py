@@ -3,19 +3,20 @@
     set ELEVENLABS_API_KEY=<your key>          (Command Prompt; in PowerShell: $env:ELEVENLABS_API_KEY="<your key>")
     python video/tour_voice.py                 # ElevenLabs, English and Hindi, all 7 steps
     python video/tour_voice.py --lang en       # one language
-    python video/tour_voice.py --voice <id>    # another ElevenLabs voice (default: Rachel)
+    python video/tour_voice.py --voice <id>    # another ElevenLabs voice (default: Sarah)
+    python video/tour_voice.py --list-voices   # the voices this key can use, with their ids
     python video/tour_voice.py --engine edge   # the free edge-tts voice instead, no key needed
 
 The key is read from the environment only: never put it in a file, a commit or a chat. The site's tour plays a
 step's file and moves on when it ends, so the lines below are the captions, said aloud. A line naming a station
 the tour picks at run time (step 3) says "this monitor" instead.
 """
-import argparse, asyncio, json, os, sys, urllib.request
+import argparse, asyncio, json, os, sys, urllib.error, urllib.request
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "site" / "audio"
 ELEVEN = "https://api.elevenlabs.io/v1/text-to-speech/{voice}?output_format=mp3_44100_64"
-RACHEL = "21m00Tcm4TlvDq8ikWAM"  # an ElevenLabs default voice; eleven_multilingual_v2 speaks Hindi with it too
+SARAH = "EXAVITQu4vr4xnSDxMaL"  # a premade voice the free plan can use; eleven_multilingual_v2 speaks Hindi with it too
 EDGE = {"en": "en-IN-NeerjaNeural", "hi": "hi-IN-SwaraNeural"}
 
 LINES = {
@@ -40,6 +41,22 @@ LINES = {
 }
 
 
+def why(e):
+    """ElevenLabs' own explanation of an HTTP error (it sends a JSON body with a detail)."""
+    try:
+        detail = json.loads(e.read().decode()).get("detail")
+        return detail.get("message", detail) if isinstance(detail, dict) else detail
+    except Exception:
+        return e.reason
+
+
+def list_voices(key):
+    req = urllib.request.Request("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        for v in json.load(r).get("voices", []):
+            print(f"{v['voice_id']}  {v.get('name', '?'):24} {v.get('category', '')}")
+
+
 def eleven(text, voice, key):
     body = {"text": text, "model_id": "eleven_multilingual_v2",
             "voice_settings": {"stability": 0.55, "similarity_boost": 0.75, "style": 0.15}}
@@ -58,11 +75,25 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--lang", nargs="+", default=["en", "hi"], choices=sorted(LINES))
     ap.add_argument("--engine", default="elevenlabs", choices=["elevenlabs", "edge"])
-    ap.add_argument("--voice", default=RACHEL, help="ElevenLabs voice id")
+    ap.add_argument("--voice", default=SARAH, help="ElevenLabs voice id")
+    ap.add_argument("--list-voices", action="store_true", help="list the voices this key can use, then stop")
     a = ap.parse_args()
     key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     if a.engine == "elevenlabs" and not key:
         sys.exit("Set ELEVENLABS_API_KEY in this terminal first (see the top of this file), or use --engine edge.")
+    try:
+        if a.list_voices:
+            return list_voices(key)
+        speak_all(a, key)
+    except urllib.error.HTTPError as e:
+        hint = {401: "the key is wrong or incomplete",
+                402: "the plan doesn't allow this, often the voice: try --list-voices, then --voice <id>",
+                403: "the key lacks the Text to Speech permission",
+                429: "too many requests, or out of credits"}.get(e.code, "")
+        sys.exit(f"ElevenLabs said HTTP {e.code}: {why(e)}" + (f". Likely: {hint}" if hint else ""))
+
+
+def speak_all(a, key):
     OUT.mkdir(parents=True, exist_ok=True)
     for lang in a.lang:
         for i, text in enumerate(LINES[lang], 1):
