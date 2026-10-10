@@ -17,3 +17,4 @@ python src/scorer.py hourly.json sample/data
 
 `weather.json` is a real Open-Meteo reading for central Delhi, so the site has the weather line locally and the smoke tests see no missing file; the Lambda rewrites it every hour.
 `fires.json` is the stub the Lambda writes when no FIRMS key is configured (no count, no line).
+`history.json` is the month of daily answers the Lambda keeps (scored from the live cache on 10 Oct 2026), so the panels show the strip locally and the smoke tests see no missing file.
