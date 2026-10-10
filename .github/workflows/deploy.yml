@@ -66,7 +66,7 @@ jobs:
           aws s3 cp site/geo/ "s3://$bucket/geo/" --recursive --cache-control "public, max-age=86400"
           dist=$(out DistributionId)
           if [ -n "$dist" ] && [ "$dist" != "None" ]; then
-            aws cloudfront create-invalidation --distribution-id "$dist" --paths "/index.html" "/app.js" "/i18n.js" "/theme.css" "/scene3d.js" "/spray3d.js" >/dev/null
+            aws cloudfront create-invalidation --distribution-id "$dist" --paths "/index.html" "/method.html" "/app.js" "/i18n.js" "/theme.css" "/scene3d.js" "/spray3d.js" "/audio/*" >/dev/null
             echo "CloudFront invalidated"
           fi
           echo "live at $(out SiteUrl)"

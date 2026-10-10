@@ -92,7 +92,7 @@ Open `http://localhost:8000/?demo=1` for the self-playing tour.
 
 | Folder | What's in it |
 |---|---|
-| [site/](site/) | The website: landing, explainer, 3D Delhi (three.js), station panel |
+| [site/](site/) | The website: the home page (story, 3D Delhi in three.js, station panel, proof) and `method.html` (the three checks with formulas, validation, open data, FAQ); English and Hindi |
 | [src/](src/) | Backfill, scorer and the hourly ingest Lambda (pure Python, no dependencies); `regions/` holds each city's settings (Delhi, and Mumbai as a trial) |
 | [tests/](tests/) | 85 tests, most on real data, plus browser smoke tests |
 | [spike/](spike/) | The data analysis the checks are built on |

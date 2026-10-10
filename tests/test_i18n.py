@@ -16,8 +16,8 @@ def squash(s):
     return re.sub(r"\s+", "", s)
 
 
-def test_every_hindi_block_still_exists_in_the_page():
-    src = open(os.path.join(SITE, "index.html"), encoding="utf-8").read()
+def test_every_hindi_block_still_exists_in_the_pages():
+    src = "".join(open(os.path.join(SITE, page), encoding="utf-8").read() for page in ("index.html", "method.html"))
     src = re.sub(r"<(script|style|svg)\b.*?</\1>", "", src, flags=re.S)
     text = squash(html.unescape(re.sub(r"<[^>]+>", "", src)))
     keys = page_keys()
