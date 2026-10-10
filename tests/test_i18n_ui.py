@@ -16,8 +16,8 @@ def phrases():
     js = open(os.path.join(SITE, "app.js"), encoding="utf-8").read()
     out = {m.replace('\\"', '"') for m in re.findall(r'\btx\("((?:[^"\\]|\\.)*)"\)', js)}
     for body in re.findall(r"\btr`([^`]*)`", js):
-        n = iter(range(99))
-        out.add(re.sub(r"\$\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", lambda m: "{%d}" % next(n), body))
+        parts = re.split(r"\$\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", body)
+        out.add("".join(p + (f"{{{i}}}" if i < len(parts) - 1 else "") for i, p in enumerate(parts)))
     return out - {"..."}  # tr`...` in a comment
 
 
