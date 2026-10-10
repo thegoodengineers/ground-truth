@@ -463,7 +463,7 @@
     const link = (s) => `<button type="button" data-open="${s.id}" data-spot="${s._spot}">${esc(short(s.name))}</button>`;
 
     // physics: what an impossible reading looks like, and who does it now
-    $("#ex-physics").innerHTML = `<svg viewBox="0 0 320 150" aria-hidden="true"><text x="96" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM10 (all dust)")}</text><text x="224" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM2.5 (fine dust)")}</text><rect x="66" y="58" width="60" height="66" rx="5" fill="#c9cace"/><rect x="194" y="22" width="60" height="102" rx="5" fill="#d03b3b" opacity=".85"/><path d="M60 58h200" stroke="#08090a" stroke-dasharray="4 4"/><text x="96" y="50" text-anchor="middle" font-family="Geist Mono" font-size="10.5" fill="#4f5156">${tx("the limit")}</text><text x="224" y="80" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#ffffff">${tx("impossible")}</text></svg>`;
+    $("#ex-physics").innerHTML = `<svg viewBox="0 0 320 150" aria-hidden="true"><text x="96" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM10 (all dust)")}</text><text x="224" y="140" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#4f5156">${tx("PM2.5 (fine dust)")}</text><rect x="56" y="58" width="80" height="66" rx="5" fill="#c9cace"/><rect x="184" y="22" width="80" height="102" rx="5" fill="#d03b3b" opacity=".85"/><path d="M48 58h224" stroke="#08090a" stroke-dasharray="4 4"/><text x="96" y="50" text-anchor="middle" font-family="Geist Mono" font-size="10.5" fill="#4f5156">${tx("the limit")}</text><text x="224" y="80" text-anchor="middle" font-family="Geist Mono" font-size="11" fill="#ffffff">${tx("impossible")}</text></svg>`;
     const p = worst("physics", "fail_pct");
     if (p) { p._spot = "physics"; $("#ex-physics-case").innerHTML = calm("physics") + tr`Right now: ${link(p)} reports impossible values in ${p.checks.physics.fail_pct}% of last week's hours.`; }
 
@@ -741,7 +741,7 @@
     const todo = STATUS[s.status].todo; g.fillText(todo.length > 70 ? todo.slice(0, 69) + "…" : todo, 96, 500);
     const when = new Date(latest.data_through).toLocaleString(LOCALE, { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
     g.fillStyle = "#686a70"; g.font = `500 22px ${MONO}`;
-    g.fillText(`${tx("Readings through")} ${when} IST · CPCB/DPCC via OpenAQ · ${location.host}/#${s.id}`, 96, 556);
+    g.fillText(`${tr`Readings through ${when} IST`} · CPCB/DPCC via OpenAQ · ${location.host}/#${s.id}`, 96, 556);
     g.fillStyle = "#08090a"; g.font = `600 28px ${SANS}`; g.fillText("ground", W - 300, 556); g.fillStyle = "#686a70"; g.font = `500 28px ${MONO}`; g.fillText("truth", W - 300 + g.measureText("ground").width + 2, 556);
     const blob = await new Promise((r) => c.toBlob(r, "image/png"));
     const file = `ground-truth-${s.id}-${latest.data_through.slice(0, 13).replace("T", "-")}.png`;
