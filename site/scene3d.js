@@ -143,35 +143,49 @@ function sunFor(date = new Date()) {
 }
 
 function buildLandmarks(scene) {
-  const stone = new THREE.MeshStandardMaterial({ color: 0xb4b5b8, roughness: 0.95 });
+  // the real stone: Qutub Minar and India Gate are red and buff sandstone, the Lotus Temple white marble.
+  // A faint vertical grain (a canvas texture, no download) keeps big faces from looking like plastic.
+  const grain = (() => {
+    const c = document.createElement("canvas"); c.width = 64; c.height = 256;
+    const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, 64, 256);
+    let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let y = 0; y < 256; y += 4) { g.fillStyle = `rgba(0,0,0,${0.03 + rnd() * 0.07})`; g.fillRect(0, y, 64, 1 + rnd() * 2); } // courses of stone
+    for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(0,0,0,${rnd() * 0.06})`; g.fillRect(rnd() * 64, rnd() * 256, 1, 2 + rnd() * 6); }
+    const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 2); tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
+  const sandstone = new THREE.MeshStandardMaterial({ color: 0xb5674a, roughness: 0.9, map: grain });   // Qutub Minar's red sandstone
+  const buff = new THREE.MeshStandardMaterial({ color: 0xc89a72, roughness: 0.92, map: grain });        // its buff bands, India Gate
+  const marble = new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.55, metalness: 0.02 }); // the Lotus Temple
   const put = (obj, lon, lat) => { const [x, y] = xy(lon, lat); obj.position.set(x, 0.5, -y); obj.scale.setScalar(2); obj.traverse((o) => { o.castShadow = o.receiveShadow = true; }); scene.add(obj); };
 
   // Qutub Minar: five tapering storeys with balconies
   const qm = new THREE.Group(); let y = 0, r = 1.5;
   for (let i = 0; i < 5; i++) {
     const h = [7, 5.5, 4.5, 3.2, 3][i], r2 = r * 0.82;
-    const seg = new THREE.Mesh(new THREE.CylinderGeometry(r2, r, h, 20), stone); seg.position.y = y + h / 2; qm.add(seg);
-    const bal = new THREE.Mesh(new THREE.CylinderGeometry(r2 + 0.35, r2 + 0.35, 0.3, 20), stone); bal.position.y = y + h; qm.add(bal);
+    const seg = new THREE.Mesh(new THREE.CylinderGeometry(r2, r, h, 20), i < 3 ? sandstone : buff); seg.position.y = y + h / 2; qm.add(seg);
+    const bal = new THREE.Mesh(new THREE.CylinderGeometry(r2 + 0.35, r2 + 0.35, 0.3, 20), buff); bal.position.y = y + h; qm.add(bal);
     y += h; r = r2;
   }
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(r * 0.9, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), stone); cap.position.y = y + 0.15; qm.add(cap);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(r * 0.9, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), buff); cap.position.y = y + 0.15; qm.add(cap);
   put(qm, 77.1855, 28.5245);
 
   // India Gate: two piers, the arch lintel, attic and a shallow dome
   const ig = new THREE.Group();
-  [-4.2, 4.2].forEach((x) => { const p = new THREE.Mesh(new THREE.BoxGeometry(3.4, 11, 3.2), stone); p.position.set(x, 5.5, 0); ig.add(p); });
-  const lin = new THREE.Mesh(new THREE.BoxGeometry(11.8, 2.6, 3.2), stone); lin.position.y = 12.3; ig.add(lin);
-  const att = new THREE.Mesh(new THREE.BoxGeometry(9.5, 1.6, 2.6), stone); att.position.y = 14.4; ig.add(att);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), stone); dome.position.y = 15.2; ig.add(dome);
+  [-4.2, 4.2].forEach((x) => { const p = new THREE.Mesh(new THREE.BoxGeometry(3.4, 11, 3.2), buff); p.position.set(x, 5.5, 0); ig.add(p);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.2, 3.6), sandstone); foot.position.set(x, 0.6, 0); ig.add(foot); });
+  const lin = new THREE.Mesh(new THREE.BoxGeometry(11.8, 2.6, 3.2), buff); lin.position.y = 12.3; ig.add(lin);
+  const att = new THREE.Mesh(new THREE.BoxGeometry(9.5, 1.6, 2.6), buff); att.position.y = 14.4; ig.add(att);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), buff); dome.position.y = 15.2; ig.add(dome);
   put(ig, 77.2295, 28.6129);
 
   // Lotus Temple: two rings of petals around a base
   const lt = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 8, 0.8, 27), stone); base.position.y = 0.4; lt.add(base);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 8, 0.8, 27), marble); base.position.y = 0.4; lt.add(base);
   const petal = new THREE.SphereGeometry(2.6, 16, 12, 0, Math.PI, 0, Math.PI);
   [[9, 4.8, 0.95, 0.5], [9, 2.4, 1.25, 0]].forEach(([n, rad, sy, off]) => {
     for (let i = 0; i < n; i++) {
-      const a = ((i + off) / n) * Math.PI * 2, p = new THREE.Mesh(petal, stone);
+      const a = ((i + off) / n) * Math.PI * 2, p = new THREE.Mesh(petal, marble);
       p.scale.set(0.7, sy * 2.2, 0.55); p.position.set(Math.cos(a) * rad, 2.8 * sy, Math.sin(a) * rad);
       p.rotation.y = -a; p.rotation.z = -0.28 * (rad > 3 ? 1 : 0.4); lt.add(p);
     }
