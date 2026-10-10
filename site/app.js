@@ -274,6 +274,7 @@
     const t = histDoc.totals;
     const labels = t.map((d) => new Date(d.d + "T12:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
     const ds = (key, label, c) => ({ label, data: t.map((d) => d[key]), backgroundColor: c, borderWidth: 0, stack: "day" });
+    box.hidden = false; // before the chart is made: a hidden box gives Chart.js a zero-height canvas
     if (monthChart) monthChart.destroy();
     monthChart = new Chart(canvas, {
       type: "bar",
@@ -287,7 +288,6 @@
     const last = t[t.length - 1], flagged = t.reduce((a, d) => a + d.flag, 0) / t.length;
     const sub = $("#month-sub");
     if (sub) sub.textContent = tr`Every day scored at 17:00 IST, the way the live check scores it. On an average day this month ${flagged.toFixed(1)} monitors didn't add up; on ${labels[labels.length - 1]}, ${last.flag} did and ${last.watch} were worth a look.`;
-    box.hidden = false;
   }
   const CHECK_LETTER = { o: "ok", w: "watch", f: "flag", n: "nodata" };
   function historyHTML(s) {
