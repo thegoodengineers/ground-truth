@@ -148,7 +148,7 @@ function init(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   const gl = renderer.getContext(), info = gl.getExtension("WEBGL_debug_renderer_info");
   const soft = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : "");
-  renderer.setPixelRatio(Math.min(devicePixelRatio, matchMedia("(max-width: 760px)").matches ? 1.5 : 1.75));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, soft ? 1 : matchMedia("(max-width: 760px)").matches ? 1.5 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.domElement.setAttribute("aria-hidden", "true");
   stage.prepend(renderer.domElement);
@@ -200,7 +200,11 @@ function init(stage) {
     el.style.transform = `translate(${((v.x + 1) / 2) * stage.clientWidth}px, ${((1 - v.y) / 2) * stage.clientHeight}px) translate(-50%, -100%)`;
   }
 
-  let t = 0, lastStep = -1, playing = !reduced && !soft, visible = false, last = performance.now();
+  // It plays by itself from step 1 each time it scrolls into view. With "reduce motion" on (Windows' "animation
+  // effects" off sets it, often without people knowing) it still plays, once, without the camera sway, and rests on
+  // the last step. Pause is always there, and a visitor's Pause is kept.
+  let t = 0, lastStep = -1, playing = true, held = false, visible = false, last = performance.now();
+  const setPlaying = (on) => { playing = on; toggle.textContent = T(on ? "Pause" : "Play"); toggle.setAttribute("aria-pressed", String(!on)); };
   function frame(dt, draw = true) {
     // where the tanker is: drives in, parks next to the monitor, drives off
     const x = t < 3.5 ? -60 : t < 6.5 ? -60 + 63.2 * span(t, 3.5, 6.5) : t < 15.5 ? 3.2 : 3.2 + 60 * span(t, 15.5, 18);
@@ -239,7 +243,10 @@ function init(stage) {
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     // the full-screen 3D map (html.lock) covers this; no point drawing both
-    if (visible && playing && !document.documentElement.classList.contains("lock")) { t = (t + dt) % LOOP; frame(dt); }
+    if (visible && playing && !document.documentElement.classList.contains("lock")) {
+      if (reduced && t + dt >= LOOP - 0.5) { seek(15); setPlaying(false); } // once through, then rest on the end
+      else { t = (t + dt) % LOOP; frame(dt); }
+    }
     requestAnimationFrame(loop);
   }
   // jump to a step: run the simulation forward to it, so the dust and the water are where they'd be
@@ -249,10 +256,16 @@ function init(stage) {
   }
   steps.forEach((b, i) => b.addEventListener("click", () => { seek(STEPS[i][0] + (i === 2 ? 4.6 : 0.4)); }));
   toggle.addEventListener("click", () => {
-    playing = !playing; toggle.textContent = T(playing ? "Pause" : "Play");
-    toggle.setAttribute("aria-pressed", String(!playing));
+    held = playing; // a visitor's Pause sticks; Play after the end starts the story again
+    if (!playing && t >= 14.9) seek(0);
+    setPlaying(!playing);
   });
-  new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(stage);
+  // coming into view (a third of it on screen) starts the story from the beginning, unless the visitor paused it
+  new IntersectionObserver(([en]) => {
+    const was = visible;
+    visible = en.isIntersecting;
+    if (visible && !was && !held) { seek(0); setPlaying(true); }
+  }, { threshold: 0.35 }).observe(stage);
   // shaders compile in the background (it held the page at the first draw), then the first frame and the loop
   renderer.compileAsync(scene, camera).catch(() => {}).then(() => {
     if (!playing) { toggle.textContent = T("Play"); toggle.setAttribute("aria-pressed", "true"); seek(15); } else frame(0);
