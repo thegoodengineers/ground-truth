@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Ground Truth badge</title>
+<!--
+  A badge for one monitor, meant to be framed by a newsroom or a school's page:
+    <iframe src="https://<site>/embed.html?station=235" width="340" height="150" style="border:0" title="Ground Truth: Anand Vihar"></iframe>
+  It reads data/latest.json like the site does, refreshes every 5 minutes, and links back to the station. The server
+  sends this one page without the no-framing headers (src/serve.py); everything else on the site still refuses frames.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #fff; --ink: #08090a; --ink-2: #4f5156; --ink-3: #8b8d93; --line: #e6e6e8;
+    --ok: #0ca30c; --watch: #f2a60c; --flag: #d03b3b; --nodata: #a3a4a9;
+    --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, Consolas, monospace; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: transparent; }
+  body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  a.card { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 120px; padding: 12px 14px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 14px; text-decoration: none; color: inherit; }
+  .label { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  .name { font-size: 17px; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; width: fit-content; }
+  .pill i { width: 10px; height: 10px; display: inline-block; }
+  .pill.ok { background: rgba(12,163,12,.1); color: #0a6b0a; } .pill.ok i { background: var(--ok); border-radius: 50%; }
+  .pill.watch { background: rgba(250,178,25,.16); color: #7a4f00; } .pill.watch i { background: var(--watch); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+  .pill.flag { background: rgba(208,59,59,.1); color: #a32626; } .pill.flag i { background: var(--flag); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+  .pill.nodata { background: rgba(139,141,147,.14); color: #5d5f64; } .pill.nodata i { border: 2px dashed var(--nodata); border-radius: 50%; width: 8px; height: 8px; }
+  .nums { display: flex; gap: 16px; font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  .nums b { font-size: 18px; color: var(--ink); font-weight: 600; margin-right: 3px; }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+  .foot .brand { color: var(--ink); font-weight: 500; }
+  .err { padding: 14px; font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<a class="card" id="card" href="./" target="_top" rel="noopener"><span class="err">Loading…</span></a>
+<script>
+(() => {
+  const id = Number(new URLSearchParams(location.search).get("station"));
+  const card = document.getElementById("card");
+  const LABEL = { ok: "Agrees with neighbours", watch: "Worth a look", flag: "Doesn't add up", nodata: "Not enough data" };
+  const TODO = { ok: "Its reading is a fair guide for this area.", watch: "Compare it with the 4 monitors around it before acting.",
+                 flag: "Use what the 4 monitors around it read instead.", nodata: "Use what the 4 monitors around it read." };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fmt = (v) => (v == null ? "–" : Math.round(v));
+  async function draw() {
+    let latest;
+    try { latest = await (await fetch("data/latest.json", { cache: "no-cache" })).json(); } catch (e) { card.innerHTML = `<span class="err">Ground Truth: data is updating, try again in a minute.</span>`; return; }
+    const s = latest.stations.find((x) => x.id === id);
+    if (!s) { card.innerHTML = `<span class="err">Ground Truth: no monitor ${esc(id || "?")}. Use ?station=&lt;OpenAQ id&gt;, e.g. 235.</span>`; return; }
+    const when = new Date(latest.data_through).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    card.href = `./#${s.id}`;
+    card.innerHTML = `<span class="label">Air-quality monitor · ${esc(s.region || "Delhi")}</span>
+      <span class="name">${esc(s.name.split(",")[0])}</span>
+      <span class="pill ${s.status}"><i></i>${LABEL[s.status]}</span>
+      <span class="nums"><span><b>${fmt(s.latest && s.latest.pm25)}</b>µg/m³ PM2.5</span><span><b>${fmt(s.neighbours_latest && s.neighbours_latest.pm25)}</b>around it</span></span>
+      <span class="foot"><span>${TODO[s.status]}</span><span class="brand">groundtruth · ${when} IST</span></span>`;
+  }
+  draw();
+  setInterval(draw, 300000);
+})();
+</script>
+</body>
+</html>

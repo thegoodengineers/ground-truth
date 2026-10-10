@@ -648,13 +648,74 @@
     if (h2 && !quiet) { h2.setAttribute("tabindex", "-1"); h2.focus({ preventScroll: true }); }
     panel.querySelector("#share-btn")?.addEventListener("click", function () {
       const url = `${location.origin}${location.pathname}${location.search}#${id}`;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => { this.textContent = `✓ ${tx("Copied!")}`; setTimeout(() => { this.textContent = `🔗 ${tx("Copy link")}`; }, 2000); });
-      } else {
-        prompt(tx("Copy this link:"), url);
-      }
+      const done = () => { this.textContent = `✓ ${tx("Copied!")}`; setTimeout(() => { this.textContent = `🔗 ${tx("Copy link")}`; }, 2000); };
+      const show = () => showCopyBox(this, tx("Copy this link:"), url);
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, show); else show();
     });
+    panel.querySelector("#embed-btn")?.addEventListener("click", function () {
+      const src = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}embed.html?station=${id}`;
+      const snippet = `<iframe src="${src}" width="340" height="150" style="border:0" loading="lazy" title="Ground Truth: ${short(s.name)}"></iframe>`;
+      const done = () => { this.textContent = `✓ ${tx("Copied the embed code")}`; setTimeout(() => { this.textContent = `⧉ ${tx("Embed")}`; }, 2500); };
+      const show = () => showCopyBox(this, tx("Copy this embed code:"), snippet);
+      if (navigator.clipboard) navigator.clipboard.writeText(snippet).then(done, show); else show();
+    });
+    panel.querySelector("#card-btn")?.addEventListener("click", function () { shareCard(s, this); });
     mark(`station:${id}`);
+  }
+
+  // when the clipboard is not allowed (an embedded browser, an old one): the text in a box under the buttons, selected
+  function showCopyBox(btn, label, text) {
+    const meta = btn.closest(".meta"); if (!meta) return;
+    let box = meta.parentElement.querySelector(".copybox");
+    if (!box) { box = document.createElement("div"); box.className = "copybox"; meta.insertAdjacentElement("afterend", box); }
+    box.innerHTML = `<label><span class="label">${esc(label)}</span><textarea readonly rows="2"></textarea></label>`;
+    const ta = box.querySelector("textarea"); ta.value = text; ta.focus(); ta.select();
+  }
+
+  // a 1200x630 picture of one monitor's answer, drawn here, for WhatsApp, X or a slide: the name, the answer, the two
+  // numbers, when, and where it came from. Saved as a PNG (and copied to the clipboard where the browser allows it).
+  async function shareCard(s, btn) {
+    const W = 1200, H = 630, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    const within = (ms, p) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]); // never wait on a permission prompt or a font forever
+    try { await within(1500, Promise.all([document.fonts.load("600 64px Geist"), document.fonts.load("500 24px 'Geist Mono'")])); } catch (e) { /* system fonts then */ }
+    const SANS = "Geist, ui-sans-serif, system-ui, sans-serif", MONO = "'Geist Mono', ui-monospace, Consolas, monospace";
+    const col = { ok: "#0ca30c", watch: "#f2a60c", flag: "#d03b3b", nodata: "#a3a4a9" }[s.status];
+    g.fillStyle = "#f3f3f4"; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#ffffff"; g.beginPath(); g.roundRect(48, 48, W - 96, H - 96, 28); g.fill();
+    g.fillStyle = col; g.fillRect(48, 48, 14, H - 96); // the answer's colour down the left edge
+    g.fillStyle = "#8b8d93"; g.font = `500 22px ${MONO}`;
+    g.fillText(`${(s.region || "Delhi").toUpperCase()} · AIR-QUALITY MONITOR · OPENAQ ${s.id}`, 100, 118);
+    g.fillStyle = "#08090a"; g.font = `600 64px ${SANS}`;
+    const name = short(s.name); g.fillText(name.length > 26 ? name.slice(0, 25) + "…" : name, 96, 196);
+    // the answer as a pill with its shape, never colour alone
+    g.font = `500 30px ${MONO}`; const label = STATUS[s.status].label; const pw = g.measureText(label).width + 86;
+    g.fillStyle = { ok: "rgba(12,163,12,.1)", watch: "rgba(250,178,25,.16)", flag: "rgba(208,59,59,.1)", nodata: "rgba(139,141,147,.14)" }[s.status];
+    g.beginPath(); g.roundRect(96, 230, pw, 56, 28); g.fill();
+    g.fillStyle = col; g.beginPath();
+    if (s.status === "ok") g.arc(132, 258, 13, 0, Math.PI * 2);
+    else if (s.status === "watch") { g.moveTo(132, 244); g.lineTo(146, 271); g.lineTo(118, 271); g.closePath(); }
+    else if (s.status === "flag") { g.moveTo(132, 243); g.lineTo(147, 258); g.lineTo(132, 273); g.lineTo(117, 258); g.closePath(); }
+    else { g.setLineDash([5, 4]); g.lineWidth = 3; g.strokeStyle = col; g.arc(132, 258, 11, 0, Math.PI * 2); g.stroke(); g.setLineDash([]); }
+    if (s.status !== "nodata") g.fill();
+    g.fillStyle = { ok: "#0a6b0a", watch: "#7a4f00", flag: "#a32626", nodata: "#5d5f64" }[s.status]; g.fillText(label, 160, 269);
+    // the two numbers
+    const num = (x, big, small) => { g.fillStyle = "#08090a"; g.font = `600 72px ${SANS}`; g.fillText(big, x, 400); g.fillStyle = "#4f5156"; g.font = `500 22px ${MONO}`; g.fillText(small, x, 436); };
+    num(96, fmt(s.latest?.pm25), tx("THIS MONITOR, PM2.5 µg/m³"));
+    num(560, fmt(s.neighbours_latest?.pm25), tx("THE 4 MONITORS AROUND IT"));
+    g.fillStyle = "#08090a"; g.font = `500 26px ${SANS}`;
+    const todo = STATUS[s.status].todo; g.fillText(todo.length > 70 ? todo.slice(0, 69) + "…" : todo, 96, 500);
+    const when = new Date(latest.data_through).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    g.fillStyle = "#8b8d93"; g.font = `500 22px ${MONO}`;
+    g.fillText(`${tx("Readings through")} ${when} IST · CPCB/DPCC via OpenAQ · ${location.host}/#${s.id}`, 96, 556);
+    g.fillStyle = "#08090a"; g.font = `600 28px ${SANS}`; g.fillText("ground", W - 300, 556); g.fillStyle = "#8b8d93"; g.font = `500 28px ${MONO}`; g.fillText("truth", W - 300 + g.measureText("ground").width + 2, 556);
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    const file = `ground-truth-${s.id}-${latest.data_through.slice(0, 13).replace("T", "-")}.png`;
+    let copied = false;
+    try { if (navigator.clipboard && window.ClipboardItem) copied = (await within(2000, navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]).then(() => true))) === true; } catch (e) { /* download instead */ }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    btn.textContent = copied ? `✓ ${tx("Saved and copied")}` : `✓ ${tx("Saved")}`;
+    setTimeout(() => { btn.textContent = `🖼 ${tx("Share card")}`; }, 4000);
   }
 
   function adviceHTML(s) {
@@ -728,7 +789,7 @@
     return `
       <span class="label">${s.region === "NCR" ? "NCR" : tx("Delhi")} · ${tr`OpenAQ location ${s.id}`}</span>
       <h2>${esc(short(s.name))}</h2>
-      <div class="meta">${pill(s.status)}<button class="share-btn" id="share-btn" type="button" aria-label="${tx("Copy link to this monitor")}" title="${tx("Copy link")}">🔗 ${tx("Copy link")}</button></div>
+      <div class="meta">${pill(s.status)}<button class="share-btn" id="share-btn" type="button" aria-label="${tx("Copy link to this monitor")}" title="${tx("Copy link")}">🔗 ${tx("Copy link")}</button><button class="share-btn" id="card-btn" type="button" title="${tx("A picture of this answer, to post or send")}">🖼 ${tx("Share card")}</button><button class="share-btn" id="embed-btn" type="button" title="${tx("A badge for your own page, kept up every hour")}">⧉ ${tx("Embed")}</button></div>
       ${todo(s.status)}
       ${raisedBy(s)}
       <div class="now">

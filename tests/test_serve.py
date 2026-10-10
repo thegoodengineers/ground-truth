@@ -67,6 +67,15 @@ def test_etag_gives_304_and_missing_gives_404():
     assert r["statusCode"] == 405
 
 
+def test_the_badge_page_may_be_framed_and_nothing_else_may():
+    files = dict(FILES, **{"embed.html": (b"<!doctype html><a>badge</a>", {"content_type": "text/html"})})
+    r = serve.serve(req("/embed.html"), files.get)
+    assert "x-frame-options" not in r["headers"] and "frame-ancestors *" in r["headers"]["content-security-policy"]
+    assert "script-src 'self'" in r["headers"]["content-security-policy"]  # the rest of the policy stays
+    r = serve.serve(req("/"), files.get)
+    assert r["headers"]["x-frame-options"] == "DENY" and "frame-ancestors 'none'" in r["headers"]["content-security-policy"]
+
+
 def test_headers_match_the_cloudfront_policy():
     """One source of truth for the policy: the CloudFront ResponseHeadersPolicy in template.yaml."""
     text = open(os.path.join(HERE, "..", "template.yaml"), encoding="utf-8").read()
