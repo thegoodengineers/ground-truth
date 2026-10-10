@@ -74,6 +74,11 @@ button, input, select { font: inherit; }
 .sec .changes button:hover { background: var(--surface-3); }
 .sec .changes .arrow { color: var(--ink-3); }
 
+/* "find the monitor near me": the hero asks the browser for a position, once, on a click */
+.hero .near-btn { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+.hero .near-line { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin: 6px 0 0; }
+.hero .near-line b { color: var(--ink); font-weight: 500; }
+
 /* ---------- nav ---------- */
 .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1500; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: color-mix(in srgb, var(--bg) 75%, transparent); border-bottom: 1px solid transparent; }
 .nav .wrap { display: flex; align-items: center; gap: 18px; height: 68px; }

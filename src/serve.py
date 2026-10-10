@@ -24,7 +24,7 @@ SECURITY_HEADERS = {
     "referrer-policy": "strict-origin-when-cross-origin",
     "x-frame-options": "DENY",
     "x-xss-protection": "1; mode=block",
-    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
 }
 TEXT_TYPES = ("application/json", "application/javascript", "text/javascript", "image/svg+xml", "application/xml")
 CACHE = {"vendor/": "public, max-age=604800", "geo/": "public, max-age=86400", "data/": "public, max-age=300"}
