@@ -231,6 +231,7 @@ Resources:
           METRIC_NAMESPACE: GroundTruth
           STACK_NAME: !Ref AWS::StackName
           REGION: delhi  # src/regions/<name>.json: the monitors, the neighbour radius, the map
+          SITE_URL: !If [UseCloudFront, !Sub "https://${SiteDistribution.DomainName}/", !GetAtt ServeFunctionUrl.FunctionUrl]  # for the feed's links
           FIRMS_KEY_PARAM: !Ref FirmsKeyParam
       Events:
         Hourly:

@@ -76,7 +76,7 @@ Any field but `source` can be `null`; the file can be missing (the site then sho
  "totals": [{"d": "2026-09-12", "ok": 36, "watch": 7, "flag": 5, "nodata": 4}],
  "changes": [{"id": 7005, "name": "Loni, Ghaziabad", "from": "ok", "to": "watch", "day": "2026-10-09"}]}
 ```
-`s` is the day's status; `c` is the three checks, physics/neighbours/history, one letter each (o ok, w watch, f flag, n no data); `changes` is the newest day against the one before.
+`s` is the day's status; `c` is the three checks, physics/neighbours/history, one letter each (o ok, w watch, f flag, n no data); `changes` is the newest day against the one before; `names` maps ids to names for the feed. `data/changes.xml` is the same month of changes as an Atom feed (every pair of consecutive days, newest first, linking to `#<id>/history`), written when the Lambda knows the site's URL (`SITE_URL`).
 
 `data/fires.json` (written only when a NASA FIRMS key is in SSM: the last 24 h of VIIRS fire points in the region's fire box, the brightest 400 as `points` = [lat, lon, brightness, date, time])
 ```json

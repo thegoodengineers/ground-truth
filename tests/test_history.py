@@ -60,6 +60,29 @@ def test_a_short_budget_scores_the_newest_days_first(data):
     assert all(d > "2025-11-20" for d in doc["days"])  # the newest ones
 
 
+def test_the_feed_lists_every_change_newest_first(data):
+    import xml.etree.ElementTree as ET
+    hourly, stations = data
+    store = MemStore()
+    store.put_text = lambda key, text, content_type=None, max_age=None: store.data.__setitem__(key, text)
+    history.update(store, hourly, stations, "2025-11-30T23", budget_s=60, site_url="https://example.test/")
+    xml = store.data[history.FEED_KEY]
+    root = ET.fromstring(xml)
+    ns = {"a": "http://www.w3.org/2005/Atom"}
+    entries = root.findall("a:entry", ns)
+    assert root.find("a:link", ns).get("href") == "https://example.test/" and entries
+    titles = [e.find("a:title", ns).text for e in entries]
+    assert all("→" in t for t in titles)
+    dates = [e.find("a:updated", ns).text for e in entries]
+    assert dates == sorted(dates, reverse=True)
+    assert entries[0].find("a:link", ns).get("href").startswith("https://example.test/#")
+    doc = store.data[history.KEY]
+    n_changes = sum(1 for rows in doc["stations"].values() for a, b in zip(rows, rows[1:], strict=False) if a["s"] != b["s"])
+    assert len(entries) == min(200, n_changes)
+    for bad in ("fake", "tamper", "spray", "cheat", "fraud"):
+        assert bad not in xml.lower().replace("not that anyone tampered", "")
+
+
 def test_changes_are_the_newest_day_against_the_one_before(data):
     hourly, stations = data
     store = MemStore()
