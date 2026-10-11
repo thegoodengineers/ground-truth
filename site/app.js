@@ -229,6 +229,12 @@
       note.hidden = hours <= 3;
       const behind = hours < 48 ? tr`${Math.round(hours)} hours` : tr`${Math.round(hours / 24)} days`;
       note.textContent = tr`The public feed from the monitors (CPCB, through OpenAQ) is ${behind} behind right now. Every answer here is for the newest hour it has: ${when} IST.`;
+      if (!note.hidden) {  // the proof is one click away: OpenAQ's own page says when the monitor last reported
+        const a = document.createElement("a");
+        a.href = "https://explore.openaq.org/locations/235"; a.target = "_blank"; a.rel = "noopener";
+        a.textContent = tx("See it on OpenAQ");
+        note.append(" ", tx("Our hourly check is still running and scores each new hour as it arrives."), " ", a);
+      }
     }
     const live = $("#chrome-live");
     if (live) live.textContent = tr`Readings through ${when}`;

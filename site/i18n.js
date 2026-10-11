@@ -418,6 +418,8 @@
     "Delhi": "दिल्ली",
     "{0} hours": "{0} घंटे",
     "{0} days": "{0} दिन",
+    "See it on OpenAQ": "OpenAQ पर देखें",
+    "Our hourly check is still running and scores each new hour as it arrives.": "हमारी हर घंटे की जाँच चल रही है, और हर नया घंटा आते ही उसे जाँचती है।",
     "The public feed from the monitors (CPCB, through OpenAQ) is {0} behind right now. Every answer here is for the newest hour it has: {1} IST.":
       "मॉनिटरों का सार्वजनिक फ़ीड (CPCB, OpenAQ के ज़रिए) अभी {0} पीछे चल रहा है। यहाँ हर जवाब उसके सबसे नए घंटे का है: {1} IST।",
     // the ?demo=1 tour
