@@ -131,6 +131,10 @@ Open `http://localhost:8000/?demo=1` for the self-playing tour.
 - The ground under the 3D city: a cloud-free Sentinel-2 image of Delhi from 5 Oct 2026, read from the Cloud-Optimised GeoTIFFs on the [Registry of Open Data on AWS](https://registry.opendata.aws/sentinel-2-l2a-cogs/) (`site/geo/make_satellite.py`). Contains modified Copernicus Sentinel data 2026, processed by Element 84 and Sinergise.
 - [three.js](https://threejs.org) and [Chart.js](https://www.chartjs.org) (MIT); Geist and Geist Mono fonts (SIL Open Font License).
 
+## Licence
+
+The code is MIT ([LICENSE](LICENSE)). The data keeps the licences listed above: the ward geometry in `site/geo/` stays CC BY-SA 2.5 India, and the bundled three.js and Chart.js keep their own MIT licences.
+
 ## Team
 
 Chirag ([@Chirag6722](https://github.com/Chirag6722)), Abhijeet ([@thegoodengineer](https://github.com/thegoodengineer)), Bhumika ([@Bhumika-1432006](https://github.com/Bhumika-1432006)), Ayush ([@AyushVUpadhye](https://github.com/AyushVUpadhye)).
