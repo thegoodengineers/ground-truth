@@ -18,7 +18,7 @@ They didn't stand out. Anand Vihar ranked 6th and Jahangirpuri 13th of 38. Anand
 
 That changed the product. We stopped trying to detect spraying, and built something that finds monitors whose numbers don't add up and shows the evidence.
 
-![Delhi in 3D: each mast is a monitor, its column as tall as its PM2.5 reading, the smog thicker where the air is worse](img/blog-3d.png)
+![Ground Truth's home page: the question, the plain answer, and an honest note when the public feed runs behind](img/blog-hero.png)
 
 ## Three questions, every hour
 
@@ -28,6 +28,8 @@ That changed the product. We stopped trying to detect spraying, and built someth
 
 When a monitor is in doubt, the site shows what its four neighbours read right now. That is the number a principal can actually use.
 
+![IGI Airport today: it doesn't add up, so its panel says to use what its four neighbours read, 70 µg/m³ against its own 48, with the day's air in cigarettes and the evidence below](img/blog-panel.png)
+
 Then we asked what each reader does next, and built for that:
 
 - **A principal** sees *when the air is cleanest*: the last week's PM2.5 by hour of day, from the reading you can trust, with the cleanest three hours between 7:00 and 19:00 marked. Delhi's air is usually cleanest mid-afternoon, when it mixes highest, but each monitor gets its own measured week, not a textbook curve.
@@ -35,7 +37,7 @@ Then we asked what each reader does next, and built for that:
 - **The people who run the monitors** get a list called *Fix these first*: the monitors that didn't add up on the most of the last 28 days, each with its month as a strip and the check that caught it most often. It turns the checks into work orders.
 - **Everyone** can read it in Hindi: one button switches the whole site, including each monitor's answer and its evidence, and a test fails if any phrase is left in English.
 
-![A flagged monitor's panel: the answer, what the four nearest monitors read, and the three checks with their evidence](img/blog-panel.png)
+![Fix these first: the monitors that didn't add up on the most of the last 28 days, each with its month as a strip and the check that caught it](img/blog-fixfirst.png)
 
 We also scored every day of October and November 2025 the way the live site would have. On an ordinary day, about 21 in 100 judged monitors got "doesn't add up" and 27 in 100 "worth a look". Most flags came from the physics check, 7.6 a day: readings that cannot be real, whatever the air is doing. The neighbours and history checks raised 2.9 flags a day between them.
 
