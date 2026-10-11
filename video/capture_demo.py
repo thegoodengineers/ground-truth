@@ -11,7 +11,8 @@ Shots (the station ids are the ones the script names; check them against the liv
   5 start    the hero, the live example and the stats, then down to the map and into 3D
   6 physics  fly to Vikas Sadan (301), which fails the physics check; the card outlined
   7 chart    Anand Vihar (235), the hour-of-day chart with the 11-17 band
-  8 history  Jahangirpuri (8235), the history card, then "this station vs the 4 nearest now"
+  8 history  IGI Airport (5650), the history card, then "this station vs the 4 nearest now"
+  9 features Anand Vihar's panel: "When the air is cleanest" and the cigarettes row, then "Fix these first"
 """
 import sys
 
@@ -20,8 +21,8 @@ from playwright.sync_api import sync_playwright
 from frames import BUILD, H, W, Recorder, launch, vo_seconds
 from record import PAD
 
-MIN = {5: 9.0, 6: 8.0, 7: 9.0, 8: 9.0}
-PHYSICS, CHART, HISTORY = 301, 235, 8235
+MIN = {5: 9.0, 6: 8.0, 7: 9.0, 8: 9.0, 9: 10.0}
+PHYSICS, CHART, HISTORY, FEATURES = 301, 235, 5650, 235  # 5650: IGI Airport (T3), flagged on history (daytime PM10 -38%)
 
 
 def ready(page, name, max_s=20):
@@ -36,13 +37,13 @@ def main(args):
     url = "http://localhost:8000"
     if "--url" in args:
         url = args[args.index("--url") + 1]
-    wanted = {int(a) for a in args if a.isdigit()} or {5, 6, 7, 8}
+    wanted = {int(a) for a in args if a.isdigit()} or {5, 6, 7, 8, 9}
     BUILD.mkdir(exist_ok=True)
     with sync_playwright() as p:
         b = launch(p)
         page = b.new_page(viewport={"width": W, "height": H})
         page.clock.install()
-        page.goto(f"{url}/?capture=1", wait_until="domcontentloaded")
+        page.goto(f"{url}/?capture=1", wait_until="domcontentloaded", timeout=120000)
         page.evaluate("document.fonts.ready")
         page.add_style_tag(content=".drift { animation-play-state: paused !important; }")  # CSS runs on the real clock
         assert ready(page, "map:ready"), "the map never became ready: is the site served with data?"
@@ -84,9 +85,19 @@ def main(args):
         if 8 in wanted:
             shot(8, [(0.0, "window.__gt.enterImmersive()"),
                      (0.3, go(HISTORY, "history")),
-                     (0.4, say("History", "Jahangirpuri against its own last three weeks. Worth a look, not proof.")),
+                     (0.4, say("History", "IGI Airport against its own last three weeks: daytime dust down 38%. "
+                                          "A reason to check, not proof.")),
                      (6.5, say("What to do", "When a station is in doubt, use what the stations around it read right now.")),
                      (6.6, "document.querySelector('#panel .now')?.scrollIntoView({behavior: 'smooth', block: 'center'})")])
+        if 9 in wanted:
+            shot(9, [(0.0, "window.__gt.enterImmersive()"),
+                     (0.2, go(FEATURES, "")),
+                     (0.4, say("Every panel", "The cleanest hours to be outside, and a day of this air in cigarettes.")),
+                     (1.2, "document.querySelector('#panel .hours')?.scrollIntoView({behavior: 'smooth', block: 'center'})"),
+                     (4.2, "document.querySelector('#panel .cigs')?.scrollIntoView({behavior: 'smooth', block: 'center'})"),
+                     (6.4, "window.__gt.exitImmersive()"),
+                     (6.6, say("For the boards", "The monitors that fail most often: fix these first.")),
+                     (6.8, "document.querySelector('#fixfirst')?.scrollIntoView({behavior: 'smooth', block: 'start'})")])
         b.close()
 
 
