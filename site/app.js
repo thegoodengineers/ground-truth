@@ -1226,14 +1226,15 @@
     let items = [], idx = -1;
     const close = () => { list.hidden = true; box.setAttribute("aria-expanded", "false"); idx = -1; };
     const show = () => {
-      const q = input.value.trim().toLowerCase();
+      // the old spelling people still type for the renamed city
+      const q = input.value.trim().toLowerCase().replace(/gurgaon/g, "gurugram");
       const monitors = latest.stations.filter((s) => !q || s.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 8);
       const wards = q.length >= 2 && wardList ? wardList.filter((w) => w.name.toLowerCase().includes(q)).slice(0, 5) : [];
       items = [...monitors.map((s) => ({ id: s.id })), ...wards.map((w) => ({ ward: w }))];
       list.innerHTML = items.map((it, i) => it.ward
         ? `<li role="option" id="opt-${i}" data-i="${i}" aria-selected="${i === idx}">${esc(it.ward.name)} <span class="kind">${tx("neighbourhood: opens the nearest monitor")}</span></li>`
         : `<li role="option" id="opt-${i}" data-i="${i}" aria-selected="${i === idx}">${esc(byId.get(it.id).name)} ${pill(byId.get(it.id).status)}</li>`).join("")
-        || `<li aria-disabled="true">${tx("No station or neighbourhood matches")}</li>`;
+        || `<li aria-disabled="true">${tx("No station or ward by that name. Try a nearby ward, or 'find the monitor near me' below.")}</li>`;
       list.hidden = false; box.setAttribute("aria-expanded", "true");
     };
     const reset = () => { close(); input.value = ""; $("#roster-q").value = ""; drawRoster(); $("#live").scrollIntoView({ behavior: "smooth", block: "start" }); };
