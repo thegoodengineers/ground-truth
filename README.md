@@ -35,6 +35,7 @@ The site explains itself in ten seconds with one real monitor, and then lets you
 - **The real ground**: the 3D city stands on a Sentinel-2 image of Delhi from the Registry of Open Data on AWS, lit by the real hour.
 - **Fix these first**: a maintenance list for DPCC and CPCB, the monitors that didn't add up on the most of the last 28 days, each with its month as a strip and the check that caught it most often.
 - **When the air is cleanest**: every panel shows PM2.5 by hour of day over the last week, from the reading you can trust, and the cleanest three hours between 07:00 and 19:00, for a principal planning PE or a parent planning a walk.
+- **Delhi's air, from the monitors that add up**: the hero gives one city figure, the 24-hour PM2.5 average of only the monitors that agree with their neighbours, as a multiple of WHO's 24-hour guideline (15 µg/m³, 2021) and in cigarettes, next to what all reporting monitors give. Each panel also says how many of the last 7 days had the 16 hours of readings CPCB needs to count a day.
 - **The air in cigarettes**: every panel turns the 24-hour PM2.5 you can trust into cigarettes a day, using Berkeley Earth's estimate (Muller and Muller, 2015: a day at 22 µg/m³ does about the harm of one cigarette).
 - **In Hindi too**: one button switches the whole site, including each monitor's answer, its evidence and the advice.
 - **A 60-second tour that plays itself**, with a voice-over (ElevenLabs), for anyone who would rather watch than read.
@@ -52,7 +53,7 @@ The full analysis is in [spike/RESULTS.md](spike/RESULTS.md).
 
 - **We tried to fool it 30 times. It caught all 30.** In real November 2025 data, we lowered one quiet monitor's daytime PM10 by 40%, one monitor at a time. Every one was flagged, and only 3 other monitors were wrongly flagged across all 30 runs.
 - **Every day of October and November 2025, scored as the live site would have** ([docs/VALIDATION.md](docs/VALIDATION.md), made by `src/validate.py`). About 1 in 5 monitors was flagged on a typical day, most of them by the physics check: readings that can't be real. The neighbour and history checks flagged about 3 monitors a day between them. A planted daytime drop of 30% was flagged 29 times out of 30, a drop of 40% every time, and a drop of 20% 10 times out of 30.
-- **97 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, the hourly ingest against a fake API, including OpenAQ failures, the HTTPS front with its security headers, and the Hindi page staying in step with the English one.
+- **98 automated tests** run on every change (`make test`, GitHub Actions). They cover the planted anomaly, physics, the data contract, the wording (no output ever says "fake", "tampered" or "sprayed"), silent monitors, the CPCB AQI bands, the hourly ingest against a fake API, including OpenAQ failures, the HTTPS front with its security headers, and the Hindi page staying in step with the English one.
 
 ## Built on AWS
 

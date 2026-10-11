@@ -151,8 +151,8 @@
       "हमने नवंबर 2025 का असली डेटा लिया और एक-एक करके हर ठीक मॉनिटर की दिन की धूल चुपचाप 40% घटा दी। Ground Truth ने हर एक को फ़्लैग किया, और सभी 30 बार में किसी दूसरे मॉनिटर को सिर्फ़ 3 बार ग़लती से फ़्लैग किया।",
     "We also scored every day of October and November 2025 as this site would have. Most flags were readings that can't be real, and smaller planted drops were caught less often (30%: 29 of 30, 20%: 10 of 30). Read the validation report":
       'हमने अक्टूबर और नवंबर 2025 के हर दिन को वैसे ही जाँचा जैसे यह साइट जाँचती। ज़्यादातर फ़्लैग ऐसी रीडिंग थे जो असली हो ही नहीं सकतीं, और छोटी गिरावटें कम बार पकड़ी गईं (30%: 30 में से 29, 20%: 30 में से 10)। <a href="https://github.com/thegoodengineers/ground-truth/blob/main/docs/VALIDATION.md">जाँच की रिपोर्ट पढ़ें</a>',
-    "This test, and 96 others, run automatically every time the code changes. See the tests":
-      'यह टेस्ट, और 96 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
+    "This test, and 97 others, run automatically every time the code changes. See the tests":
+      'यह टेस्ट, और 97 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
     "Built on AWS": "AWS पर बना",
     "Nobody presses a button.It checks itself every hour.": '<span class="dim">कोई बटन नहीं दबाता।</span>यह हर घंटे ख़ुद जाँच करता है।',
     "The whole system is one AWS SAM template, deployed in us-east-1 next to the public OpenAQ archive it reads from.":
@@ -204,6 +204,7 @@
     "IST hour of the monitor's newest PM reading; with none in the last 3 hours, status is nodata":
       "मॉनिटर की सबसे नई PM रीडिंग का IST घंटा; पिछले 3 घंटों में कोई न हो, तो <code>status</code> <code>nodata</code> है",
     "CPCB AQI band of the 24-hour average, for this monitor and for its four neighbours": "24 घंटे के औसत का CPCB AQI स्तर, इस मॉनिटर और इसके चार पड़ोसियों के लिए",
+    "How many of the last 7 days had readings in 16 or more hours, the minimum CPCB needs to count a day": "पिछले 7 में से कितने दिनों में 16 या ज़्यादा घंटों की रीडिंग थी, किसी दिन को गिनने के लिए CPCB की न्यूनतम शर्त",
     "The 24-hour average PM2.5 in µg/m³, for this monitor and for its four neighbours": "24 घंटे का औसत PM2.5, µg/m³ में, इस मॉनिटर और इसके चार पड़ोसियों के लिए",
     "IST timestamp of the latest scored hour": "आख़िरी जाँचे गए घंटे का IST समय",
     "Our results (status, checks, this CSV) are released under CC BY 4.0. Underlying PM readings are from OpenAQ and subject to their terms. Suggested citation: Ground Truth, thegoodengineers, , https://github.com/thegoodengineers/ground-truth.":
@@ -424,6 +425,12 @@
     "{0} hours": "{0} घंटे",
     "{0} days": "{0} दिन",
     "See it on OpenAQ": "OpenAQ पर देखें",
+    "That is within WHO's 24-hour guideline for PM2.5 (15 µg/m³).": "यह PM2.5 के लिए WHO की 24 घंटे की सीमा (15 µg/m³) के भीतर है।",
+    "That is {0} times WHO's 24-hour guideline for PM2.5 (15 µg/m³).": "यह PM2.5 के लिए WHO की 24 घंटे की सीमा (15 µg/m³) का {0} गुना है।",
+    "Complete days this week: {0} of 7. CPCB counts a day only with 16 or more hourly readings.": "इस हफ़्ते के पूरे दिन: 7 में से {0}। CPCB किसी दिन को तभी गिनता है जब उसमें 16 या ज़्यादा घंटों की रीडिंग हो।",
+    "Delhi's air today: {0} PM2.5, the 24-hour average of the {1} monitors that agree with their neighbours.": "दिल्ली की आज की हवा: {0} PM2.5, उन {1} मॉनिटरों का 24 घंटे का औसत जो अपने पड़ोसियों से मेल खाते हैं।",
+    "Delhi's air in the 24 hours to {0} IST: {1} PM2.5, the average of the {2} monitors that agree with their neighbours.": "{0} IST तक के 24 घंटों में दिल्ली की हवा: {1} PM2.5, उन {2} मॉनिटरों का औसत जो अपने पड़ोसियों से मेल खाते हैं।",
+    "About {0} cigarettes a day. All {1} reporting monitors together give {2}.": "रोज़ लगभग {0} सिगरेट के बराबर। रीडिंग भेज रहे सभी {1} मॉनिटर मिलाकर {2} बताते हैं।",
     "{0} against its own last three weeks. A reason to check, not proof.": "{0}, अपने पिछले तीन हफ़्तों के मुकाबले। जाँचने की वजह, पर सबूत नहीं।",
     "When the air is cleanest": "हवा कब सबसे साफ़ रहती है",
     "PM2.5 by hour of day over the last 7 days · {0}": "पिछले 7 दिनों में दिन के हर घंटे का PM2.5 · {0}",

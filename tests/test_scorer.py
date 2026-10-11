@@ -328,3 +328,14 @@ def test_by_hour_takes_the_median_per_ist_hour_of_the_last_week():
     assert prof == [float(h) for h in range(24)]
     assert scorer.med_by_hour([[1.0] * 24, [3.0] * 24, [None] * 24]) == [2.0] * 24
     assert scorer.med_by_hour([[1.0] * 24, [None] * 24]) == [None] * 24  # one neighbour isn't enough
+
+
+def test_complete_days_follow_cpcbs_16_hour_rule():
+    full = [50.0] * (7 * 24)
+    assert scorer.complete_days(full, [None] * (7 * 24)) == 7
+    gappy = list(full)
+    for h in range(9):  # the newest day keeps 15 hours: below CPCB's 16, so it doesn't count
+        gappy[-1 - h] = None
+    assert scorer.complete_days(gappy, [None] * (7 * 24)) == 6
+    pm10_only = [None] * (7 * 24 - 16) + [None] * 16
+    assert scorer.complete_days(pm10_only, [80.0] * (7 * 24)) == 7  # either PM measure counts as a reading

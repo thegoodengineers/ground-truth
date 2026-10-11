@@ -180,6 +180,7 @@
     }
     latest.stations.forEach((s) => byId.set(s.id, s));
     renderFresh();
+    renderCity();
     loadWeather();
     loadFires();
     loadHistory();
@@ -872,14 +873,52 @@
   // the same 24-hour average as cigarettes: a day at 22 µg/m³ PM2.5 does about the harm of one cigarette
   // (Berkeley Earth; R. A. Muller and E. A. Muller, "Air Pollution and Cigarette Equivalence", 2015)
   const CIG_UGM3 = 22;
+  const cigarettes = (pm25) => { const n = pm25 / CIG_UGM3; return n < 2 ? (Math.round(n * 2) / 2).toLocaleString(LOCALE) : String(Math.round(n)); };
+  // WHO's 2021 global air quality guideline for PM2.5: 15 µg/m³ as a 24-hour average (India's standard is 60)
+  const WHO_PM25_24H = 15;
+  function whoText(pm25) {
+    if (pm25 <= WHO_PM25_24H) return tx("That is within WHO's 24-hour guideline for PM2.5 (15 µg/m³).");
+    const x = pm25 / WHO_PM25_24H;
+    return tr`That is ${x < 10 ? x.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) : String(Math.round(x))} times WHO's 24-hour guideline for PM2.5 (15 µg/m³).`;
+  }
   function cigsHTML(pm25) {
     if (pm25 == null) return "";
     const n = pm25 / CIG_UGM3;
-    if (n < 0.5) return `<p class="cigs">${tx("Breathing this air for a day does less harm than half a cigarette.")}</p>`;
-    const shown = n < 2 ? (Math.round(n * 2) / 2).toLocaleString(LOCALE) : String(Math.round(n));
+    const who = ` <span class="who">${whoText(pm25)}</span>`;
+    if (n < 0.5) return `<p class="cigs">${tx("Breathing this air for a day does less harm than half a cigarette.")}${who}</p>`;
+    const shown = cigarettes(pm25);
     const icons = Math.min(12, Math.round(n));
     const cig = '<svg viewBox="0 0 24 8" aria-hidden="true"><rect x="0.5" y="1.5" width="17" height="5" rx="1" fill="#f5f5f2" stroke="#8a8c92"/><rect x="17.5" y="1.5" width="6" height="5" rx="1" fill="#e2a25a"/></svg>';
-    return `<p class="cigs"><span class="cig-row">${cig.repeat(icons)}${n > 12.5 ? "<i>+</i>" : ""}</span>${tr`Breathing this air for a day is like smoking ${shown} cigarettes.`} <a href="https://berkeleyearth.org/air-pollution-and-cigarette-equivalence/" target="_blank" rel="noopener">${tx("Berkeley Earth's estimate")}</a></p>`;
+    return `<p class="cigs"><span class="cig-row">${cig.repeat(icons)}${n > 12.5 ? "<i>+</i>" : ""}</span>${tr`Breathing this air for a day is like smoking ${shown} cigarettes.`} <a href="https://berkeleyearth.org/air-pollution-and-cigarette-equivalence/" target="_blank" rel="noopener">${tx("Berkeley Earth's estimate")}</a>${who}</p>`;
+  }
+
+  // how many of the last 7 days CPCB's method could count for this monitor (16 or more hourly readings a day)
+  function daysHTML(s) {
+    const n = s.complete_days_7d;
+    if (n == null) return "";
+    return `<div class="std${n < 4 ? " short" : ""}">${tr`Complete days this week: ${n} of 7. CPCB counts a day only with 16 or more hourly readings.`}</div>`;
+  }
+
+  // the hero's city line: Delhi's air from the monitors that agree with their neighbours, the way a person would want
+  // the city figure; CPCB's method needs at least 3 monitors for a city figure, so with fewer it says nothing
+  function renderCity() {
+    const el = $("#cityair");
+    if (!el) return;
+    const trusted = latest.stations.filter((s) => s.status === "ok" && s.pm25_24h != null).map((s) => s.pm25_24h);
+    const all = latest.stations.filter((s) => s.status !== "nodata" && s.pm25_24h != null).map((s) => s.pm25_24h);
+    if (trusted.length < 3) { el.hidden = true; return; }
+    const avg = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const t = avg(trusted);
+    // "today" only while the feed is current; when it is behind, name the hour the 24 hours end at
+    const through = new Date(latest.data_through);
+    const behind = (Date.now() - through.getTime()) / 36e5 > 3;
+    const when = through.toLocaleString(LOCALE, { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+    const fig = `<b>${Math.round(t)} µg/m³</b>`;
+    const lead = behind
+      ? tr`Delhi's air in the 24 hours to ${when} IST: ${fig} PM2.5, the average of the ${trusted.length} monitors that agree with their neighbours.`
+      : tr`Delhi's air today: ${fig} PM2.5, the 24-hour average of the ${trusted.length} monitors that agree with their neighbours.`;
+    el.innerHTML = `${lead} ${whoText(t)} ${tr`About ${cigarettes(t)} cigarettes a day. All ${all.length} reporting monitors together give ${Math.round(avg(all))}.`}`;
+    el.hidden = false;
   }
 
   function lastHTML(s) {
@@ -908,6 +947,7 @@
         <div><small>${tx("4 nearest stations, PM2.5 now")}</small><b>${fmt(s.neighbours_latest?.pm25)}<small> µg/m³</small></b></div>
       </div>
       ${lastHTML(s)}
+      ${daysHTML(s)}
       <div class="std">${tr`India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.`}</div>
       ${adviceHTML(s)}
       ${hoursHTML(s, doc)}
