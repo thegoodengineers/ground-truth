@@ -151,8 +151,8 @@
       "हमने नवंबर 2025 का असली डेटा लिया और एक-एक करके हर ठीक मॉनिटर की दिन की धूल चुपचाप 40% घटा दी। Ground Truth ने हर एक को फ़्लैग किया, और सभी 30 बार में किसी दूसरे मॉनिटर को सिर्फ़ 3 बार ग़लती से फ़्लैग किया।",
     "We also scored every day of October and November 2025 as this site would have. Most flags were readings that can't be real, and smaller planted drops were caught less often (30%: 29 of 30, 20%: 10 of 30). Read the validation report":
       'हमने अक्टूबर और नवंबर 2025 के हर दिन को वैसे ही जाँचा जैसे यह साइट जाँचती। ज़्यादातर फ़्लैग ऐसी रीडिंग थे जो असली हो ही नहीं सकतीं, और छोटी गिरावटें कम बार पकड़ी गईं (30%: 30 में से 29, 20%: 30 में से 10)। <a href="https://github.com/thegoodengineers/ground-truth/blob/main/docs/VALIDATION.md">जाँच की रिपोर्ट पढ़ें</a>',
-    "This test, and 97 others, run automatically every time the code changes. See the tests":
-      'यह टेस्ट, और 97 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
+    "This test, and 98 others, run automatically every time the code changes. See the tests":
+      'यह टेस्ट, और 98 दूसरे, कोड बदलने पर हर बार अपने-आप चलते हैं। <a href="https://github.com/thegoodengineers/ground-truth/tree/main/tests">टेस्ट देखें</a>',
     "Built on AWS": "AWS पर बना",
     "Nobody presses a button.It checks itself every hour.": '<span class="dim">कोई बटन नहीं दबाता।</span>यह हर घंटे ख़ुद जाँच करता है।',
     "The whole system is one AWS SAM template, deployed in us-east-1 next to the public OpenAQ archive it reads from.":
@@ -425,6 +425,7 @@
     "{0} hours": "{0} घंटे",
     "{0} days": "{0} दिन",
     "See it on OpenAQ": "OpenAQ पर देखें",
+    "Follow this monitor: a feed of every day its answer changes": "इस मॉनिटर को फ़ॉलो करें: जिस दिन भी इसका जवाब बदले, उसकी फ़ीड",
     "That is within WHO's 24-hour guideline for PM2.5 (15 µg/m³).": "यह PM2.5 के लिए WHO की 24 घंटे की सीमा (15 µg/m³) के भीतर है।",
     "That is {0} times WHO's 24-hour guideline for PM2.5 (15 µg/m³).": "यह PM2.5 के लिए WHO की 24 घंटे की सीमा (15 µg/m³) का {0} गुना है।",
     "Complete days this week: {0} of 7. CPCB counts a day only with 16 or more hourly readings.": "इस हफ़्ते के पूरे दिन: 7 में से {0}। CPCB किसी दिन को तभी गिनता है जब उसमें 16 या ज़्यादा घंटों की रीडिंग हो।",
