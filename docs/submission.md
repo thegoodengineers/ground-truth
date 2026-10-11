@@ -11,7 +11,7 @@ The text for the Environmental Hacks form. Every number traces to `spike/RESULTS
 - [ ] Check the AWS cost in Cost Explorer (tag `project=ground-truth`) and add it to the README's Cost table
 - [x] Decide how the write-up lists the coding tools used (the rules ask for it): listed in the form
 - [x] Check every link in this text, then submit (submitted Sunday 11 Oct)
-- [ ] Post a screenshot of the submission confirmation to #11, and close #11
+- [x] Post the submission confirmation to #11, and close #11 (filed 11 Oct 2026, 8:29 PM IST)
 
 ---
 
