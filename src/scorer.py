@@ -78,6 +78,18 @@ def mean_24h(series):
     return statistics.fmean(xs) if len(xs) >= MIN_HOURS_24H else None
 
 
+def complete_days(pm25, pm10, days=RECENT_DAYS):
+    """How many of the last `days` 24-hour periods have a PM reading in at least MIN_HOURS_24H hours: CPCB's National
+    AQI counts a 24-hour average only with 16 hours of valid data, so this is how many days this monitor could be
+    counted at all."""
+    n = 0
+    for d in range(days):
+        hi = len(pm25) - 24 * d
+        hours = sum(1 for a, b in zip(pm25[hi - 24:hi], pm10[hi - 24:hi], strict=True) if a is not None or b is not None)
+        n += hours >= MIN_HOURS_24H
+    return n
+
+
 def rnd(v):
     return None if v is None else round(v, 1)
 
@@ -331,7 +343,8 @@ def _assemble(keys, now, stations, prepared, result, last, cfg=None):
             "band": band(mean_24h(clean["pm25"]), mean_24h(clean["pm10"])),
             "neighbours_band": band(around_24h["pm25"], around_24h["pm10"]),
             # the 24-hour PM2.5 averages behind those bands, for the cigarette comparison on the site
-            "pm25_24h": rnd(mean_24h(clean["pm25"])), "neighbours_pm25_24h": rnd(around_24h["pm25"])}
+            "pm25_24h": rnd(mean_24h(clean["pm25"])), "neighbours_pm25_24h": rnd(around_24h["pm25"]),
+            "complete_days_7d": complete_days(clean["pm25"], clean["pm10"])}
         # a monitor that has gone quiet keeps its last checks in view but isn't judged on them
         if last[s["id"]] is None or last[s["id"]] < keys[-SILENT_HOURS]:
             doc["status"] = "nodata"
@@ -374,7 +387,7 @@ CSV_COLUMNS = [
     "history_status", "history_detail",
     "pm25", "pm10", "no2", "co", "relativehumidity",
     "neighbours_pm25", "neighbours_pm10",
-    "last_reading", "band", "neighbours_band", "pm25_24h", "neighbours_pm25_24h",
+    "last_reading", "band", "neighbours_band", "pm25_24h", "neighbours_pm25_24h", "complete_days_7d",
     "data_through",
 ]
 
@@ -403,6 +416,7 @@ def to_csv(latest_json):
             "neighbours_pm10": s.get("neighbours_latest", {}).get("pm10"),
             "last_reading": s.get("last_reading"), "band": s.get("band"), "neighbours_band": s.get("neighbours_band"),
             "pm25_24h": s.get("pm25_24h"), "neighbours_pm25_24h": s.get("neighbours_pm25_24h"),
+            "complete_days_7d": s.get("complete_days_7d"),
             "data_through": data_through,
         }
         w.writerow(row)
