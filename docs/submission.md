@@ -7,7 +7,7 @@ The text for the Environmental Hacks form. Every number traces to `spike/RESULTS
 - [x] Open the live site in a signed-out browser: it loads, the tour plays with its voice, and the Hindi toggle works (checked 11 Oct, 10:00 IST: no console errors, the voice files load, Hindi switches the page)
 - [x] Read "Readings through …" on the live site; if the CPCB feed through OpenAQ is still behind, the note under the headline says so (11 Oct: OpenAQ has had no CPCB data since 7 Oct 19:00; the note says so and links to OpenAQ's own page)
 - [ ] Record the demo video (#10) and upload it to YouTube, unlisted: paste the URL into **Links**
-- [ ] Publish the Builder Center blog (#38): paste the URL into **Links**
+- [x] Publish the Builder Center blog (#38): https://builder.aws.com/content/3KXHb77GkEiiQfwGYhuZIewBZdQ/who-checks-the-air-quality-monitors-an-hourly-fact-checker-for-delhis-air-on-aws
 - [ ] Check the AWS cost in Cost Explorer (tag `project=ground-truth`) and add it to the README's Cost table
 - [ ] Decide how the write-up lists the coding tools used (the rules ask for it)
 - [ ] Check every link in this text, then submit
@@ -21,7 +21,7 @@ The text for the Environmental Hacks form. Every number traces to `spike/RESULTS
 
 **One line:** Which of Delhi's air-quality numbers can you trust? Every monitor, checked every hour against its neighbours, its own past and physics.
 
-**Links:** live site https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/ · repo https://github.com/thegoodengineers/ground-truth · demo video [YouTube URL] · blog [Builder Center URL]
+**Links:** live site https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/ · repo https://github.com/thegoodengineers/ground-truth · demo video [YouTube URL] · blog https://builder.aws.com/content/3KXHb77GkEiiQfwGYhuZIewBZdQ/who-checks-the-air-quality-monitors-an-hourly-fact-checker-for-delhis-air-on-aws
 
 ---
 
