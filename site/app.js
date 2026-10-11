@@ -12,7 +12,7 @@
       },
       checkLabel: { ok: "Passes", watch: "Worth a look", flag: "Doesn't add up", nodata: "No data" },
       findStation: "Find your station",
-      findPlaceholder: "Find your station, e.g. Anand Vihar",
+      findPlaceholder: "Find your station or neighbourhood, e.g. Lajpat Nagar",
       filterPlaceholder: "Filter by name or area, e.g. Noida",
       langToggleLabel: "Switch to Hindi",
       langToggleText: "हिं",
@@ -26,7 +26,7 @@
       },
       checkLabel: { ok: "पास", watch: "एक बार देखें", flag: "मेल नहीं खाता", nodata: "डेटा नहीं" },
       findStation: "अपना स्टेशन खोजें",
-      findPlaceholder: "स्टेशन खोजें, जैसे आनंद विहार",
+      findPlaceholder: "स्टेशन या इलाक़ा खोजें (अंग्रेज़ी में), जैसे Lajpat Nagar",
       filterPlaceholder: "नाम या क्षेत्र से फ़िल्टर करें, जैसे नोएडा",
       langToggleLabel: "Switch to English",
       langToggleText: "EN",
@@ -1179,48 +1179,78 @@
     const p = Math.PI / 180, h = Math.sin((b[0] - a[0]) * p / 2) ** 2 + Math.cos(a[0] * p) * Math.cos(b[0] * p) * Math.sin((b[1] - a[1]) * p / 2) ** 2;
     return 12742 * Math.asin(Math.sqrt(h));
   };
+  const sayNear = (html) => { const line = $("#near-line"); if (line) { line.innerHTML = html; line.hidden = false; } };
+  // the nearest monitor with a reading to a point (the browser's position, or a ward the visitor searched for), how far
+  // it is and its answer; then the panel opens on it
+  function showNearest(here, place) {
+    const ranked = latest.stations.map((s) => ({ s, km: kmBetween(here, [s.lat, s.lon]) })).sort((a, b) => a.km - b.km);
+    if (!ranked.length || ranked[0].km > 150) { sayNear(tx("You seem to be outside Delhi and the NCR; the nearest monitor here is") + ` <b>${esc(short(ranked[0].s.name))}</b>, ${Math.round(ranked[0].km)} km.`); return; }
+    const near = ranked.find((r) => r.s.status !== "nodata") || ranked[0];
+    const alt = ranked[0].s.id !== near.s.id ? ` (${esc(short(ranked[0].s.name))}, ${ranked[0].km.toFixed(1)} km, ${tx("has no reading right now")}.)` : "";
+    const todo = near.s.status === "ok" ? tx("Its reading is a fair guide for your area.") : near.s.status === "nodata" ? tx("It has no reading right now.")
+      : tr`Use what the 4 monitors around it read instead: ${fmt(near.s.neighbours_latest?.pm25)} µg/m³ PM2.5.`;
+    const lead = place ? tr`Nearest monitor to ${esc(place)}` : tx("Nearest monitor");
+    sayNear(`${lead}: <b>${esc(short(near.s.name))}</b>, ${near.km.toFixed(1)} km ${tx("away")}, ${STATUS[near.s.status].label.toLowerCase()}. ${todo}${alt}`);
+    openStation(near.s.id, null);
+  }
   function setupNearMe() {
-    const btn = $("#near-btn"), line = $("#near-line");
+    const btn = $("#near-btn");
     if (!navigator.geolocation) { btn.hidden = true; return; }
-    const say = (html) => { line.innerHTML = html; line.hidden = false; };
+    const say = sayNear;
     btn.addEventListener("click", () => {
       say(tx("Asking your browser where you are…"));
       navigator.geolocation.getCurrentPosition((pos) => {
-        const here = [pos.coords.latitude, pos.coords.longitude];
-        const ranked = latest.stations.map((s) => ({ s, km: kmBetween(here, [s.lat, s.lon]) })).sort((a, b) => a.km - b.km);
-        if (!ranked.length || ranked[0].km > 150) { say(tx("You seem to be outside Delhi and the NCR; the nearest monitor here is") + ` <b>${esc(short(ranked[0].s.name))}</b>, ${Math.round(ranked[0].km)} km.`); return; }
-        const near = ranked.find((r) => r.s.status !== "nodata") || ranked[0];
-        const alt = ranked[0].s.id !== near.s.id ? ` (${esc(short(ranked[0].s.name))}, ${ranked[0].km.toFixed(1)} km, ${tx("has no reading right now")}.)` : "";
-        const todo = near.s.status === "ok" ? tx("Its reading is a fair guide for your area.") : near.s.status === "nodata" ? tx("It has no reading right now.")
-          : tr`Use what the 4 monitors around it read instead: ${fmt(near.s.neighbours_latest?.pm25)} µg/m³ PM2.5.`;
-        say(`${tx("Nearest monitor")}: <b>${esc(short(near.s.name))}</b>, ${near.km.toFixed(1)} km ${tx("away")}, ${STATUS[near.s.status].label.toLowerCase()}. ${todo}${alt}`);
-        openStation(near.s.id, null);
+        showNearest([pos.coords.latitude, pos.coords.longitude], null);
       }, (err) => {
         say(err.code === 1 ? tx("Location not shared. Search for your station by name instead.") : tx("Couldn't get a position. Search for your station by name instead."));
       }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
     });
   }
 
+  // people know their neighbourhood, not the monitor's name: the 290 Delhi wards (DataMeet, already drawn on the map)
+  // are searchable too, and a ward opens the nearest monitor with a reading to its centre
+  let wardList = null;
+  async function loadWards() {
+    if (wardList) return;
+    try {
+      const w = await getJSON("geo/delhi_wards.json");
+      wardList = w.features.filter((f) => !/Charge \d+$/.test(f.properties.n)).map((f) => {
+        const ring = f.geometry.type === "Polygon" ? f.geometry.coordinates[0] : f.geometry.coordinates[0][0];
+        const at = ring.reduce((a, [lon, lat]) => [a[0] + lat / ring.length, a[1] + lon / ring.length], [0, 0]);
+        return { name: f.properties.n, at };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (e) { wardList = []; }
+  }
   function setupSearch() {
     const input = $("#search"), list = $("#search-list"), box = input.closest(".search");
     let items = [], idx = -1;
     const close = () => { list.hidden = true; box.setAttribute("aria-expanded", "false"); idx = -1; };
     const show = () => {
       const q = input.value.trim().toLowerCase();
-      items = latest.stations.filter((s) => !q || s.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 8);
-      list.innerHTML = items.map((s, i) => `<li role="option" id="opt-${i}" data-id="${s.id}" aria-selected="${i === idx}">${esc(s.name)} ${pill(s.status)}</li>`).join("") || `<li aria-disabled="true">${tx("No station matches")}</li>`;
+      const monitors = latest.stations.filter((s) => !q || s.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 8);
+      const wards = q.length >= 2 && wardList ? wardList.filter((w) => w.name.toLowerCase().includes(q)).slice(0, 5) : [];
+      items = [...monitors.map((s) => ({ id: s.id })), ...wards.map((w) => ({ ward: w }))];
+      list.innerHTML = items.map((it, i) => it.ward
+        ? `<li role="option" id="opt-${i}" data-i="${i}" aria-selected="${i === idx}">${esc(it.ward.name)} <span class="kind">${tx("neighbourhood: opens the nearest monitor")}</span></li>`
+        : `<li role="option" id="opt-${i}" data-i="${i}" aria-selected="${i === idx}">${esc(byId.get(it.id).name)} ${pill(byId.get(it.id).status)}</li>`).join("")
+        || `<li aria-disabled="true">${tx("No station or neighbourhood matches")}</li>`;
       list.hidden = false; box.setAttribute("aria-expanded", "true");
     };
-    const pick = (id) => { close(); input.value = ""; $("#roster-q").value = ""; drawRoster(); select(id, { fly: true }); $("#live").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    const reset = () => { close(); input.value = ""; $("#roster-q").value = ""; drawRoster(); $("#live").scrollIntoView({ behavior: "smooth", block: "start" }); };
+    const pick = (it) => {
+      reset();
+      if (it.ward) showNearest(it.ward.at, it.ward.name);
+      else select(it.id, { fly: true });
+    };
     input.addEventListener("input", () => { idx = -1; show(); $("#roster-q").value = input.value; drawRoster(); });
-    input.addEventListener("focus", show);
+    input.addEventListener("focus", () => { show(); loadWards().then(() => { if (!list.hidden) show(); }); });
     input.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown") { idx = Math.min(idx + 1, items.length - 1); show(); e.preventDefault(); }
       else if (e.key === "ArrowUp") { idx = Math.max(idx - 1, 0); show(); e.preventDefault(); }
-      else if (e.key === "Enter" && items.length) { pick(items[Math.max(idx, 0)].id); }
+      else if (e.key === "Enter" && items.length) { pick(items[Math.max(idx, 0)]); }
       else if (e.key === "Escape") close();
     });
-    list.addEventListener("mousedown", (e) => { const li = e.target.closest("li[data-id]"); if (li) pick(Number(li.dataset.id)); });
+    list.addEventListener("mousedown", (e) => { const li = e.target.closest("li[data-i]"); if (li) pick(items[Number(li.dataset.i)]); });
     input.addEventListener("blur", () => setTimeout(close, 120));
   }
 
