@@ -26,7 +26,7 @@ def run(cmd):
 
 
 # rows whose picture needs longer than its sentence: the walk into the 3D city, and the console proof shot
-MIN_ROW = {5: 9.0, 12: 12.0}
+MIN_ROW = {5: 9.0, 13: 14.5}
 
 
 def row_length(n, kind):
@@ -116,7 +116,9 @@ def main(args):
     style = ("FontName=Geist,FontSize=15,PrimaryColour=&H00F5F5F2,OutlineColour=&H66000000,BackColour=&H66000000,"
              "BorderStyle=4,Outline=0,Shadow=0,MarginV=40,Alignment=2")
     run(["-i", str(BUILD / "video.mp4"), "-i", str(mix), "-vf", f"subtitles='{srt_path}':force_style='{style}'",
-         "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+         "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
+         "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000",  # YouTube-level loudness, no clipping
+         "-c:a", "aac", "-b:a", "160k",
          "-movflags", "+faststart", "-shortest", str(out)])
     got = duration(out)
     print(json.dumps({"out": str(out), "seconds": round(got, 1), "under_limit": got <= LIMIT, "rows": len(parts)}))

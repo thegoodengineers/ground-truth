@@ -11,7 +11,8 @@ Shots (the station ids are the ones the script names; check them against the liv
   5 start    the hero, the live example and the stats, then down to the map and into 3D
   6 physics  fly to Vikas Sadan (301), which fails the physics check; the card outlined
   7 chart    Anand Vihar (235), the hour-of-day chart with the 11-17 band
-  8 history  Jahangirpuri (8235), the history card, then "this station vs the 4 nearest now"
+  8 history  IGI Airport T3 (5650), the history card, then "this station vs the 4 nearest now"
+  9 features Anand Vihar (235): when the air is cleanest and the cigarettes row, then the Fix these first list
 """
 import sys
 
@@ -20,8 +21,8 @@ from playwright.sync_api import sync_playwright
 from frames import BUILD, H, W, Recorder, launch, vo_seconds
 from record import PAD
 
-MIN = {5: 9.0, 6: 8.0, 7: 9.0, 8: 9.0}
-PHYSICS, CHART, HISTORY = 301, 235, 8235
+MIN = {5: 9.0, 6: 8.0, 7: 9.0, 8: 9.0, 9: 10.0}
+PHYSICS, CHART, HISTORY = 301, 235, 5650
 
 
 def ready(page, name, max_s=20):
@@ -36,7 +37,7 @@ def main(args):
     url = "http://localhost:8000"
     if "--url" in args:
         url = args[args.index("--url") + 1]
-    wanted = {int(a) for a in args if a.isdigit()} or {5, 6, 7, 8}
+    wanted = {int(a) for a in args if a.isdigit()} or {5, 6, 7, 8, 9}
     BUILD.mkdir(exist_ok=True)
     with sync_playwright() as p:
         b = launch(p)
@@ -84,9 +85,17 @@ def main(args):
         if 8 in wanted:
             shot(8, [(0.0, "window.__gt.enterImmersive()"),
                      (0.3, go(HISTORY, "history")),
-                     (0.4, say("History", "Jahangirpuri against its own last three weeks. Worth a look, not proof.")),
+                     (0.4, say("History", "IGI Airport's daytime dust, against its own last three weeks. A reason to check, not proof.")),
                      (6.5, say("What to do", "When a station is in doubt, use what the stations around it read right now.")),
                      (6.6, "document.querySelector('#panel .now')?.scrollIntoView({behavior: 'smooth', block: 'center'})")])
+        if 9 in wanted:
+            shot(9, [(0.0, "window.__gt.enterImmersive()"),
+                     (0.3, f"window.__gt.select({CHART}, {{fly: true}})"),
+                     (0.4, say("When to be outside", "The cleanest hours this week, and what a day of this air means in cigarettes.")),
+                     (1.8, "document.querySelector('#panel .aqi')?.scrollIntoView({behavior: 'smooth', block: 'start'})"),
+                     (5.6, "window.__gt.exitImmersive()"),
+                     (5.7, "window.__gt.scrollTo('#fixfirst')"),
+                     (5.8, say("Fix these first", "The monitors that failed most often this month, for the boards that run them."))])
         b.close()
 
 
