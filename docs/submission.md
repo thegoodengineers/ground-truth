@@ -84,6 +84,10 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 - **Fix these first**: a maintenance list for DPCC and CPCB, the monitors that didn't add up on the most of the last 28 days and the check that caught each one most often. It turns the checks into work orders for the people who run the network.
 - **When the air is cleanest**: each panel charts the last week's PM2.5 by hour of day, from the reading you can trust, and names the cleanest three hours between 07:00 and 19:00, so a principal can move PE to them.
 - **The air in cigarettes**: each panel turns the 24-hour PM2.5 you can trust into cigarettes a day (Berkeley Earth, Muller and Muller 2015: a day at 22 µg/m³ ≈ one cigarette), which a parent understands at once.
+- **Delhi's air, from the monitors that add up**: one city figure at the top of the site, the 24-hour PM2.5 average of only the monitors that agree with their neighbours, as a multiple of WHO's 24-hour guideline (15 µg/m³, 2021) and in cigarettes, next to what all reporting monitors give. It needs at least 3 such monitors, CPCB's minimum for a city figure, and names the data's hour when the feed is behind.
+- **Complete days, by CPCB's own rule**: each panel and the CSV say how many of the last 7 days had the 16 hours of readings CPCB's National AQI needs to count a day. On 11 Oct, 35 monitors had all 7 and a few had 3 or fewer, a gap the boards can act on.
+- **Follow one monitor**: every monitor has its own Atom feed, `data/feeds/<id>.xml`, of the days its answer changed, for a school or resident who follows the one near them.
+- **An outside-in uptime probe and one dashboard**: a small Lambda loads the live site every 15 minutes the way a visitor would, with an alarm to SNS email; one CloudWatch dashboard shows data age, every run, the city's answers each hour, the site's traffic and the alarms.
 - **Other cities as a setting**: `src/regions/<city>.json`; Mumbai scored from the archive, not shipped because its feed is thinner (`docs/LEARNINGS.md`).
 
 ## What's next
