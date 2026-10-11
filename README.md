@@ -64,6 +64,13 @@ flowchart LR
   ARCH[(OpenAQ archive<br/>Open Data on AWS)] -. history .-> S3
   L <--> S3[(S3<br/>29-day cache + results)]
   S3 --> FN[Lambda function URL<br/>HTTPS] --> U[The site]
+  EB2[EventBridge<br/>every 15 min] --> P[Lambda<br/>uptime probe]
+  P -. loads the page like a visitor .-> FN
+  L -- run metrics --> CW[CloudWatch<br/>metrics, dashboard, alarms]
+  P -- SiteUp, latency --> CW
+  CW -- alarm --> SNS[SNS<br/>email]
+  S2[(Sentinel-2 imagery<br/>Open Data on AWS)] -. 3D ground, built once .-> U
+  GH[GitHub Actions<br/>OIDC, no keys] -. sam deploy .-> CFN[SAM / CloudFormation<br/>one template]
 ```
 
 - **EventBridge** starts the check every hour.
