@@ -6,10 +6,11 @@
     python video/tour_voice.py --voice <id>    # another ElevenLabs voice (default: Sarah)
     python video/tour_voice.py --list-voices   # the voices this key can use, with their ids
     python video/tour_voice.py --engine edge   # the free edge-tts voice instead, no key needed
+    python video/tour_voice.py --steps 5       # only these steps, to redo one line without spending credits on the rest
 
 The key is read from the environment only: never put it in a file, a commit or a chat. The site's tour plays a
 step's file and moves on when it ends, so the lines below are the captions, said aloud. A line naming a station
-the tour picks at run time (step 3) says "this monitor" instead.
+the tour picks at run time (steps 3 and 5) says "this monitor" instead.
 """
 import argparse, asyncio, json, os, sys, urllib.error, urllib.request
 from pathlib import Path
@@ -25,7 +26,7 @@ LINES = {
         "Delhi in 3D. Each mast is a monitor. Its column is as tall as its PM 2.5 reading, and the smog is thicker where the air is worse.",
         "This monitor reports readings that can't be real. Its numbers don't add up.",
         "Anand Vihar, hour by hour, against the four stations around it. The shaded band is eleven in the morning to five in the evening.",
-        "Jahangirpuri, against its own last three weeks. Worth a look, not proof.",
+        "This monitor, against its own last three weeks. A reason to check, not proof.",
         "When a station is in doubt, use what the stations around it read right now.",
         "A flag means the numbers don't add up. Not that anyone cheated.",
     ],
@@ -34,7 +35,7 @@ LINES = {
         "3D में दिल्ली। हर खंभा एक मॉनिटर है। उसका स्तंभ उसकी पी एम ढाई की रीडिंग जितना ऊँचा है, और जहाँ हवा ज़्यादा ख़राब है वहाँ धुंध घनी है।",
         "यह मॉनिटर ऐसी रीडिंग भेजता है जो असली हो ही नहीं सकतीं। इसके आँकड़े मेल नहीं खाते।",
         "आनंद विहार, घंटे-दर-घंटे, आस-पास के चार स्टेशनों के मुकाबले। रंगी हुई पट्टी सुबह ग्यारह से शाम पाँच बजे तक है।",
-        "जहाँगीरपुरी, अपने पिछले तीन हफ़्तों के मुकाबले। देखने लायक, पर सबूत नहीं।",
+        "यह मॉनिटर, अपने पिछले तीन हफ़्तों के मुकाबले। जाँचने की वजह, पर सबूत नहीं।",
         "जब किसी स्टेशन पर शक हो, तो आस-पास के स्टेशनों की अभी की रीडिंग इस्तेमाल करें।",
         "फ़्लैग का मतलब है कि आँकड़े मेल नहीं खाते। यह नहीं कि किसी ने धोखा दिया।",
     ],
@@ -77,6 +78,7 @@ def main():
     ap.add_argument("--engine", default="elevenlabs", choices=["elevenlabs", "edge"])
     ap.add_argument("--voice", default=SARAH, help="ElevenLabs voice id")
     ap.add_argument("--list-voices", action="store_true", help="list the voices this key can use, then stop")
+    ap.add_argument("--steps", nargs="+", type=int, help="only these step numbers (1-7)")
     a = ap.parse_args()
     key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     if a.engine == "elevenlabs" and not key:
@@ -97,6 +99,8 @@ def speak_all(a, key):
     OUT.mkdir(parents=True, exist_ok=True)
     for lang in a.lang:
         for i, text in enumerate(LINES[lang], 1):
+            if a.steps and i not in a.steps:
+                continue
             path = OUT / f"tour-{lang}-{i}.mp3"
             if a.engine == "elevenlabs":
                 path.write_bytes(eleven(text, a.voice, key))

@@ -1185,7 +1185,9 @@
     touring = true;
     const pick = (pred, fallback) => (latest.stations.find(pred) || byId.get(fallback) || latest.stations[0]).id;
     const physics = pick((s) => s.checks.physics.status === "flag", 301);
-    const history = pick((s) => s.id === 8235 && s.checks.history.status !== "nodata", 8235);
+    // the history step shows a monitor that check flags right now (a fixed one can go silent), worst first
+    const flagged = (st) => latest.stations.find((s) => s.status !== "nodata" && s.checks.history.status === st);
+    const history = (flagged("flag") || flagged("watch") || byId.get(8235) || latest.stations[0]).id;
     const n = latest.stations.length;
     mark("tour:start");
     caption("Ground Truth", tr`${n} air-quality monitors across Delhi and NCR, checked every hour.`);
@@ -1210,7 +1212,7 @@
 
     mark("tour:history");
     await select(history, { fly: true, spot: "history" });
-    caption(tx("History"), tx("Jahangirpuri against its own last three weeks. Worth a look, not proof."));
+    caption(tx("History"), tr`${esc(byId.get(history).name.split(",")[0])} against its own last three weeks. A reason to check, not proof.`);
     await say(5, 6500);
 
     mark("tour:advice");
