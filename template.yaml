@@ -258,6 +258,61 @@ Resources:
                 StringEquals:
                   cloudwatch:namespace: GroundTruth
 
+  # Outside-in: every 15 minutes, load the live site as a visitor would (src/probe.py)
+  ProbeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Every 15 min - loads the live page and data/latest.json, publishes SiteUp, latency and run age
+      CodeUri: src/
+      Handler: probe.handler
+      Runtime: python3.11
+      Architectures: [arm64]
+      MemorySize: 128
+      Timeout: 30
+      Environment:
+        Variables:
+          SITE_URL: !If [UseCloudFront, !Sub "https://${SiteDistribution.DomainName}/", !GetAtt ServeFunctionUrl.FunctionUrl]
+          METRIC_NAMESPACE: GroundTruth
+          STACK_NAME: !Ref AWS::StackName
+      Events:
+        Every15Minutes:
+          Type: Schedule
+          Properties:
+            Schedule: rate(15 minutes)
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: cloudwatch:PutMetricData
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  cloudwatch:namespace: GroundTruth
+
+  ProbeLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProbeFunction}"
+      RetentionInDays: 14
+
+  SiteDownAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-site-down"
+      AlarmDescription: The live site or its data didn't load for a visitor twice in a row (src/probe.py). See docs/RUNBOOK.md.
+      Namespace: GroundTruth
+      MetricName: SiteUp
+      Dimensions:
+        - Name: Stack
+          Value: !Ref AWS::StackName
+      Statistic: Minimum
+      Period: 900
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching  # no probe at all is as bad as a failed one
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
+
   IngestLogs:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -376,8 +431,15 @@ Resources:
             "region": "${AWS::Region}", "view": "timeSeries", "period": 300,
             "metrics": [["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "${ServeFunction}", {"stat": "Maximum"}],
                         [".", "Duration", ".", ".", {"stat": "p90", "yAxis": "right"}]]}},
-          {"type": "alarm", "x": 0, "y": 20, "width": 24, "height": 3, "properties": {"title": "Alarms",
-            "alarms": ["${IngestErrorsAlarm.Arn}", "${IngestRunErrorAlarm.Arn}", "${StaleDataAlarm.Arn}"]}}
+          {"type": "metric", "x": 0, "y": 20, "width": 12, "height": 6, "properties": {"title": "Outside-in: is the site up for a visitor? (every 15 min)",
+            "region": "${AWS::Region}", "view": "timeSeries", "stat": "Minimum", "period": 900, "yAxis": {"left": {"min": 0, "max": 1}},
+            "metrics": [["GroundTruth", "SiteUp", "Stack", "${AWS::StackName}", {"label": "Site up (1) or down (0)", "color": "#0ca30c"}]]}},
+          {"type": "metric", "x": 12, "y": 20, "width": 12, "height": 6, "properties": {"title": "Outside-in: page load (ms) and hours since the last run",
+            "region": "${AWS::Region}", "view": "timeSeries", "period": 900,
+            "metrics": [["GroundTruth", "SiteLatencyMs", "Stack", "${AWS::StackName}", {"stat": "Average", "label": "Page load (ms)"}],
+                        [".", "RunAgeHours", ".", ".", {"stat": "Maximum", "label": "Hours since the last run", "yAxis": "right"}]]}},
+          {"type": "alarm", "x": 0, "y": 26, "width": 24, "height": 3, "properties": {"title": "Alarms",
+            "alarms": ["${IngestErrorsAlarm.Arn}", "${IngestRunErrorAlarm.Arn}", "${StaleDataAlarm.Arn}", "${SiteDownAlarm.Arn}"]}}
         ]}
 
   # What it costs to run (issue 36): $5 a month, an email at 80%, scoped to the project tag.

@@ -9,6 +9,7 @@ The subscription has to be confirmed once from the email AWS sends.
 | `ground-truth-lambda-errors` | The ingest Lambda crashed in 2 hours in a row. | Read the last log line (below). A crash is a bug: fix it, `make deploy`, then `make run`. |
 | `ground-truth-ingest-run-error` | Two runs in a row stopped early: the OpenAQ key was rejected (401/403), or the API was unreachable 5 stations in a row. The run still publishes what it can. | A 401: put the right key in SSM (`aws ssm put-parameter --name /ground-truth/openaq-key --type SecureString --overwrite --value <key> --profile groundtruth`), then `make run`. Unreachable: wait an hour; if it stays, check https://api.openaq.org/v3/locations/8235 by hand. |
 | `ground-truth-stale-data` | `data_through` is more than 3 hours behind now, or no run has reported for an hour at all. | `make run` and read its summary. `"published": false` with a `reason` says why the hour wasn't published (fewer than half the stations have a recent reading, most often OpenAQ itself running late). If `reason` names the key, see the row above. If the Lambda isn't being invoked, check the EventBridge rule is enabled. |
+| `ground-truth-site-down` | The probe (`src/probe.py`, every 15 minutes) couldn't load the page or `data/latest.json` twice in a row, as a visitor would. | Open the site yourself. Its log line (`/aws/lambda/<ProbeFunction>`) has the `error`: a 403 is usually the function URL's public permission, a 5xx the serve Lambda (read its log), a timeout is throttling (the dashboard's Throttles line). A redeploy from `main` restores the permissions. |
 | `ground-truth-monthly` (budget) | The project tag has spent 80% of $5 this month. | Read Cost Explorer filtered by `project=ground-truth`. The hourly runs cost cents; anything else is a surprise. |
 
 ## The last log line
@@ -27,6 +28,8 @@ aws logs tail /aws/lambda/$(aws cloudformation describe-stacks --stack-name grou
 
 - `DataAgeHours`: hours from the end of the newest scored hour to now. Normal is 1 to 2 (OpenAQ publishes an hour a little after it ends).
 - `IngestErrors`: 1 when the run stopped early, else 0.
+- `Monitors_ok`, `Monitors_watch`, `Monitors_flag`, `Monitors_nodata`, `NewHours`: how many monitors got each answer this run, and how many new hours arrived.
+- From the probe, every 15 minutes: `SiteUp` (1 or 0), `SiteLatencyMs` (page load), `RunAgeHours` (hours since the hourly run last wrote `latest.json`).
 
 ## Testing the alarms
 
