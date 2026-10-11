@@ -1,6 +1,6 @@
 # Who checks the air-quality monitors? An hourly fact-checker for Delhi's air, on AWS
 
-_For AWS Builder Center. Numbers as of 11 Oct 2026 from `docs/VALIDATION.md` and the live site; the pictures are in `docs/img/`. When publishing: paste the text from the title down, upload the PNGs where the image lines are (the dashboard one is a screenshot you take in the CloudWatch console, Dashboards, ground-truth; if you skip it, delete that image line), add 3 to 5 tags (`aws-lambda`, `serverless`, `amazon-cloudwatch`, `open-data`, `sustainability`), and put the post's URL in `docs/submission.md` and the README._
+_For AWS Builder Center. Numbers as of 11 Oct 2026 from `docs/VALIDATION.md` and the live site; the pictures are in `docs/img/`. When publishing: paste the text from the title down, upload the PNGs where the image lines are, add up to 5 of Builder Center's tags (it only offers its own list: pick the closest to AWS Lambda, Serverless, Amazon CloudWatch, Open Data, Sustainability), and put the post's URL in `docs/submission.md` and the README._
 
 > **TL;DR.** Delhi's 52 public air-quality monitors drive real decisions, and nobody checks whether they work. Ground Truth checks every one of them every hour (physics, neighbours, history) and answers in plain words, in English and Hindi, with the evidence one click away. It caught 30 of 30 planted faults in real data. It runs on EventBridge, Lambda, S3, CloudWatch and SNS from one SAM template, for about $0.30 a month inside the free tier. Our first idea failed its own test, and the product is better for it.
 
@@ -58,8 +58,6 @@ The whole thing is one SAM template in us-east-1, next to the archive it reads.
 - A second, tiny Lambda checks the site from the outside every 15 minutes, the way a visitor would: it loads the page and the data and records whether the site is up and how fast it answered. The inside metrics can't see a broken permission or a bad deploy; this can.
 - CloudWatch alarms and a $5 budget email us through SNS if a run fails, if the data goes stale, if the site goes down for a visitor, or if the bill moves. A merge to main deploys through GitHub Actions with OIDC; no AWS keys are stored anywhere.
 - Running it costs cents: about 720 Lambda runs a month (about 110,000 GB-seconds on arm64), 10 MB in S3, and metrics and alarms inside the free tier. That is about $0.30 a month inside the free tier and about $3 without it.
-
-![The CloudWatch dashboard: data age, every hourly run, how many monitors got each answer, the site's traffic, the outside-in probe, and the alarms](img/blog-dashboard.png)
 
 Five things fought back:
 1. **The archive runs about four days behind,** so live hours come from the API.
