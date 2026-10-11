@@ -175,6 +175,7 @@ def test_station_json_contract(baseline):
             assert set(doc[key]) == set(scorer.PARAMS)
             assert all(len(v) == 24 for v in doc[key].values())
         assert len(doc["daily"]) == 28
+        assert len(doc["pm25_by_hour_7d"]) == 24 and len(doc["neighbours_pm25_by_hour_7d"]) == 24
         assert doc["id"] not in doc["neighbours"]
         r48 = doc["recent_48h"]
         assert len(r48["hours"]) == 48
@@ -317,3 +318,13 @@ def test_a_region_can_widen_the_neighbour_search(data):
     latest, per = scorer.score(hourly, stations, NOW, region=wide)
     assert max(len(doc["neighbours"]) for doc in per.values()) == 6
     assert {s["region"] for s in latest["stations"]} == {"City"}
+
+
+def test_by_hour_takes_the_median_per_ist_hour_of_the_last_week():
+    keys = scorer.hour_keys(NOW, 28)
+    series = [float(int(k[11:13])) if k >= keys[-7 * 24] else 999.0 for k in keys]  # value = hour; old weeks are noise
+    series[-1] = None
+    prof = scorer.by_hour(keys, series)
+    assert prof == [float(h) for h in range(24)]
+    assert scorer.med_by_hour([[1.0] * 24, [3.0] * 24, [None] * 24]) == [2.0] * 24
+    assert scorer.med_by_hour([[1.0] * 24, [None] * 24]) == [None] * 24  # one neighbour isn't enough
