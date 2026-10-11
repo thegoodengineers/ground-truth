@@ -244,6 +244,10 @@ def test_neighbours_band_comes_from_the_neighbours_24h_averages(baseline, data):
         avg = {p: [m for m in (scorer.mean_24h(c[p]) for c in nb) if m is not None] for p in ("pm25", "pm10")}
         want = scorer.band(*(statistics.median(avg[p]) if len(avg[p]) >= 2 else None for p in ("pm25", "pm10")))
         assert s["neighbours_band"] == want
+        want_pm25 = statistics.median(avg["pm25"]) if len(avg["pm25"]) >= 2 else None
+        assert s["neighbours_pm25_24h"] == (None if want_pm25 is None else round(want_pm25, 1))
+        own = scorer.mean_24h(scorer.prepare(hourly[str(s["id"])], keys)[0]["pm25"])
+        assert s["pm25_24h"] == (None if own is None else round(own, 1))
 
 
 def test_copy_never_accuses(baseline):

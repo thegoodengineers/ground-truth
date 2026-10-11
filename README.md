@@ -33,6 +33,8 @@ The site explains itself in ten seconds with one real monitor, and then lets you
 - **Share card and embed**: a picture of the answer for WhatsApp or a slide, and `embed.html?station=235`, a badge a newsroom or a school can frame.
 - **Context, not blame**: the wind and the mixing height (Open-Meteo), farm fires on the horizon (NASA FIRMS, with a key), and a panel note when a whole area rose together, which is what smoke does.
 - **The real ground**: the 3D city stands on a Sentinel-2 image of Delhi from the Registry of Open Data on AWS, lit by the real hour.
+- **Fix these first**: a maintenance list for DPCC and CPCB, the monitors that didn't add up on the most of the last 28 days, each with its month as a strip and the check that caught it most often.
+- **The air in cigarettes**: every panel turns the 24-hour PM2.5 you can trust into cigarettes a day, using Berkeley Earth's estimate (Muller and Muller, 2015: a day at 22 µg/m³ does about the harm of one cigarette).
 - **In Hindi too**: one button switches the whole site, including each monitor's answer, its evidence and the advice.
 - **A 60-second tour that plays itself**, with a voice-over (ElevenLabs), for anyone who would rather watch than read.
 - **Open data**: `data/latest.csv` and `data/latest.json` every hour, with every column described on the method page.

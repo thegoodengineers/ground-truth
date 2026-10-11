@@ -78,6 +78,10 @@ def mean_24h(series):
     return statistics.fmean(xs) if len(xs) >= MIN_HOURS_24H else None
 
 
+def rnd(v):
+    return None if v is None else round(v, 1)
+
+
 def band(pm25, pm10):
     """CPCB AQI band of 24-hour PM2.5 and PM10 averages: the worse of the two, None if neither is known."""
     worst = None
@@ -309,7 +313,9 @@ def _assemble(keys, now, stations, prepared, result, last, cfg=None):
             "neighbours_latest": {p: None if v is None else round(v, 2) for p, v in around.items()},
             "last_reading": last[s["id"]] and iso(last[s["id"]]),
             "band": band(mean_24h(clean["pm25"]), mean_24h(clean["pm10"])),
-            "neighbours_band": band(around_24h["pm25"], around_24h["pm10"])}
+            "neighbours_band": band(around_24h["pm25"], around_24h["pm10"]),
+            # the 24-hour PM2.5 averages behind those bands, for the cigarette comparison on the site
+            "pm25_24h": rnd(mean_24h(clean["pm25"])), "neighbours_pm25_24h": rnd(around_24h["pm25"])}
         # a monitor that has gone quiet keeps its last checks in view but isn't judged on them
         if last[s["id"]] is None or last[s["id"]] < keys[-SILENT_HOURS]:
             doc["status"] = "nodata"
@@ -349,7 +355,7 @@ CSV_COLUMNS = [
     "history_status", "history_detail",
     "pm25", "pm10", "no2", "co", "relativehumidity",
     "neighbours_pm25", "neighbours_pm10",
-    "last_reading", "band", "neighbours_band",
+    "last_reading", "band", "neighbours_band", "pm25_24h", "neighbours_pm25_24h",
     "data_through",
 ]
 
@@ -377,6 +383,7 @@ def to_csv(latest_json):
             "neighbours_pm25": s.get("neighbours_latest", {}).get("pm25"),
             "neighbours_pm10": s.get("neighbours_latest", {}).get("pm10"),
             "last_reading": s.get("last_reading"), "band": s.get("band"), "neighbours_band": s.get("neighbours_band"),
+            "pm25_24h": s.get("pm25_24h"), "neighbours_pm25_24h": s.get("neighbours_pm25_24h"),
             "data_through": data_through,
         }
         w.writerow(row)

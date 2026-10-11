@@ -67,6 +67,14 @@ button, input, select { font: inherit; }
 .hstrip i.watch { background: var(--watch); border: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; }
 .hstrip i.flag { background: var(--flag); border: 0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); border-radius: 0; }
 .hstrip i.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.fixlist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.fixlist li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 16px 18px; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; box-shadow: var(--shadow); }
+.fixlist .hstrip, .fixlist .fix-why { grid-column: 1 / -1; }
+.fix-rank { font: 500 13px var(--mono); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); color: var(--ink); }
+.fix-name { font: 600 16px var(--sans); color: var(--ink); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; letter-spacing: -.01em; }
+.fix-name:hover { text-decoration: underline; }
+.fix-why { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+.fix-why b { color: var(--flag-ink); font-weight: 600; }
 .hist .hsum { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin: 8px 0 0; }
 .hist .hdates { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 4px; }
 /* since yesterday, under the live map's intro */
@@ -202,6 +210,11 @@ html[lang="hi"] { --sans: "Geist", "Noto Sans Devanagari", ui-sans-serif, system
 .aqi { margin: 14px 0 0; padding: 13px 15px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface-2); }
 .aqi b { display: block; font-size: 22px; letter-spacing: -.02em; font-weight: 600; margin: 2px 0; }
 .aqi p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+.aqi .cigs { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line-2); font-size: 13.5px; }
+.aqi .cigs a { color: var(--ink-3); white-space: nowrap; }
+.cig-row { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; align-items: center; }
+.cig-row svg { width: 24px; height: 8px; }
+.cig-row i { font: 12px var(--mono); font-style: normal; color: var(--ink-3); }
 .advice { margin: 12px 0 20px; padding: 13px 15px; border-radius: var(--r-sm); font-size: 14.5px; line-height: 1.5; border: 1px solid; }
 .advice b { font-weight: 600; }
 .advice.ok { background: var(--ok-tint); border-color: var(--ok-line); color: #12401a; }

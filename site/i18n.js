@@ -131,6 +131,10 @@
     "When fewer than 2 neighbours, or too few days of data, are available, a check answers not enough data instead of guessing. A monitor gets that answer only if none of its checks can run.":
       "जब 2 से कम पड़ोसी हों, या डेटा के बहुत कम दिन हों, तो जाँच अंदाज़ा लगाने की जगह <b>पर्याप्त डेटा नहीं</b> कहती है। मॉनिटर को यह जवाब तभी मिलता है जब उसकी कोई भी जाँच न चल सके।",
     "Who it's for": "यह किसके लिए है",
+    "For DPCC and CPCB": "DPCC और CPCB के लिए",
+    "The monitors that fail most often.Fix these first.": '<span class="dim">जो मॉनिटर सबसे ज़्यादा फ़ेल होते हैं।</span>इन्हें पहले ठीक करें।',
+    "Ranked by how many of the last 28 days each monitor didn't add up, with the check that caught it. A maintenance list, worked out every day from the public data.":
+      "पिछले 28 में से कितने दिन हर मॉनिटर के आँकड़े मेल नहीं खाए, उसी क्रम में, और किस जाँच ने उसे पकड़ा। रखरखाव की सूची, हर दिन सार्वजनिक डेटा से बनती है।",
     "For anyone who acts on the number.Before they act on it.": '<span class="dim">हर उस व्यक्ति के लिए जो इस आँकड़े पर फ़ैसला लेता है।</span>फ़ैसला लेने से पहले।',
     "A school principal": "स्कूल के प्रिंसिपल",
     "Deciding at 7:30 whether assembly and PE stay outdoors. If the nearest monitor doesn't add up, they use what the monitors around the school read.":
@@ -200,6 +204,7 @@
     "IST hour of the monitor's newest PM reading; with none in the last 3 hours, status is nodata":
       "मॉनिटर की सबसे नई PM रीडिंग का IST घंटा; पिछले 3 घंटों में कोई न हो, तो <code>status</code> <code>nodata</code> है",
     "CPCB AQI band of the 24-hour average, for this monitor and for its four neighbours": "24 घंटे के औसत का CPCB AQI स्तर, इस मॉनिटर और इसके चार पड़ोसियों के लिए",
+    "The 24-hour average PM2.5 in µg/m³, for this monitor and for its four neighbours": "24 घंटे का औसत PM2.5, µg/m³ में, इस मॉनिटर और इसके चार पड़ोसियों के लिए",
     "IST timestamp of the latest scored hour": "आख़िरी जाँचे गए घंटे का IST समय",
     "Our results (status, checks, this CSV) are released under CC BY 4.0. Underlying PM readings are from OpenAQ and subject to their terms. Suggested citation: Ground Truth, thegoodengineers, , https://github.com/thegoodengineers/ground-truth.":
       'हमारे नतीजे (हाल, जाँचें, यह CSV) <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a> के तहत जारी हैं। मूल PM रीडिंग OpenAQ की हैं और उनकी शर्तों के अधीन हैं। हवाला ऐसे दें: <em>Ground Truth, thegoodengineers, <span id="cite-date"></span>, https://github.com/thegoodengineers/ground-truth</em>।',
@@ -419,6 +424,14 @@
     "{0} hours": "{0} घंटे",
     "{0} days": "{0} दिन",
     "See it on OpenAQ": "OpenAQ पर देखें",
+    "mostly physics: readings that can't be real": "ज़्यादातर भौतिकी: ऐसी रीडिंग जो सच नहीं हो सकतीं",
+    "mostly neighbours: far out of line with the monitors around it": "ज़्यादातर पड़ोसी: आस-पास के मॉनिटरों से बहुत अलग",
+    "mostly history: a sudden change against its own past": "ज़्यादातर इतिहास: अपने ही पिछले रिकॉर्ड से अचानक बदलाव",
+    "{0} days doesn't add up, {1} worth a look": "{0} दिन मेल नहीं खाए, {1} एक बार देखने लायक",
+    "Didn't add up on {0} of {1} days": "{1} में से {0} दिन आँकड़े मेल नहीं खाए",
+    "Breathing this air for a day does less harm than half a cigarette.": "इस हवा में एक दिन साँस लेना आधी सिगरेट से भी कम नुकसान करता है।",
+    "Breathing this air for a day is like smoking {0} cigarettes.": "इस हवा में एक दिन साँस लेना {0} सिगरेट पीने जैसा है।",
+    "Berkeley Earth's estimate": "Berkeley Earth का अनुमान",
     "Our hourly check is still running and scores each new hour as it arrives.": "हमारी हर घंटे की जाँच चल रही है, और हर नया घंटा आते ही उसे जाँचती है।",
     "The public feed from the monitors (CPCB, through OpenAQ) is {0} behind right now. Every answer here is for the newest hour it has: {1} IST.":
       "मॉनिटरों का सार्वजनिक फ़ीड (CPCB, OpenAQ के ज़रिए) अभी {0} पीछे चल रहा है। यहाँ हर जवाब उसके सबसे नए घंटे का है: {1} IST।",
