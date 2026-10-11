@@ -88,6 +88,11 @@ def _panel(page, url):
     page.wait_for_selector(".checks li", timeout=10_000)
     checks = page.locator(".checks li").count()
     assert checks == 3, f"expected 3 check rows, got {checks}"
+    # the maintenance list: ranked monitors, and a click opens that monitor
+    first = page.locator("#fixlist .fix-name").first
+    name = first.text_content()
+    first.click()
+    page.wait_for_function("n => document.querySelector('#panel h2')?.textContent.includes(n)", arg=name, timeout=10_000)
 
 
 @pytest.mark.parametrize("webgl", [True, False], ids=["webgl", "no-webgl"])

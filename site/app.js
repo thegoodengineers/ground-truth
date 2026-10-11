@@ -262,6 +262,7 @@
     try { histDoc = await getJSON("data/history.json"); } catch (e) { return; }
     renderChanges();
     renderMonthChart();
+    renderFixFirst();
     if (selected != null && byId.has(selected)) { const box = $("#history-box"); if (box) box.outerHTML = historyHTML(byId.get(selected)); }
     if (location.hash.endsWith("/history")) $("#history-box")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -303,6 +304,38 @@
     if (sub) sub.textContent = tr`Every day scored at 17:00 IST, the way the live check scores it. On an average day this month ${flagged.toFixed(1)} monitors didn't add up; on ${labels[labels.length - 1]}, ${last.flag} did and ${last.watch} were worth a look.`;
   }
   const CHECK_LETTER = { o: "ok", w: "watch", f: "flag", n: "nodata" };
+
+  // a maintenance list for the boards: the monitors that didn't add up on the most days this month, and the check
+  // that caught them most often (the letters in each day's "c" are physics, neighbours, history)
+  const CHECK_WHY = [
+    () => tx("mostly physics: readings that can't be real"),
+    () => tx("mostly neighbours: far out of line with the monitors around it"),
+    () => tx("mostly history: a sudden change against its own past"),
+  ];
+  function renderFixFirst() {
+    const list = $("#fixlist");
+    if (!list || !histDoc?.stations) return;
+    const days = histDoc.days;
+    const ranked = Object.entries(histDoc.stations).map(([id, rows]) => {
+      const flag = rows.filter((r) => r.s === "flag");
+      const caught = [0, 1, 2].map((j) => flag.filter((r) => r.c[j] === "f").length);
+      return { id: Number(id), rows, flag: flag.length, watch: rows.filter((r) => r.s === "watch").length, main: caught.indexOf(Math.max(...caught)) };
+    }).filter((x) => x.flag > 0 && byId.has(x.id)).sort((a, b) => b.flag - a.flag || b.watch - a.watch).slice(0, 6);
+    if (!ranked.length) return;
+    list.innerHTML = ranked.map((x, i) => {
+      const byDay = Object.fromEntries(x.rows.map((r) => [r.d, r.s]));
+      const cells = days.map((d) => `<i class="${byDay[d] || "nodata"}"></i>`).join("");
+      const name = short(byId.get(x.id).name);
+      return `<li><span class="fix-rank">${i + 1}</span><button type="button" class="fix-name" data-open="${x.id}">${esc(name)}</button>
+        <div class="hstrip" role="img" aria-label="${tr`${x.flag} days doesn't add up, ${x.watch} worth a look`}">${cells}</div>
+        <p class="fix-why"><b>${tr`Didn't add up on ${x.flag} of ${days.length} days`}</b> · ${CHECK_WHY[x.main]()}</p></li>`;
+    }).join("");
+    list.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
+      $("#live")?.scrollIntoView({ behavior: "smooth" });
+      openStation(Number(b.dataset.open), null);
+    }));
+    $("#fixfirst").hidden = false;
+  }
   function historyHTML(s) {
     const rows = histDoc?.stations?.[String(s.id)];
     if (!rows || !rows.length) return `<div class="hist" id="history-box"></div>`;
@@ -808,7 +841,20 @@
     const own = s.status === "ok";
     const b = own ? s.band : s.neighbours_band;
     if (!b) return "";
-    return `<div class="aqi"><span class="label">${tr`Air quality, 24-hour average · ${tx(own ? "this monitor" : "from the 4 monitors around it")}`}</span><b>${esc(window.GT_I18N.band(b))}</b><p>${window.GT_I18N.bandTodo(b, BAND_TODO[b])}</p></div>`;
+    return `<div class="aqi"><span class="label">${tr`Air quality, 24-hour average · ${tx(own ? "this monitor" : "from the 4 monitors around it")}`}</span><b>${esc(window.GT_I18N.band(b))}</b><p>${window.GT_I18N.bandTodo(b, BAND_TODO[b])}</p>${cigsHTML(own ? s.pm25_24h : s.neighbours_pm25_24h)}</div>`;
+  }
+
+  // the same 24-hour average as cigarettes: a day at 22 µg/m³ PM2.5 does about the harm of one cigarette
+  // (Berkeley Earth; R. A. Muller and E. A. Muller, "Air Pollution and Cigarette Equivalence", 2015)
+  const CIG_UGM3 = 22;
+  function cigsHTML(pm25) {
+    if (pm25 == null) return "";
+    const n = pm25 / CIG_UGM3;
+    if (n < 0.5) return `<p class="cigs">${tx("Breathing this air for a day does less harm than half a cigarette.")}</p>`;
+    const shown = n < 2 ? (Math.round(n * 2) / 2).toLocaleString(LOCALE) : String(Math.round(n));
+    const icons = Math.min(12, Math.round(n));
+    const cig = '<svg viewBox="0 0 24 8" aria-hidden="true"><rect x="0.5" y="1.5" width="17" height="5" rx="1" fill="#f5f5f2" stroke="#8a8c92"/><rect x="17.5" y="1.5" width="6" height="5" rx="1" fill="#e2a25a"/></svg>';
+    return `<p class="cigs"><span class="cig-row">${cig.repeat(icons)}${n > 12.5 ? "<i>+</i>" : ""}</span>${tr`Breathing this air for a day is like smoking ${shown} cigarettes.`} <a href="https://berkeleyearth.org/air-pollution-and-cigarette-equivalence/" target="_blank" rel="noopener">${tx("Berkeley Earth's estimate")}</a></p>`;
   }
 
   function lastHTML(s) {

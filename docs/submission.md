@@ -66,7 +66,7 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 
 - **The live site** updates every hour; the header shows the hour the readings run through and when the last check ran.
 - **The planted test:** we lowered one quiet monitor's daytime PM10 by 40% in real data, one monitor at a time. It was caught 30 times out of 30, and wrongly flagged another monitor only 3 times across all 30 runs.
-- **93 automated tests** run on every change, plus browser smoke tests of the live site in CI.
+- **94 automated tests** run on every change, plus browser smoke tests of the live site in CI.
 - **Every day of October and November 2025, scored as the live site would have** (`docs/VALIDATION.md`): about 1 in 5 monitors flagged on a typical day, most by the physics check; a planted 30% daytime drop was flagged 29 times out of 30, a 40% drop every time.
 
 ## Challenges
@@ -81,6 +81,8 @@ Plain words instead of scores, and every state shown with a shape and a word, ne
 - **A month behind every answer.** Every day of the last 28 is scored as the live check scores it; each panel shows the month as a strip, `#235/history` links to it, the proof section charts the whole month city-wide, and `data/changes.xml` is an Atom feed of every monitor that changed its answer, to subscribe to.
 - **Find the monitor near me**, a share card (a picture of the answer for WhatsApp or a slide), and an embeddable badge (`embed.html?station=235`) a newsroom or a school can frame.
 - **Context for city-wide changes**: the wind and mixing height from Open-Meteo (the dust in 3D drifts with the real wind), and NASA FIRMS farm fires on the horizon when a key is configured.
+- **Fix these first**: a maintenance list for DPCC and CPCB, the monitors that didn't add up on the most of the last 28 days and the check that caught each one most often. It turns the checks into work orders for the people who run the network.
+- **The air in cigarettes**: each panel turns the 24-hour PM2.5 you can trust into cigarettes a day (Berkeley Earth, Muller and Muller 2015: a day at 22 µg/m³ ≈ one cigarette), which a parent understands at once.
 - **Other cities as a setting**: `src/regions/<city>.json`; Mumbai scored from the archive, not shipped because its feed is thinner (`docs/LEARNINGS.md`).
 
 ## What's next
