@@ -844,6 +844,31 @@
     return `<div class="aqi"><span class="label">${tr`Air quality, 24-hour average · ${tx(own ? "this monitor" : "from the 4 monitors around it")}`}</span><b>${esc(window.GT_I18N.band(b))}</b><p>${window.GT_I18N.bandTodo(b, BAND_TODO[b])}</p>${cigsHTML(own ? s.pm25_24h : s.neighbours_pm25_24h)}</div>`;
   }
 
+  // when to be outside: PM2.5 by IST hour of day over the last week, from the reading you can trust, and the cleanest
+  // three hours between 07:00 and 19:00 (Delhi's air is usually cleanest mid-afternoon, when it mixes highest)
+  function hoursHTML(s, doc) {
+    const own = s.status === "ok";
+    const prof = doc && (own ? doc.pm25_by_hour_7d : doc.neighbours_pm25_by_hour_7d);
+    if (!prof || prof.filter((v) => v != null).length < 18) return "";
+    let best = null;
+    for (let h = 7; h <= 16; h++) {
+      const w = prof.slice(h, h + 3);
+      if (w.some((v) => v == null)) continue;
+      const m = (w[0] + w[1] + w[2]) / 3;
+      if (!best || m < best.m) best = { h, m };
+    }
+    if (!best) return "";
+    const top = Math.max(...prof.filter((v) => v != null));
+    const worst = prof.indexOf(top);
+    const hh = (h) => `${String(h % 24).padStart(2, "0")}:00`;
+    const bars = prof.map((v, h) => `<i class="${h >= best.h && h < best.h + 3 ? "best" : ""}" style="height:${v == null ? 0 : Math.max(4, Math.round((v / top) * 100))}%" title="${hh(h)}: ${v == null ? "–" : fmt(v)} µg/m³"></i>`).join("");
+    const summary = tr`Best time to be outside, between 07:00 and 19:00: ${hh(best.h)}–${hh(best.h + 3)}, about ${fmt(best.m)} µg/m³. Worst: around ${hh(worst)}, about ${fmt(top)} µg/m³.`;
+    return `<div class="hours"><h3>${tx("When the air is cleanest")}</h3><p class="csub">${tr`PM2.5 by hour of day over the last 7 days · ${tx(own ? "this monitor" : "from the 4 monitors around it")}`}</p>
+      <div class="hbars" role="img" aria-label="${esc(summary)}">${bars}</div>
+      <div class="hdates"><span>00:00</span><span>12:00</span><span>23:00</span></div>
+      <p class="hsum">${summary}</p></div>`;
+  }
+
   // the same 24-hour average as cigarettes: a day at 22 µg/m³ PM2.5 does about the harm of one cigarette
   // (Berkeley Earth; R. A. Muller and E. A. Muller, "Air Pollution and Cigarette Equivalence", 2015)
   const CIG_UGM3 = 22;
@@ -885,6 +910,7 @@
       ${lastHTML(s)}
       <div class="std">${tr`India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.`}</div>
       ${adviceHTML(s)}
+      ${hoursHTML(s, doc)}
       ${historyHTML(s)}
       <ul class="checks">${checks}</ul>
       <div class="chartbox">

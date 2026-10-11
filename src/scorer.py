@@ -186,6 +186,22 @@ def daily(keys, gap, physics):
     return rows
 
 
+def by_hour(keys, series, last_n_hours=RECENT_DAYS * 24):
+    """Median of a series for each IST hour of the day (0-23) over the last n hours, None with fewer than 3 values.
+    Delhi's PM2.5 follows the mixing height: lowest in the afternoon, highest at night (see Aerosol and Air Quality
+    Research 22:220191, 2022), and this is each monitor's own measured week of it."""
+    by_h = [[] for _ in range(24)]
+    for k, v in zip(keys[-last_n_hours:], series[-last_n_hours:], strict=False):
+        if v is not None:
+            by_h[int(k[11:13])].append(v)
+    return [round(statistics.median(v), 1) if len(v) >= 3 else None for v in by_h]
+
+
+def med_by_hour(profiles):
+    """Hour by hour, the median of several 24-hour profiles (at least 2 values), for a monitor's neighbours."""
+    return [None if (m := med([p[h] for p in profiles], need=2)) is None else round(m, 1) for h in range(24)]
+
+
 def profile(keys, gap, last_n_hours=None):
     sl = slice(-last_n_hours, None) if last_n_hours else slice(None)
     ks, out = keys[sl], {}
@@ -331,6 +347,9 @@ def _assemble(keys, now, stations, prepared, result, last, cfg=None):
         per_station[s["id"]] = {
             "id": s["id"], "name": s["name"], "neighbours": nb,
             "hour_profile": profile(keys, gap), "hour_profile_7d": profile(keys, gap, RECENT_DAYS * 24),
+            # PM2.5 by hour of day over the last week, its own and its neighbours': when the air is cleanest
+            "pm25_by_hour_7d": by_hour(keys, clean["pm25"]),
+            "neighbours_pm25_by_hour_7d": med_by_hour([by_hour(keys, prepared[i][0]["pm25"]) for i in nb]),
             "daily": [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in r.items() if not k.startswith("night_")}
                       for r in rows],
             "recent_48h": {

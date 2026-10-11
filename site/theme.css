@@ -75,6 +75,14 @@ button, input, select { font: inherit; }
 .fix-name:hover { text-decoration: underline; }
 .fix-why { margin: 0; font-size: 13.5px; color: var(--ink-2); }
 .fix-why b { color: var(--flag-ink); font-weight: 600; }
+.hours { margin: 14px 0 4px; }
+.hours h3 { font-size: 15px; margin: 0 0 6px; }
+.hours .csub { margin: 0 0 8px; }
+.hbars { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 64px; }
+.hbars i { display: block; background: var(--nodata); border-radius: 2px 2px 0 0; }
+.hbars i.best { background: var(--ok); }
+.hours .hdates { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--ink-3); margin-top: 4px; }
+.hours .hsum { font-size: 13.5px; color: var(--ink-2); margin: 8px 0 0; }
 .hist .hsum { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin: 8px 0 0; }
 .hist .hdates { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 4px; }
 /* since yesterday, under the live map's intro */
