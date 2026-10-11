@@ -6,7 +6,7 @@ Environmental Hacks 2026 · Air track · team thegoodengineers
 
 ![Ground Truth: the fog hero, the ten-second explainer, the 3D Delhi and a flagged monitor's panel](docs/img/demo.gif)
 
-**Live site:** [zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws](https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/) · **Demo video:** [video/final.mp4](video/final.mp4) (2:45; YouTube link on submission) · **Blog:** [on AWS Builder Center](https://builder.aws.com/content/3KXHb77GkEiiQfwGYhuZIewBZdQ/who-checks-the-air-quality-monitors-an-hourly-fact-checker-for-delhis-air-on-aws) · **Writeup:** [docs/submission.md](docs/submission.md)
+**Live site:** [zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws](https://zsx5rsh4vklo266budro23qama0cpbpi.lambda-url.us-east-1.on.aws/) · **Demo video:** [on YouTube](https://youtu.be/j03tZfjJbHY) (2:56; also [video/final.mp4](video/final.mp4)) · **Blog:** [on AWS Builder Center](https://builder.aws.com/content/3KXHb77GkEiiQfwGYhuZIewBZdQ/who-checks-the-air-quality-monitors-an-hourly-fact-checker-for-delhis-air-on-aws) · **Writeup:** [docs/submission.md](docs/submission.md)
 
 ## The problem
 
