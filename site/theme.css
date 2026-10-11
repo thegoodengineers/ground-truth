@@ -86,6 +86,9 @@ button, input, select { font: inherit; }
 .hbars i.best { background: var(--ok); }
 .hours .hdates { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--ink-3); margin-top: 4px; }
 .hours .hsum { font-size: 13.5px; color: var(--ink-2); margin: 8px 0 0; }
+.report { margin: 14px 0 0; padding: 13px 15px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface); }
+.report h3 { font-size: 15px; margin: 0 0 6px; }
+.report p { margin: 0 0 10px; font-size: 14px; color: var(--ink-2); }
 .hist .feed-mini { display: inline-block; margin-top: 6px; font: 12px var(--mono); color: var(--ink-2); }
 .hist .hsum { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin: 8px 0 0; }
 .hist .hdates { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 4px; }

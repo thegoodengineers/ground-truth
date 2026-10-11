@@ -727,6 +727,12 @@
       const show = () => showCopyBox(this, tx("Copy this link:"), url);
       if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, show); else show();
     });
+    panel.querySelector("#report-btn")?.addEventListener("click", function () {
+      const text = reportText(s);
+      const done = () => { this.textContent = `✓ ${tx("Copied: paste it into the complaint form")}`; setTimeout(() => { this.textContent = `📋 ${tx("Copy a summary to send")}`; }, 3000); };
+      const show = () => showCopyBox(this, tx("Copy this summary:"), text);
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, show); else show();
+    });
     panel.querySelector("#embed-btn")?.addEventListener("click", function () {
       const src = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}embed.html?station=${id}`;
       const snippet = `<iframe src="${src}" width="340" height="150" style="border:0" loading="lazy" title="Ground Truth: ${short(s.name)}"></iframe>`;
@@ -893,6 +899,38 @@
     return `<p class="cigs"><span class="cig-row">${cig.repeat(icons)}${n > 12.5 ? "<i>+</i>" : ""}</span>${tr`Breathing this air for a day is like smoking ${shown} cigarettes.`} <a href="https://berkeleyearth.org/air-pollution-and-cigarette-equivalence/" target="_blank" rel="noopener">${tx("Berkeley Earth's estimate")}</a>${who}</p>`;
   }
 
+  // who runs each monitor, and where the public can raise it: the agency's own site, and CPGRAMS, the Government of
+  // India's public grievance portal, which reaches central agencies and the states (operator codes: stations.tsv)
+  const OPERATORS = {
+    CPCB: { name: "Central Pollution Control Board", site: "https://cpcb.nic.in/" },
+    DPCC: { name: "Delhi Pollution Control Committee", site: "https://dpcc.delhi.gov.in/" },
+    HSPCB: { name: "Haryana State Pollution Control Board", site: "https://hspcb.gov.in/page/head-office" },
+    UPPCB: { name: "Uttar Pradesh Pollution Control Board", site: "https://uppcb.up.gov.in/en" },
+    IMD: { name: "India Meteorological Department", site: "https://mausam.imd.gov.in/" },
+    IITM: { name: "Indian Institute of Tropical Meteorology", site: "https://www.tropmet.res.in/" },
+  };
+  const CPGRAMS = "https://pgportal.gov.in/";
+  const LABEL_EN = { ok: "Agrees with neighbours", watch: "Worth a look", flag: "Doesn't add up", nodata: "Not enough data" };
+  function reportHTML(s) {
+    const op = OPERATORS[s.operator];
+    if (s.status === "ok" || !op) return "";
+    return `<div class="report"><h3>${tx("Tell the people who run it")}</h3>
+      <p>${tr`This monitor is run by the ${esc(op.name)}. You can raise it on <a href="${op.site}" target="_blank" rel="noopener">their site</a>, or through <a href="${CPGRAMS}" target="_blank" rel="noopener">CPGRAMS</a>, the government's public grievance portal.`}</p>
+      <div class="meta"><button class="share-btn" id="report-btn" type="button">📋 ${tx("Copy a summary to send")}</button></div></div>`;
+  }
+  // the summary for an official, in English whatever the page's language: the facts, the evidence link, no blame
+  function reportText(s) {
+    const op = OPERATORS[s.operator];
+    const why = silent(s) ? [s.detail] : Object.entries(s.checks).filter(([, c]) => c.status === "flag" || c.status === "watch")
+      .map(([k, c]) => `${k[0].toUpperCase() + k.slice(1)} check (${LABEL_EN[c.status]}): ${c.detail}`);
+    const page = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}`;
+    return [`Air-quality monitor: ${s.name} (OpenAQ location ${s.id}), run by the ${op.name}.`,
+      `Ground Truth's hourly check says: ${LABEL_EN[s.status]}.`, ...why,
+      `Readings through ${latest.data_through}.`, `Evidence, hour by hour: ${page}#${s.id}/history`,
+      "Ground Truth compares each public monitor with its four nearest neighbours, its own last three weeks and physics. " +
+      "A flag means the numbers don't add up and the monitor is worth checking; it does not mean anyone did anything wrong."].join("\n");
+  }
+
   // how many of the last 7 days CPCB's method could count for this monitor (16 or more hourly readings a day)
   function daysHTML(s) {
     const n = s.complete_days_7d;
@@ -951,6 +989,7 @@
       ${daysHTML(s)}
       <div class="std">${tr`India's 24-hour PM2.5 standard is ${PM25_STANDARD} µg/m³.`}</div>
       ${adviceHTML(s)}
+      ${reportHTML(s)}
       ${hoursHTML(s, doc)}
       ${historyHTML(s)}
       <ul class="checks">${checks}</ul>
