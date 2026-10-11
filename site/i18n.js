@@ -403,7 +403,7 @@
     "Compared with": "तुलना की गई",
     "All": "सभी",
     "No monitor matches. Try another name or area, or show all.": "कोई मॉनिटर नहीं मिला। दूसरा नाम या इलाक़ा आज़माएँ, या सभी दिखाएँ।",
-    "No station or neighbourhood matches": "कोई स्टेशन या इलाक़ा नहीं मिला",
+    "No station or ward by that name. Try a nearby ward, or 'find the monitor near me' below.": "इस नाम का कोई स्टेशन या वार्ड नहीं मिला। पास का कोई वार्ड आज़माएँ, या नीचे 'अपने पास का मॉनिटर ढूँढें'।",
     "neighbourhood: opens the nearest monitor": "इलाक़ा: सबसे पास का मॉनिटर खोलता है",
     "Nearest monitor to {0}": "{0} के सबसे पास का मॉनिटर",
     "Central Delhi": "मध्य दिल्ली",
