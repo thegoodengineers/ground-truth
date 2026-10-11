@@ -22,6 +22,7 @@ import scorer
 
 KEY = "data/history.json"
 FEED_KEY = "data/changes.xml"
+FEEDS_DIR = "data/feeds/"  # one feed per monitor, data/feeds/<id>.xml, for a school or resident who follows one
 DAYS = 28
 SCORE_HOUR = 17
 BUDGET_S = 100
@@ -47,13 +48,16 @@ LABEL = {"ok": "agrees with neighbours", "watch": "worth a look", "flag": "doesn
 NOTE = "A flag means the numbers don't add up, not that anyone tampered with the station."
 
 
-def atom(doc, site_url, title="Ground Truth: monitors that changed their answer"):
+def atom(doc, site_url, title="Ground Truth: monitors that changed their answer", only=None):
     """The changes as an Atom feed a reporter can subscribe to: one entry per monitor per day it changed, newest first,
-    over every pair of consecutive days in the document (not only the last one)."""
+    over every pair of consecutive days in the document (not only the last one). `only`: one monitor's id, for its
+    own feed at data/feeds/<id>.xml."""
     site = site_url.rstrip("/") + "/"
     days = doc.get("days", [])
     entries = []
     for sid, rows in doc.get("stations", {}).items():
+        if only is not None and sid != str(only):
+            continue
         by_day = {r["d"]: r["s"] for r in rows}
         name = doc.get("names", {}).get(sid) or f"monitor {sid}"
         for a, b in zip(days, days[1:], strict=False):
@@ -61,12 +65,13 @@ def atom(doc, site_url, title="Ground Truth: monitors that changed their answer"
                 entries.append((b, sid, name, by_day[a], by_day[b]))
     entries.sort(key=lambda e: (e[0], e[2]), reverse=True)
     updated = doc.get("generated_at") or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-    self_url = escape(site + FEED_KEY)
+    self_url = escape(site + (f"{FEEDS_DIR}{only}.xml" if only is not None else FEED_KEY))
     out = ['<?xml version="1.0" encoding="utf-8"?>', '<feed xmlns="http://www.w3.org/2005/Atom">',
            f"  <title>{escape(title)}</title>", f'  <link href="{escape(site)}"/>', f'  <link rel="self" href="{self_url}"/>',
            f"  <id>{self_url}</id>", f"  <updated>{escape(updated)}</updated>",
            "  <subtitle>Every day at 17:00 IST each monitor in Delhi and the NCR is checked against its neighbours, its own past "
-           "and physics; this feed lists the monitors whose answer changed from the day before.</subtitle>"]
+           + ("and physics; this feed lists the days this monitor's answer changed.</subtitle>" if only is not None else
+              "and physics; this feed lists the monitors whose answer changed from the day before.</subtitle>")]
     for day, sid, name, frm, to in entries[:200]:
         summary = f"{name}: {LABEL[frm]} → {LABEL[to]} ({day})"
         out += ["  <entry>", f"    <title>{escape(summary)}</title>", f'    <link href="{escape(site)}#{sid}/history"/>',
@@ -82,6 +87,7 @@ def update(store, hourly, stations, last_key, region=None, budget_s=BUDGET_S, no
     Returns {"days": n, "scored": how many days this run scored}."""
     wanted = complete_days(last_key)
     doc = store.get_json(KEY) or {}
+    had_feeds = doc.get("feeds")
     have = {}  # day -> {sid: row}
     for sid, rows in (doc.get("stations") or {}).items():
         for r in rows:
@@ -116,7 +122,13 @@ def update(store, hourly, stations, last_key, region=None, budget_s=BUDGET_S, no
         "score_hour": SCORE_HOUR, "days": days, "stations": out_stations, "totals": totals, "changes": changes,
         "names": {str(s["id"]): s["name"] for s in stations},
     }
+    if site_url:
+        doc["feeds"] = 1
     store.put_json(KEY, doc, max_age=300)
     if site_url:
         store.put_text(FEED_KEY, atom(doc, site_url), content_type="application/atom+xml; charset=utf-8", max_age=300)
+        if scored or not had_feeds:  # a monitor's feed only changes when a new day is scored: once a day, not every hour
+            for s in stations:
+                store.put_text(f"{FEEDS_DIR}{s['id']}.xml", atom(doc, site_url, title=f"Ground Truth: {s['name']}", only=s["id"]),
+                               content_type="application/atom+xml; charset=utf-8", max_age=300)
     return {"days": len(days), "scored": scored}

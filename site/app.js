@@ -352,7 +352,8 @@
     return `<div class="hist" id="history-box"><h3>${tr`The last ${days.length} days, one answer a day`}</h3><p class="csub">${tx("Each day scored at 17:00 IST, the way the live check scores it. Hover a day for the three checks.")}</p>
       <div class="hstrip" role="img" aria-label="${tr`${count("flag")} days doesn't add up, ${count("watch")} worth a look, ${count("ok")} agrees, ${count("nodata")} not enough data`}">${cells}</div>
       <div class="hdates"><span>${fmtDay(days[0])}</span><span>${fmtDay(days[days.length - 1])}</span></div>
-      <p class="hsum">${tr`Doesn't add up on ${count("flag")} of ${days.length} days · worth a look on ${count("watch")} · agrees on ${count("ok")}`}${count("nodata") ? ` · ${tr`no data on ${count("nodata")}`}` : ""}</p></div>`;
+      <p class="hsum">${tr`Doesn't add up on ${count("flag")} of ${days.length} days · worth a look on ${count("watch")} · agrees on ${count("ok")}`}${count("nodata") ? ` · ${tr`no data on ${count("nodata")}`}` : ""}</p>
+      <a class="feed-mini" href="data/feeds/${s.id}.xml" type="application/atom+xml">${tx("Follow this monitor: a feed of every day its answer changes")}</a></div>`;
   }
 
   // farm fires (data/fires.json, NASA FIRMS via the Lambda, only when a FIRMS key is configured): a line in the

@@ -97,3 +97,27 @@ def test_changes_are_the_newest_day_against_the_one_before(data):
         rows = {r["d"]: r for r in doc["stations"][str(s["id"])]}
         if rows["2025-11-29"]["s"] == rows["2025-11-30"]["s"]:
             assert s["id"] not in changed
+
+
+def test_each_monitor_has_its_own_feed_written_once_a_day(data):
+    import xml.etree.ElementTree as ET
+    hourly, stations = data
+    store, writes = MemStore(), []
+    def put_text(key, text, content_type=None, max_age=None):
+        store.data[key] = text
+        writes.append(key)
+    store.put_text = put_text
+    history.update(store, hourly, stations, "2025-11-30T23", budget_s=60, site_url="https://example.test/")
+    ns = {"a": "http://www.w3.org/2005/Atom"}
+    doc = store.data[history.KEY]
+    for s in stations:
+        root = ET.fromstring(store.data[f"{history.FEEDS_DIR}{s['id']}.xml"])
+        assert root.find("a:id", ns).text == f"https://example.test/{history.FEEDS_DIR}{s['id']}.xml"
+        links = [e.find("a:link", ns).get("href") for e in root.findall("a:entry", ns)]
+        assert all(h == f"https://example.test/#{s['id']}/history" for h in links)  # only this monitor's changes
+        rows = doc["stations"][str(s["id"])]
+        assert len(links) == sum(1 for a, b in zip(rows, rows[1:], strict=False) if a["s"] != b["s"])
+    # the next hourly run, with no new day to score, rewrites the city feed but not the 52 monitor feeds
+    writes.clear()
+    history.update(store, hourly, stations, "2025-11-30T23", budget_s=60, site_url="https://example.test/")
+    assert writes == [history.FEED_KEY]
