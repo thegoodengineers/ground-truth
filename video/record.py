@@ -36,11 +36,11 @@ def url_for(kind, name, dur):
 
 
 def open_scene(page, kind, name, dur):
-    page.goto(url_for(kind, name, dur), wait_until="domcontentloaded")
+    page.goto(url_for(kind, name, dur), wait_until="domcontentloaded", timeout=120000)
     if kind == "terminal":
         text = (HERE / "assets" / name).read_text(encoding="utf-8") if (HERE / "assets" / name).exists() else ""
         page.evaluate("t => { window.__pytest = '$ make test\\n\\n' + t; }", text)
-        page.reload(wait_until="domcontentloaded")
+        page.reload(wait_until="domcontentloaded", timeout=120000)
         page.evaluate("t => { window.__pytest = '$ make test\\n\\n' + t; }", text)
     page.evaluate("document.fonts.ready")
     page.clock.run_for(50)

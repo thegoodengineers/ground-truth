@@ -17,13 +17,14 @@ Scene kinds: `scene: <id>` = an HTML scene in `scenes/scenes.html` (rendered by 
 | 5 | CAPTURE start | The live site: hero, live example, stats, then the map. | Here are fifty-two stations, each with a plain answer. | `data/latest.json` |
 | 6 | CAPTURE physics | Vikas Sadan opens; the Physics card is outlined. | Vikas Sadan, in Gurugram, reports more fine dust than total dust. That can't happen, so it fails the physics check. | `data/latest.json` |
 | 7 | CAPTURE chart | Anand Vihar; the hour-of-day chart, the 11-to-5 band shaded. | Anand Vihar, against its neighbours, hour by hour. Its dust dips between eleven and five. That looks like spraying. But every polluted hotspot does this, because daytime air mixes. So we don't flag it. | `spike/RESULTS.md` |
-| 8 | CAPTURE history | Jahangirpuri; the History card outlined; then "this station vs 4 nearest now". | Jahangirpuri's daytime humidity jumped against its own last three weeks. Worth a look, not proof. And when a station is in doubt, we show what its neighbours read right now. | `data/latest.json` |
-| 9 | scene: proof | Huge "30 / 30". Under it: "planted daytime drops caught". | How do we know it works? We planted a forty percent daytime drop in real data, one station at a time. It was caught thirty times out of thirty. | `docs/LEARNINGS.md` |
-| 10 | terminal: pytest.txt | The real `pytest` run typing out, ending green. | Every claim has a test, and the tests run on every change. | `make test` |
-| 11 | scene: arch | The architecture: EventBridge, Lambda, Parameter Store, OpenAQ, S3, CloudFront light up as named. | On AWS, EventBridge runs a Lambda every hour. It reads new data from OpenAQ, runs the checks, and writes the results to S3, where the site is served from over HTTPS. One SAM template deploys it all. | `template.yaml` |
-| 12 | SUPPLY console.mp4 | 10-15 s of the real AWS console: Lambda invocations, the EventBridge rule, S3 `data/` objects. | And here it is, running. | issue #4 |
-| 13 | scene: learned | Three lessons build line by line. | What we learned. The archive runs four days behind, so live data needs the API. The API's hours are half an hour off India's. And our strongest result is the one we didn't claim. | `docs/LEARNINGS.md` |
-| 14 | scene: close | Dark. GT mark, "Ground Truth", the URL and the repo. | Ground Truth. A flag means the numbers don't add up. Not that anyone cheated. | - |
+| 8 | CAPTURE history | IGI Airport (T3); the History card outlined; then "this station vs 4 nearest now". | At IGI Airport, daytime dust fell thirty-eight percent against its own last three weeks. A reason to check, not proof. And when a station is in doubt, we show what its neighbours read right now. | `data/latest.json` (5650 history: -38%) |
+| 9 | CAPTURE features | Anand Vihar's panel scrolled to "When the air is cleanest" (the hour bars) and the cigarettes row, then the "Fix these first" section. | Every panel also shows the cleanest hours to be outside, and a day of this air in cigarettes. And the boards get a list of monitors to fix first. | `site/app.js` |
+| 10 | scene: proof | Huge "30 / 30". Under it: "planted daytime drops caught". | How do we know it works? We planted a forty percent daytime drop in real data, one station at a time. It was caught thirty times out of thirty. | `docs/LEARNINGS.md` |
+| 11 | terminal: pytest.txt | The real `pytest` run typing out, ending green. | Every claim has a test, and the tests run on every change. | `make test` |
+| 12 | scene: arch | The architecture: EventBridge, Lambda, Parameter Store, OpenAQ, S3, CloudFront light up as named. | On AWS, EventBridge runs a Lambda every hour. It reads new data from OpenAQ, runs the checks, and writes the results to S3, where the site is served from over HTTPS. One SAM template deploys it all. | `template.yaml` |
+| 13 | SUPPLY console.mp4 | About 15 s of the real AWS console, slow and steady: CloudWatch dashboard `ground-truth` scrolled top to bottom, CloudWatch alarms (4, including site-down), Lambda functions (the 3 ground-truth functions). No account ids or ARNs on screen. | And here it is, running: one dashboard for every hourly run and the city's answers, alarms that email us, and a probe that checks the site from outside every fifteen minutes. | issue #4 |
+| 14 | scene: learned | Two lessons build line by line. | What we learned. Live data needs the API, and its hours are half an hour off India's. And our strongest result is the one we didn't claim. | `docs/LEARNINGS.md` |
+| 15 | scene: close | Dark. GT mark, "Ground Truth", the URL and the repo. | Ground Truth. A flag means the numbers don't add up. Not that anyone cheated. | - |
 
 ## Music cue
 
@@ -33,7 +34,7 @@ The bed runs under the narration at about -22 dB, ducked further whenever the vo
 
 | File | What | Spec |
 |---|---|---|
-| `video/supply/console.mp4` | The AWS console: Lambda > Monitor (hourly invocations), the EventBridge rule, S3 `data/` with recent timestamps, the CloudFront distribution. | 1920x1080, 10-15 s, no cursor waving, no account ids or keys on screen. |
+| `video/supply/console.mp4` | The AWS console: the `ground-truth` CloudWatch dashboard scrolled top to bottom, CloudWatch alarms, the three Lambda functions. Made by `video/console_clip.py`. | 1920x1080, about 15 s, no cursor, no account ids or ARNs on screen. |
 
 If the file is missing, `assemble.py` renders a placeholder card so the cut still builds.
 
@@ -41,5 +42,5 @@ If the file is missing, `assemble.py` renders a placeholder card so the cut stil
 
 - [ ] Scene 5's "fifty-two" matches the number of stations in the live `data/latest.json`.
 - [ ] Scene 6: Vikas Sadan is still flagged on physics in the live data; if not, pick the station `?demo=1` picks and change the line.
-- [ ] Scene 8: Jahangirpuri's history check still says humidity moved; if not, change the line to what its card says.
-- [ ] Scene 10: `video/assets/pytest.txt` comes from a fresh `make test` run.
+- [ ] Scene 8: IGI Airport (5650)'s history check still says daytime PM10 fell about 38%; if not, change the line to what its card says.
+- [ ] Scene 11: `video/assets/pytest.txt` comes from a fresh `make test` run.

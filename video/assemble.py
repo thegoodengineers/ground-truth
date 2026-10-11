@@ -25,8 +25,9 @@ def run(cmd):
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *cmd], check=True)
 
 
-# rows whose picture needs longer than its sentence: the walk into the 3D city, and the console proof shot
-MIN_ROW = {5: 9.0, 12: 12.0}
+# rows whose picture needs longer than its sentence: the walk into the 3D city, the features, the console proof shot
+MIN_ROW = {5: 9.0, 9: 10.0, 13: 15.0}
+LUFS, TRUE_PEAK = -16.0, -1.5  # YouTube's loudness target, so the film isn't quiet next to other videos
 
 
 def row_length(n, kind):
@@ -54,6 +55,19 @@ def fit(src, length, out):
          "-vf", f"scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,fps={FPS},"
                 f"tpad=stop_mode=clone:stop_duration={length + 1:.3f}",
          "-t", f"{length:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", str(out)])
+
+
+def normalise(src):
+    """Two-pass EBU R128 loudness normalisation to LUFS (linear, so the mix isn't pumped): measure, then apply."""
+    probe = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(src), "-af", f"loudnorm=I={LUFS}:TP={TRUE_PEAK}:LRA=11:print_format=json",
+                            "-f", "null", "-"], capture_output=True, text=True, check=True).stderr
+    m = json.loads(probe[probe.rindex("{"):probe.rindex("}") + 1])
+    out = BUILD / "mix-loud.wav"
+    measured = (f"measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:"
+                f"measured_thresh={m['input_thresh']}:offset={m['target_offset']}")
+    run(["-i", str(src), "-af", f"loudnorm=I={LUFS}:TP={TRUE_PEAK}:LRA=11:{measured}:linear=true", "-ar", "48000", str(out)])
+    print(f"loudness {float(m['input_i']):.1f} LUFS -> {LUFS:.0f} LUFS")
+    return out
 
 
 def srt_time(s):
@@ -112,6 +126,7 @@ def main(args):
     else:
         mix = BUILD / "voice.wav"
 
+    mix = normalise(mix)
     srt_path = (BUILD / "captions.srt").resolve().as_posix().replace(":", "\\:")
     style = ("FontName=Geist,FontSize=15,PrimaryColour=&H00F5F5F2,OutlineColour=&H66000000,BackColour=&H66000000,"
              "BorderStyle=4,Outline=0,Shadow=0,MarginV=40,Alignment=2")

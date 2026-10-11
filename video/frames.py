@@ -50,7 +50,8 @@ class Recorder:
             if each:
                 each(i / FPS)
             self.page.clock.run_for(round(1000 / FPS))
-            self.page.screenshot(path=os.path.join(self.dir, f"f{self.n:05d}.jpg"), type="jpeg", quality=92)
+            # a generous timeout: a font or a tile arriving late must not end a ten-minute render
+            self.page.screenshot(path=os.path.join(self.dir, f"f{self.n:05d}.jpg"), type="jpeg", quality=92, timeout=120000)
             self.n += 1
 
     def finish(self):

@@ -99,8 +99,8 @@
   #terminal pre .cur { display: inline-block; width: 16px; height: 34px; background: #d9dbe0; vertical-align: -6px; }
 
   /* 11 arch */
-  #arch .wrap { justify-content: flex-start; padding-top: 100px; }
-  #arch .flow { position: relative; margin-top: 70px; height: 620px; }
+  #arch .wrap { justify-content: flex-start; padding-top: 44px; }
+  #arch .flow { position: relative; margin-top: 34px; height: 620px; }
   #arch .node { position: absolute; width: 300px; height: 150px; border-radius: 24px; background: var(--surface); border: 2px solid var(--line); display: flex; flex-direction: column; justify-content: center; padding: 0 28px; box-shadow: 0 2px 6px rgba(8,9,10,.04), 0 30px 60px -40px rgba(8,9,10,.3); transition: none; }
   #arch .node .label { font-size: 18px; margin-bottom: 8px; }
   #arch .node b { font-size: 34px; font-weight: 600; letter-spacing: -.02em; }
@@ -111,7 +111,7 @@
   #arch svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; }
   #arch svg.lines path { fill: none; stroke: #c9cace; stroke-width: 4; stroke-dasharray: 10 12; }
   #arch svg.lines path.lit { stroke: var(--ink); stroke-dasharray: none; }
-  #arch .foot { position: absolute; left: 0; bottom: -70px; font-family: var(--mono); font-size: 22px; color: var(--ink-3); }
+  #arch .foot { position: static; margin-top: 14px; font-family: var(--mono); font-size: 22px; color: var(--ink-3); }
 
   /* 12 console placeholder */
   #console .wrap { align-items: center; text-align: center; }
@@ -236,23 +236,23 @@
   <div class="wrap">
     <div class="label" data-at="0.2">Built on AWS · one SAM template · us-east-1</div>
     <h2 data-at="0.4">Every hour, on AWS.</h2>
+    <div class="foot" data-at="0.6">CloudWatch dashboard and alarms · SNS email · an uptime probe · a $5 budget · deployed from GitHub Actions with OIDC</div>
     <div class="flow">
       <svg class="lines" viewBox="0 0 1600 620" preserveAspectRatio="none">
         <path id="l-eb" d="M 300 115 L 400 115" />
         <path id="l-ssm" d="M 300 315 L 400 315 L 400 115" />
-        <path id="l-api" d="M 550 500 L 550 190" />
+        <path id="l-api" d="M 550 390 L 550 190" />
         <path id="l-s3" d="M 700 115 L 800 115" />
-        <path id="l-arc" d="M 950 500 L 950 190" />
+        <path id="l-arc" d="M 950 390 L 950 190" />
         <path id="l-cf" d="M 1100 115 L 1200 115" />
       </svg>
       <div class="node" id="n-eb" style="left:0;top:40px"><div class="label">Amazon EventBridge</div><b>Every hour</b><small>rate(1 hour)</small></div>
       <div class="node" id="n-ssm" style="left:0;top:240px"><div class="label">Parameter Store</div><b>OpenAQ key</b><small>SecureString</small></div>
       <div class="node" id="n-l" style="left:400px;top:40px"><div class="label">AWS Lambda</div><b>Ingest + 3 checks</b><small>Python, no dependencies</small></div>
-      <div class="node" id="n-api" style="left:400px;top:430px"><div class="label">OpenAQ API</div><b>New readings</b><small>CPCB / DPCC monitors</small></div>
+      <div class="node" id="n-api" style="left:400px;top:320px"><div class="label">OpenAQ API</div><b>New readings</b><small>CPCB / DPCC monitors</small></div>
       <div class="node" id="n-s3" style="left:800px;top:40px"><div class="label">Amazon S3</div><b>29-day cache + results</b><small>data/latest.json</small></div>
-      <div class="node" id="n-arc" style="left:800px;top:430px"><div class="label">Open Data on AWS</div><b>OpenAQ archive</b><small>history, same region</small></div>
+      <div class="node" id="n-arc" style="left:800px;top:320px"><div class="label">Open Data on AWS</div><b>OpenAQ archive</b><small>history, same region</small></div>
       <div class="node" id="n-cf" style="left:1200px;top:40px"><div class="label">HTTPS front</div><b>The site</b><small>Lambda URL now, CloudFront-ready</small></div>
-      <div class="foot">CloudWatch alarms · SNS email · a $5 budget · deployed from GitHub Actions with OIDC</div>
     </div>
   </div>
 </section>
@@ -273,9 +273,8 @@
   <div class="wrap">
     <div class="label" data-at="0.2">What we learned</div>
     <ol>
-      <li data-at="1.6"><span class="n">01</span><div><b>The archive runs four days behind.</b><span>Live hours have to come from the API.</span></div></li>
-      <li data-at="5.4"><span class="n">02</span><div><b>The API's hours are half an hour off India's.</b><span>We group the raw readings into IST hours ourselves.</span></div></li>
-      <li data-at="9.0"><span class="n">03</span><div><b>Our strongest result is the one we didn't claim.</b><span>The stations in the news don't stand out. We say so.</span></div></li>
+      <li data-at="1.4"><span class="n">01</span><div><b>Live data needs the API.</b><span>And its hours are half an hour off India's, so we group the raw readings into IST hours ourselves.</span></div></li>
+      <li data-at="5.6"><span class="n">02</span><div><b>Our strongest result is the one we didn't claim.</b><span>The stations in the news don't stand out. We say so.</span></div></li>
     </ol>
   </div>
 </section>
@@ -310,7 +309,7 @@
 
   // the terminal: typed out over the scene, the real pytest run from video/assets/pytest.txt (inlined by record.py)
   const term = document.getElementById("term-out");
-  const termText = term ? (window.__pytest || "$ make test\n\n..............................  [100%]\n69 passed in 5.5s\n") : "";
+  const termText = () => window.__pytest || "$ make test\n\n(no test run: video/assets/pytest.txt is missing)\n";
 
   // the architecture lights up as the narration names each part
   const archOrder = [["n-eb", 0.9], ["l-eb", 1.6], ["n-l", 1.8], ["l-api", 3.6], ["n-api", 3.8], ["l-ssm", 3.9], ["n-ssm", 4.0],
@@ -336,8 +335,9 @@
       el.style.transform = `scale(${s})`;
     }
     if (term) {
-      const n = Math.min(termText.length, Math.floor(t * 95));
-      const shown = termText.slice(0, n).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      const text = termText();
+      const n = Math.min(text.length, Math.floor(t * 95));
+      const shown = text.slice(0, n).replace(/&/g, "&amp;").replace(/</g, "&lt;")
         .replace(/^(\$ .*)$/m, '<span class="prompt">$1</span>').replace(/(\d+ passed[^\n]*)/, '<span class="pass">$1</span>');
       term.innerHTML = shown + (n < termText.length || Math.floor(t * 2) % 2 === 0 ? '<span class="cur"></span>' : "");
     }
